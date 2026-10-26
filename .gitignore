@@ -1,6 +1,10 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# ==============================================================================
+# GAZAARABIA — COMPREHENSIVE GITHUB IGNORE RULES
+# ==============================================================================
 
-# dependencies
+# ------------------------------------------------------------------------------
+# 1. DEPENDENCIES & PACKAGE MANAGERS
+# ------------------------------------------------------------------------------
 /node_modules
 /.pnp
 .pnp.*
@@ -10,41 +14,110 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
-
-# next.js
+# ------------------------------------------------------------------------------
+# 2. BUILD OUTPUTS & CACHES
+# ------------------------------------------------------------------------------
 /.next/
 /out/
+/build
+/dist
+/.turbo/
+*.tsbuildinfo
+next-env.d.ts
 
-# self-hosted TinyMCE (generated from node_modules by scripts/copy-tinymce.mjs)
+# Self-hosted TinyMCE (auto-copied during postinstall/build)
 /public/tinymce
 
-# production
-/build
+# Prisma generated client if local
+/src/generated/prisma
 
-# misc
-.DS_Store
+# ------------------------------------------------------------------------------
+# 3. ENVIRONMENT & SECRETS (NEVER COMMIT SENSITIVE CONFIGS)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+*.env
+*.env.*
+!.env.example
+!.env.*.example
+!shopify-app/.env.example
+
+# SSH keys, certificates, private keys
 *.pem
+*.key
+*.crt
+*.cert
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+*.id_*
 
-# debug
+# ------------------------------------------------------------------------------
+# 4. SENSITIVE CREDENTIAL DOCS & NOTES (NEVER PUSH TO PUBLIC/REPO)
+# ------------------------------------------------------------------------------
+docs/note.md
+docs/*.doc
+docs/*.docx
+docs/*.doc#
+docs/.~lock.*
+docs/*Server*
+docs/*server*
+docs/*credential*
+docs/*password*
+docs/GAZAARABIA_UX_UI_Developer_Handover.pdf
+
+# ------------------------------------------------------------------------------
+# 5. UPLOADS & LARGE USER MEDIA (PREVENTS 1GB+ GITHUB BLOAT)
+# ------------------------------------------------------------------------------
+/uploads/*
+!/uploads/.gitkeep
+/uploads/
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+# ------------------------------------------------------------------------------
+# 6. LOGS & DIAGNOSTICS
+# ------------------------------------------------------------------------------
+*.log
+*.log.*
+build_error.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (local runtime only; safe templates may be committed)
-.env
-.env.*
-!.env.example
-!.env.*.example
+# ------------------------------------------------------------------------------
+# 7. TESTING & COVERAGE
+# ------------------------------------------------------------------------------
+/coverage
+.nyc_output
 
-# vercel
+# ------------------------------------------------------------------------------
+# 8. OS & IDE CLUTTER
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# ------------------------------------------------------------------------------
+# 9. VERCEL & DEPLOYMENT TOOLS
+# ------------------------------------------------------------------------------
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-/src/generated/prisma
-uploads/
+# ------------------------------------------------------------------------------
+# 10. AI AGENTS & LOCAL WORKSPACE METADATA
+# ------------------------------------------------------------------------------
+.agents/
+.gemini/
