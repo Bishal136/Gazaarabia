@@ -9,6 +9,8 @@
     "tunnel:stop": "bash scripts/vps-tunnel.sh stop",
     "tunnel:status": "bash scripts/vps-tunnel.sh status",
     "test:local": "tsx scripts/test-local-fullstack.ts",
+    "test:mongo": "tsx scripts/test-mongo-fullstack.ts",
+    "db:migrate:mongo": "tsx scripts/migrate-sql-to-mongo.ts",
     "build": "node scripts/copy-tinymce.mjs && next build",
     "start": "next start",
     "postinstall": "node scripts/copy-tinymce.mjs"
@@ -37,6 +39,7 @@
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.545.0",
     "moment": "^2.30.1",
+    "mongoose": "^9.11.4",
     "next": "^16.1.6",
     "next-auth": "^4.24.13",
     "nodemailer": "^7.0.13",
