@@ -43,6 +43,9 @@ export default function FacebookPixel() {
         t = b.createElement(e);
         t.async = !0;
         t.src = v;
+        t.onerror = () => {
+          // Suppress error if client has an adblocker enabled
+        };
         s = b.getElementsByTagName(e)[0];
         s.parentNode.insertBefore(t, s);
       })(

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
 interface Subcategory {
   id: number;
@@ -35,94 +35,83 @@ interface FormattedMenu {
   dropdown: MenuDropdown;
 }
 
-const prisma = new PrismaClient();
-
 export async function GET() {
   try {
-    // Fetch menus with full nested hierarchy in one optimized query
-    const menus = await prisma.menus.findMany({
-      orderBy: { position: "asc" },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        type: true,
-        images: true,
-        submenus: {
-          orderBy: { position: "asc" },
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            categories: {
-              orderBy: { position: "asc" },
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-                image: true,
-                subcategories: {
-                  orderBy: { position: "asc" },
-                  select: {
-                    id: true,
-                    name: true,
-                    slug: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
+    await connectToDatabase();
+    const db = mongoose.connection.db;
 
-    // Fetch homepage settings
-    const homepage = await prisma.homePageSetting.findFirst({
-      select: { headerText: true },
-    });
+    if (db) {
+      const [menus, submenus, categories, subcategories, homepage] = await Promise.all([
+        db.collection("menus").find().sort({ position: 1 }).toArray(),
+        db.collection("submenus").find().sort({ position: 1 }).toArray(),
+        db.collection("categories").find().sort({ position: 1 }).toArray(),
+        db.collection("subcategories").find().sort({ position: 1 }).toArray(),
+        db.collection("homepage_settings").findOne(),
+      ]);
 
-    // Transform to frontend format
-    const formatted: FormattedMenu[] = menus.map((menu: any) => {
-      const banners =
-        Array.isArray(menu.images) && menu.images.length > 0
-          ? menu.images.map((img: string) => ({
-              image: img,
-              title: menu.name,
-              link:
-                menu.type === "blog"
-                  ? "/blogs/journal"
-                  : `/shop/${menu.slug}`,
-            }))
-          : [];
-
-      return {
-        id: menu.id,
-        name: menu.name,
-        slug: menu.slug,
-        type: menu.type,
-        dropdown: {
-          submenus: menu.submenus.map((submenu: any) => ({
+      const formatted: FormattedMenu[] = menus.map((menu: any) => {
+        const menuSubmenus = submenus.filter((s: any) => s.menuId === menu.id);
+        const submenusWithCats = menuSubmenus.map((submenu: any) => {
+          const subCats = categories.filter((c: any) => c.submenuId === submenu.id);
+          const catsWithSub = subCats.map((cat: any) => {
+            const catSubcats = subcategories.filter((sc: any) => sc.categoryId === cat.id);
+            return {
+              id: cat.id,
+              name: cat.name,
+              slug: cat.slug,
+              image: cat.image,
+              subcategories: catSubcats.map((sc: any) => ({
+                id: sc.id,
+                name: sc.name,
+                slug: sc.slug,
+              })),
+            };
+          });
+          return {
             id: submenu.id,
             name: submenu.name,
             slug: submenu.slug,
-            categories: submenu.categories || [],
-          })),
-          banners,
-        },
-      };
-    });
+            categories: catsWithSub,
+          };
+        });
 
-    return NextResponse.json({
-      success: true,
-      headerText: homepage?.headerText || "",
-      data: formatted,
-    });
-  } catch (error) {
+        const banners =
+          Array.isArray(menu.images) && menu.images.length > 0
+            ? menu.images.map((img: string) => ({
+                image: img,
+                title: menu.name,
+                link: menu.type === "blog" ? "/blogs/journal" : `/shop/${menu.slug}`,
+              }))
+            : [];
+
+        return {
+          id: menu.id,
+          name: menu.name,
+          slug: menu.slug,
+          type: menu.type,
+          dropdown: {
+            submenus: submenusWithCats,
+            banners,
+          },
+        };
+      });
+
+      return NextResponse.json({
+        success: true,
+        headerText: homepage?.headerText || "",
+        data: formatted,
+      });
+    }
+
+    return NextResponse.json(
+      { success: false, message: "Database not connected" },
+      { status: 500 }
+    );
+  } catch (error: any) {
     console.error("Header API Error:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to load header data" },
+      { success: false, message: error.message || "Failed to load header data" },
       { status: 500 }
     );
   }
 }
-
