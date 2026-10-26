@@ -240,13 +240,15 @@ export default function OtpVerificationScreen({
           <motion.button
             type="submit"
             disabled={loading || digits.join("").length !== 6}
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
-            className="w-full py-3.5 px-4 bg-[#009639] hover:bg-[#007a2e] text-white rounded-xl font-semibold text-sm transition-colors shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            whileHover={loading || digits.join("").length !== 6 ? {} : { scale: 1.012, y: -1 }}
+            whileTap={loading || digits.join("").length !== 6 ? {} : { scale: 0.988, y: 0 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            className="group relative w-full overflow-hidden py-3.5 px-4 bg-gradient-to-r from-[#009639] via-[#008d35] to-[#007a2e] hover:from-[#008733] hover:to-[#007029] text-white rounded-xl font-semibold text-sm transition-all duration-200 shadow-md shadow-emerald-700/20 hover:shadow-lg hover:shadow-emerald-700/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
+            <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 pointer-events-none ease-in-out" />
             {loading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
                 <span>Verifying code...</span>
               </>
             ) : (

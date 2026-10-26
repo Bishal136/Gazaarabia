@@ -163,7 +163,9 @@ export default function UnifiedLoginForm({
       if (err.requiresOtp) {
         setOtpRequiredEmail(err.email || emailTrimmed);
       } else {
-        setErrorAlert(err.message || "An unexpected error occurred during login.");
+        setErrorAlert(
+          err.message || "An unexpected error occurred during login.",
+        );
       }
     } finally {
       setLoading(false);
@@ -178,28 +180,32 @@ export default function UnifiedLoginForm({
           badge: "Seller Center",
           badgeIcon: Store,
           title: "Vendor Sign In",
-          subtitle: "Access your boutique catalog, orders, and sales performance",
+          subtitle:
+            "Access your boutique catalog, orders, and sales performance",
         };
       case "admin":
         return {
           badge: "Security Console",
           badgeIcon: ShieldCheck,
           title: "Staff Sign In",
-          subtitle: "Restricted platform management console for authorized staff",
+          subtitle:
+            "Restricted platform management console for authorized staff",
         };
       case "affiliate":
         return {
           badge: "Affiliate Network",
           badgeIcon: Sparkles,
           title: "Partner Sign In",
-          subtitle: "Track your affiliate campaigns, clicks, and commission earnings",
+          subtitle:
+            "Track your affiliate campaigns, clicks, and commission earnings",
         };
       default:
         return {
           badge: "Modest Fashion Hub",
           badgeIcon: ShoppingBag,
           title: "Welcome Back",
-          subtitle: "Sign in to access your orders, saved styles, and account preferences",
+          subtitle:
+            "Sign in to access your orders, saved styles, and account preferences",
         };
     }
   };
@@ -266,7 +272,9 @@ export default function UnifiedLoginForm({
                   className="p-3.5 rounded-xl bg-rose-50 border border-rose-200/80 text-rose-800 text-xs flex items-start gap-2.5 shadow-xs"
                 >
                   <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-                  <span className="leading-relaxed font-medium">{errorAlert}</span>
+                  <span className="leading-relaxed font-medium">
+                    {errorAlert}
+                  </span>
                 </motion.div>
               )}
 
@@ -278,7 +286,9 @@ export default function UnifiedLoginForm({
                   className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs flex items-start gap-2.5 shadow-xs"
                 >
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-                  <span className="leading-relaxed font-medium">{successAlert}</span>
+                  <span className="leading-relaxed font-medium">
+                    {successAlert}
+                  </span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -349,7 +359,9 @@ export default function UnifiedLoginForm({
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-700 transition-colors focus:outline-none"
                   >
                     <motion.div
@@ -377,7 +389,10 @@ export default function UnifiedLoginForm({
                 <button
                   type="button"
                   onClick={() =>
-                    setForm((prev) => ({ ...prev, rememberMe: !prev.rememberMe }))
+                    setForm((prev) => ({
+                      ...prev,
+                      rememberMe: !prev.rememberMe,
+                    }))
                   }
                   className="flex items-center gap-2.5 text-xs text-gray-600 hover:text-gray-900 select-none cursor-pointer group"
                 >
@@ -392,7 +407,11 @@ export default function UnifiedLoginForm({
                       <motion.div
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 500,
+                          damping: 30,
+                        }}
                       >
                         <Check className="w-3 h-3 stroke-[3]" />
                       </motion.div>
@@ -446,7 +465,9 @@ export default function UnifiedLoginForm({
                   </div>
                 </div>
 
-                <GoogleAuthButton callbackUrl={callbackUrl || "/account/details"} />
+                <GoogleAuthButton
+                  callbackUrl={callbackUrl || "/account/details"}
+                />
               </motion.div>
             )}
 
@@ -456,7 +477,9 @@ export default function UnifiedLoginForm({
                 <div className="text-center space-y-2">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500">
                     <ShieldCheck className="w-3.5 h-3.5 text-gray-400" />
-                    <span>Staff credentials only. Admin registration restricted.</span>
+                    <span>
+                      Staff credentials only. Admin registration restricted.
+                    </span>
                   </div>
                   <div>
                     <Link
@@ -472,7 +495,9 @@ export default function UnifiedLoginForm({
                   New merchant?{" "}
                   <Link
                     href={`/seller/register${
-                      callbackUrl ? `?callbackUrl=${encodeURIComponent(callbackUrl)}` : ""
+                      callbackUrl
+                        ? `?callbackUrl=${encodeURIComponent(callbackUrl)}`
+                        : ""
                     }`}
                     className="text-[#009639] font-semibold hover:underline"
                   >
@@ -484,7 +509,9 @@ export default function UnifiedLoginForm({
                   Want to earn commissions?{" "}
                   <Link
                     href={`/affiliate/register${
-                      callbackUrl ? `?callbackUrl=${encodeURIComponent(callbackUrl)}` : ""
+                      callbackUrl
+                        ? `?callbackUrl=${encodeURIComponent(callbackUrl)}`
+                        : ""
                     }`}
                     className="text-[#009639] font-semibold hover:underline"
                   >
@@ -496,7 +523,9 @@ export default function UnifiedLoginForm({
                   Don’t have an account?{" "}
                   <Link
                     href={`/account/register${
-                      callbackUrl ? `?callbackUrl=${encodeURIComponent(callbackUrl)}` : ""
+                      callbackUrl
+                        ? `?callbackUrl=${encodeURIComponent(callbackUrl)}`
+                        : ""
                     }`}
                     className="text-[#009639] font-semibold hover:underline"
                   >
@@ -506,10 +535,7 @@ export default function UnifiedLoginForm({
               )}
 
               {/* Trust Badge */}
-              <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-400 pt-4 font-medium">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#009639]" />
-                <span>Bank-grade 256-bit TLS encrypted security</span>
-              </div>
+              <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-400 pt-4 font-medium"></div>
             </motion.div>
           </motion.div>
         )}

@@ -1,25 +1,10 @@
-import type { Metadata } from "next";
 import "../globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import { CartProvider } from "../context/CartContext";
-
-
+import SiteLayoutWrapper from "@/components/layout/SiteLayoutWrapper";
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <>
-      <Header />
-      <main className="pt-20">
-        {/* <CartProvider> */}
-        {children}
-        {/* </CartProvider> */}
-      </main>
-      <Footer />
-    </>
-  );
+  return <SiteLayoutWrapper>{children}</SiteLayoutWrapper>;
 }
