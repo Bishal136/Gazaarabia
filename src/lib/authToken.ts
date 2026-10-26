@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import { NextRequest } from "next/server";
+import { getToken as getNextAuthToken } from "next-auth/jwt";
 import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
 /**
@@ -11,7 +12,12 @@ export function getTokenFromHeader(req: Request): string | null {
   // 1. Try Authorization header
   const authHeader = req.headers.get("authorization");
   if (authHeader && authHeader.startsWith("Bearer ")) {
-    token = authHeader.split(" ")[1];
+    token = authHeader.split(" ")[1]?.trim() || null;
+  }
+
+  // Treat string "undefined" or "null" as null
+  if (token === "undefined" || token === "null" || token === "") {
+    token = null;
   }
 
   // 2. Try cookies if header not found
@@ -22,9 +28,13 @@ export function getTokenFromHeader(req: Request): string | null {
         cookieHeader.match(/auth_token=([^;]+)/) ||
         cookieHeader.match(/token=([^;]+)/);
       if (match) {
-        token = match[1];
+        token = match[1]?.trim() || null;
       }
     }
+  }
+
+  if (token === "undefined" || token === "null" || token === "") {
+    token = null;
   }
 
   return token || null;
@@ -35,7 +45,7 @@ export function getTokenFromHeader(req: Request): string | null {
  */
 export function getUserIdFromToken(token: string): number | null {
   try {
-    if (!token) return null;
+    if (!token || token === "undefined" || token === "null") return null;
 
     const secret = process.env.JWT_SECRET;
     if (!secret) return null;
@@ -48,18 +58,44 @@ export function getUserIdFromToken(token: string): number | null {
 }
 
 /**
- * Middleware-like helper to check token and return user ID
+ * Middleware-like helper to check token and return user ID.
+ * Supports:
+ * 1. Bearer token in Authorization header
+ * 2. auth_token / token in cookies
+ * 3. NextAuth session token in cookies (fallback)
  */
-export async function checkAuth(req: NextRequest): Promise<number | null> {
+export async function checkAuth(req: Request | NextRequest): Promise<number | null> {
+  // 1. Check custom JWT from header or cookies
   const token = getTokenFromHeader(req);
-  if (!token) return null;
-  return getUserIdFromToken(token);
+  if (token) {
+    const userId = getUserIdFromToken(token);
+    if (userId) return userId;
+  }
+
+  // 2. Check NextAuth session token from cookies
+  try {
+    const nextAuthToken = await getNextAuthToken({
+      req: req as any,
+      secret: process.env.NEXTAUTH_SECRET,
+    });
+    if (nextAuthToken) {
+      const rawId = nextAuthToken.user_id || nextAuthToken.id;
+      const userId = Number(rawId);
+      if (!isNaN(userId) && userId > 0) {
+        return userId;
+      }
+    }
+  } catch {
+    // NextAuth extraction error
+  }
+
+  return null;
 }
 
 /**
  * Helper to fetch authenticated user and role from MongoDB
  */
-export async function getAuthenticatedUser(req: NextRequest): Promise<any | null> {
+export async function getAuthenticatedUser(req: Request | NextRequest): Promise<any | null> {
   const userId = await checkAuth(req);
   if (!userId) return null;
 

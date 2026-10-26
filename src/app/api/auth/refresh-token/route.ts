@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
-import { PrismaClient } from "@prisma/client";
-import { getTokenFromHeader, getUserIdFromToken } from "@/lib/authToken";
+import { connectToDatabase, mongoose } from "@/lib/mongoose";
 import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { logTokenRefresh, logRateLimited } from "@/lib/authLogging";
-
-const prisma = new PrismaClient();
 
 export async function POST(req: Request) {
   try {
@@ -34,7 +31,7 @@ export async function POST(req: Request) {
     let decoded;
     try {
       decoded = jwt.verify(refreshToken, process.env.JWT_SECRET!) as any;
-    } catch (error) {
+    } catch {
       logTokenRefresh(req, 0, false, "Invalid token signature");
       return NextResponse.json(
         { message: "Invalid or expired refresh token" },
@@ -42,13 +39,16 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check if token exists in database and is not revoked
-    const storedToken = await prisma.refreshToken.findUnique({
-      where: { token: refreshToken },
-      include: { user: { include: { role: true, affiliate: { select: { id: true, type: true } } } } },
-    });
+    await connectToDatabase();
+    const db = mongoose.connection.db;
+    if (!db) {
+      return NextResponse.json({ message: "Database connection failed" }, { status: 500 });
+    }
 
-    if (!storedToken || storedToken.isRevoked || new Date() > storedToken.expiresAt) {
+    // Check if token exists in MongoDB and is not revoked
+    const storedToken = await db.collection("refresh_tokens").findOne({ token: refreshToken });
+
+    if (!storedToken || storedToken.isRevoked || new Date() > new Date(storedToken.expiresAt)) {
       logTokenRefresh(req, decoded.id, false, "Token revoked or expired");
       return NextResponse.json(
         { message: "Refresh token is invalid or expired" },
@@ -56,18 +56,29 @@ export async function POST(req: Request) {
       );
     }
 
-    const user = storedToken.user;
+    const user = await db.collection("users").findOne({ id: storedToken.userId });
+    if (!user) {
+      return NextResponse.json({ message: "User not found" }, { status: 404 });
+    }
 
-    // Issue new access token (1 hour)
+    const userRole = await db.collection("roles").findOne({ id: user.roleId });
+    const roleName = userRole ? userRole.name : "";
+
+    let affiliate = null;
+    if (roleName.toLowerCase() === "affiliate") {
+      affiliate = await db.collection("affiliate").findOne({ userId: user.id });
+    }
+
+    // Issue new access token (7 days)
     const newAccessToken = jwt.sign(
       {
         id: user.id,
         email: user.email,
         roleId: user.roleId,
-        roleName: user.role.name,
+        roleName: roleName,
       },
       process.env.JWT_SECRET as string,
-      { expiresIn: "1h" }
+      { expiresIn: "7d" }
     );
 
     // Log successful token refresh
@@ -81,9 +92,9 @@ export async function POST(req: Request) {
         name: user.name,
         email: user.email,
         roleId: user.roleId,
-        roleName: user.role.name,
-        affiliateId: user.role.name === "affiliate" ? user.affiliate?.id : null,
-        affiliateType: user.role.name === "affiliate" ? user.affiliate?.type : null,
+        roleName: roleName,
+        affiliateId: affiliate ? affiliate.id : null,
+        affiliateType: affiliate ? affiliate.type : null,
         stripeCustomerId: user.stripeCustomerId,
       },
     });

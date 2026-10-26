@@ -1,12 +1,7 @@
 import { NextResponse } from "next/server";
-import { PrismaClient, products, productvariant } from "@prisma/client";
-import { getTokenFromHeader, getUserIdFromToken } from "@/lib/authToken";
+import { checkAuth } from "@/lib/authToken";
 import { getAvailableQuantity } from "@/lib/helpers/stockHelper";
-import { prisma } from "@/lib/prisma";
-
-// const prisma = new PrismaClient();
-
-// ----------  Type Definitions ----------
+import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
 interface SelectedVariantData {
   id?: number | null;
@@ -29,8 +24,8 @@ interface CartItemInput {
   price?: number;
   productName?: string;
   selectedVariantData?: SelectedVariantData;
-  product?: Partial<products>;
-  variant?: Partial<productvariant>;
+  product?: any;
+  variant?: any;
   frontendPrice?: number | null;
 }
 
@@ -51,32 +46,17 @@ interface SyncResponse {
   }>;
 }
 
-// ----------  Safe findMany Helper ----------
-
-async function safeFindMany<T>(
-  model: any,
-  ids: number[],
-  select: Record<string, boolean>
-): Promise<T[]> {
-  if (!ids || ids.length === 0) return [];
-  return model.findMany({ where: { id: { in: ids } }, select });
-}
-
-// ----------  Sync Cart Route ----------
-
-export async function POST(req: Request): Promise<NextResponse<SyncResponse | { success: false; message: string }>> {
+export async function POST(req: Request) {
   try {
-    const token: any = getTokenFromHeader(req);
-    const userId = getUserIdFromToken(token);
+    const userId = await checkAuth(req as any);
     const isGuest = !userId;
 
-    // --- Safe body parse ---
-    let body: any = {};
-    try {
-      const text = await req.text();
-      body = text ? JSON.parse(text) : {};
-    } catch {
-      body = {};
+    const body = await req.json().catch(() => null);
+    if (!body) {
+      return NextResponse.json(
+        { success: false, message: "Invalid JSON body." },
+        { status: 400 }
+      );
     }
 
     const cartItems: CartItemInput[] = body?.cartItems || [];
@@ -88,39 +68,22 @@ export async function POST(req: Request): Promise<NextResponse<SyncResponse | { 
       );
     }
 
+    await connectToDatabase();
+    const db = mongoose.connection.db;
+    if (!db) {
+      return NextResponse.json(
+        { success: false, message: "Database connection failed" },
+        { status: 500 }
+      );
+    }
+
     // --- Logged-in: use DB cart ---
     let finalCartItems: CartItemInput[] = cartItems;
     if (!isGuest && userId) {
-      const dbCart = await prisma.cart.findMany({
-        where: { userId },
-        include: {
-          product: {
-            select: {
-              id: true,
-              title: true,
-              active: true,
-              sellingPrice: true,
-            },
-          },
-          variant: {
-            select: {
-              id: true,
-              productId: true,
-              isActive: true,
-              price: true,
-              stock: true,
-              sizeId: true,
-              colorId: true,
-            },
-          },
-        },
-      });
-
+      const dbCart = await db.collection("carts").find({ userId }).toArray();
       finalCartItems = dbCart.map((dbItem: any) => {
         const frontendItem = cartItems.find(
-          (ci) =>
-            ci.productId === dbItem.productId &&
-            ci.variantId === dbItem.variantId
+          (ci) => ci.productId === dbItem.productId && ci.variantId === dbItem.variantId
         );
         return {
           ...dbItem,
@@ -151,25 +114,12 @@ export async function POST(req: Request): Promise<NextResponse<SyncResponse | { 
 
     // --- Fetch live data safely ---
     const [products, variants] = await Promise.all([
-      safeFindMany<products>(prisma.products, productIds, {
-        id: true,
-        title: true,
-        active: true,
-        sellingPrice: true,
-      }),
-      safeFindMany<productvariant>(prisma.productvariant, variantIds, {
-        id: true,
-        productId: true,
-        isActive: true,
-        price: true,
-        stock: true,
-        sizeId: true,
-        colorId: true,
-      }),
+      productIds.length > 0 ? db.collection("products").find({ id: { $in: productIds } }).toArray() : [],
+      variantIds.length > 0 ? db.collection("productvariant").find({ id: { $in: variantIds } }).toArray() : [],
     ]);
 
-    const productMap = new Map<number, products>(products.map((p) => [p.id, p]));
-    const variantMap = new Map<number, productvariant>(variants.map((v) => [v.id, v]));
+    const productMap = new Map<number, any>(products.map((p: any) => [p.id, p]));
+    const variantMap = new Map<number, any>(variants.map((v: any) => [v.id, v]));
 
     const syncedCart: CartItemInput[] = [];
     const changes = { removed: 0, priceUpdated: 0, quantityUpdated: 0 };
@@ -184,9 +134,9 @@ export async function POST(req: Request): Promise<NextResponse<SyncResponse | { 
       let priceChanged = false;
 
       // 1️ Product/variant validity
-      if (!product || !product.active) {
+      if (!product || product.active === false) {
         itemIssues.push("Product no longer exists or is inactive.");
-      } else if (item.variantId && (!variant || !variant.isActive)) {
+      } else if (item.variantId && (!variant || variant.isActive === false)) {
         itemIssues.push("Variant is no longer available.");
       }
 
@@ -208,9 +158,9 @@ export async function POST(req: Request): Promise<NextResponse<SyncResponse | { 
 
       // 3️ Price validation
       const livePrice = Number(variant?.price ?? product?.sellingPrice ?? 0);
-      const oldPrice = (!isGuest && userId) ? Number(item.frontendPrice ?? item.price ?? 0) :
-        Number(item.selectedVariantData?.price ?? item.product?.sellingPrice ?? 0)
-        ;
+      const oldPrice = (!isGuest && userId)
+        ? Number(item.frontendPrice ?? item.price ?? 0)
+        : Number(item.selectedVariantData?.price ?? item.product?.sellingPrice ?? 0);
 
       if (Number.isFinite(livePrice) && Number.isFinite(oldPrice)) {
         const priceDiff = Math.abs(livePrice - oldPrice);
@@ -237,7 +187,6 @@ export async function POST(req: Request): Promise<NextResponse<SyncResponse | { 
         if (priceChanged) changes.priceUpdated++;
 
         if (!isGuest) {
-          // remove invalid/out-of-stock
           if (
             itemIssues.some((msg) =>
               ["no longer", "inactive", "Out of stock"].some((x) =>
@@ -249,7 +198,6 @@ export async function POST(req: Request): Promise<NextResponse<SyncResponse | { 
             continue;
           }
 
-          // reduce quantity
           if (itemIssues.some((msg) => msg.includes("Quantity reduced"))) {
             item.quantity = availableStock;
             changes.quantityUpdated++;
@@ -257,7 +205,6 @@ export async function POST(req: Request): Promise<NextResponse<SyncResponse | { 
         }
       }
 
-      //  Build synced item
       syncedCart.push({
         ...item,
         product,
@@ -273,11 +220,7 @@ export async function POST(req: Request): Promise<NextResponse<SyncResponse | { 
           colorName: item.selectedVariantData?.colorName ?? null,
           hexCode: item.selectedVariantData?.hexCode ?? null,
           price: livePrice,
-          availableStock:
-            variant?.stock ??
-            availableStock ??
-            item.selectedVariantData?.availableStock ??
-            0,
+          availableStock: variant?.stock ?? availableStock ?? item.selectedVariantData?.availableStock ?? 0,
           variantImages: item.selectedVariantData?.variantImages ?? [],
         },
       });
@@ -289,34 +232,30 @@ export async function POST(req: Request): Promise<NextResponse<SyncResponse | { 
         .map((i) => i.variantId)
         .filter((id): id is number => Boolean(id));
 
-      await prisma.cart.deleteMany({
-        where: { userId, variantId: { notIn: validVariantIds } },
-      });
+      if (validVariantIds.length > 0) {
+        await db.collection("carts").deleteMany({
+          userId,
+          variantId: { $nin: validVariantIds },
+        });
+      }
 
       await Promise.all(
-        syncedCart.map((item) =>
-          prisma.cart.updateMany({
-            where: {
-              userId,
-              productId: item.productId,
-              variantId: item.variantId ?? undefined,
-            },
-            data: {
-              quantity: item.quantity,
-              updatedAt: new Date(),
-            },
-          })
-        )
+        syncedCart.map((item) => {
+          const filter: any = { userId, productId: item.productId };
+          if (item.variantId) filter.variantId = item.variantId;
+          return db.collection("carts").updateOne(
+            filter,
+            { $set: { quantity: item.quantity, updatedAt: new Date() } }
+          );
+        })
       );
     }
 
-    // --- Subtotal ---
     const subtotal = syncedCart.reduce(
       (sum, i) => sum + Number(i.price ?? 0) * Number(i.quantity ?? 0),
       0
     );
 
-    // --- Final response ---
     return NextResponse.json(
       { success: true, syncedCart, subtotal, changes, issues },
       { status: 200 }
@@ -329,5 +268,3 @@ export async function POST(req: Request): Promise<NextResponse<SyncResponse | { 
     );
   }
 }
-
-

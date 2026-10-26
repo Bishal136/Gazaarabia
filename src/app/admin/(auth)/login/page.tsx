@@ -90,10 +90,17 @@ export default function AdminLoginPage() {
       });
 
       if (response?.error) {
+        const errorMsg =
+          typeof response.error === "string"
+            ? response.error === "CredentialsSignin"
+              ? "Invalid email or password."
+              : response.error
+            : response?.error?.message || "Invalid email or password.";
+
         setAlert({
           isOpen: true,
           type: "error",
-          message: response?.error?.message || "Invalid email or password.",
+          message: errorMsg,
         });
         return;
       }

@@ -1,63 +1,82 @@
 // app/api/seller/store/connect/route.ts
 
-import { prisma } from '@/lib/prisma'
-import { NextRequest, NextResponse } from 'next/server'
-import type { StoreType } from '@/types/store'
-import { getTokenFromHeader, getUserIdFromToken } from "@/lib/authToken";
+import { NextRequest, NextResponse } from "next/server";
+import type { StoreType } from "@/types/store";
+import { getAuthenticatedUser } from "@/lib/authToken";
+import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
 interface ConnectBody {
-  sellerId:    number
-  storeType:   StoreType
+  sellerId: number;
+  storeType: StoreType;
   credentials: {
-    domain?:         string
-    accessToken?:    string
-    siteUrl?:        string
-    consumerKey?:    string
-    consumerSecret?: string
-  }
+    domain?: string;
+    accessToken?: string;
+    siteUrl?: string;
+    consumerKey?: string;
+    consumerSecret?: string;
+  };
 }
 
 export async function POST(req: NextRequest) {
-  const token: any = getTokenFromHeader(req);
-  const userId = getUserIdFromToken(token);
-
-  if (!userId) {
+  try {
+    const user = await getAuthenticatedUser(req);
+    if (!user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!user.role || user.role.name.toLowerCase() !== "seller") {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    }
+
+    await connectToDatabase();
+    const db = mongoose.connection.db;
+    if (!db) {
+      return NextResponse.json({ message: "Database not connected" }, { status: 500 });
+    }
+
+    const body: ConnectBody = await req.json();
+    const { sellerId, storeType, credentials } = body;
+
+    const seller = await db.collection("sellers").findOne({ id: sellerId });
+    if (!seller || seller.userId !== user.id) {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    }
+
+    if (storeType === "shopify") {
+      return NextResponse.json(
+        { error: "Shopify must be connected via the Shopify App install flow." },
+        { status: 400 }
+      );
+    }
+
+    if (storeType === "woocommerce") {
+      const { siteUrl, consumerKey, consumerSecret } = credentials;
+      if (!siteUrl || !consumerKey || !consumerSecret) {
+        return NextResponse.json(
+          { error: "siteUrl, consumerKey, and consumerSecret are required for WooCommerce." },
+          { status: 400 }
+        );
+      }
+
+      await db.collection("sellers").updateOne(
+        { id: sellerId },
+        {
+          $set: {
+            storeType: "woocommerce",
+            wooSiteUrl: siteUrl.replace(/\/+$/, ""),
+            wooConsumerKey: consumerKey.trim(),
+            wooConsumerSecret: consumerSecret.trim(),
+            updatedAt: new Date(),
+          },
+        }
+      );
+
+      return NextResponse.json({ success: true, message: "WooCommerce credentials saved." });
+    }
+
+    return NextResponse.json({ error: `Unsupported store type: ${storeType}` }, { status: 400 });
+  } catch (error: any) {
+    console.error("POST Store Connect Error:", error);
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
-
-  const body: ConnectBody = await req.json()
-  const { sellerId, storeType, credentials } = body
-
-  // Verify that the sellerId belongs to the authenticated user
-  const seller = await prisma.seller.findUnique({
-    where: { id: sellerId }
-  })
-
-  if (!seller || seller.userId !== userId) {
-    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-  }
-
-  // Shopify is connected via the dedicated OAuth Shopify app (GraphQL), not this
-  // legacy paste-a-token form. WooCommerce still connects here.
-  if (storeType === 'shopify') {
-    return NextResponse.json(
-      { message: "Shopify connects through the Gazaarabia Shopify app, not this form." },
-      { status: 400 }
-    )
-  }
-
-  const updateData: Record<string, any> = { storeType }
-
-  if (storeType === 'woocommerce') {
-    updateData.wooSiteUrl        = credentials.siteUrl?.replace(/\/+$/, '') // strip trailing slash
-    updateData.wooConsumerKey    = credentials.consumerKey
-    updateData.wooConsumerSecret = credentials.consumerSecret
-  }
-
-  await prisma.seller.update({
-    where: { id: sellerId },
-    data:  updateData,
-  })
-
-  return NextResponse.json({ success: true })
 }

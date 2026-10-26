@@ -1,34 +1,43 @@
 // app/api/seller/store/sync/route.ts
 
-import { prisma } from '@/lib/prisma'
-import { syncSellerProducts } from '@/lib/syncEngine'
-import { NextRequest, NextResponse } from 'next/server'
-import { getTokenFromHeader, getUserIdFromToken } from "@/lib/authToken";
+import { NextRequest, NextResponse } from "next/server";
+import { syncSellerProducts } from "@/lib/syncEngine";
+import { getAuthenticatedUser } from "@/lib/authToken";
+import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
 export async function POST(req: NextRequest) {
-  const token: any = getTokenFromHeader(req);
-  const userId = getUserIdFromToken(token);
-
-  if (!userId) {
+  try {
+    const user = await getAuthenticatedUser(req);
+    if (!user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!user.role || user.role.name.toLowerCase() !== "seller") {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    }
+
+    await connectToDatabase();
+    const db = mongoose.connection.db;
+    if (!db) {
+      return NextResponse.json({ message: "Database not connected" }, { status: 500 });
+    }
+
+    const { sellerId }: { sellerId: number } = await req.json();
+
+    const seller = await db.collection("sellers").findOne({ id: sellerId });
+    if (!seller || seller.userId !== user.id) {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    }
+
+    const result = await syncSellerProducts(sellerId, "manual");
+
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 500 });
+    }
+
+    return NextResponse.json(result);
+  } catch (error: any) {
+    console.error("POST Store Sync Error:", error);
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
-
-  const { sellerId }: { sellerId: number } = await req.json()
-
-  // Verify that the sellerId belongs to the authenticated user
-  const seller = await prisma.seller.findUnique({
-    where: { id: sellerId }
-  })
-
-  if (!seller || seller.userId !== userId) {
-    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-  }
-
-  const result = await syncSellerProducts(sellerId, 'manual')
-
-  if (!result.success) {
-    return NextResponse.json({ error: result.error }, { status: 500 })
-  }
-
-  return NextResponse.json(result)
 }

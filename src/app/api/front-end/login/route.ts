@@ -7,14 +7,15 @@ import { logLoginAttempt, logRateLimited } from "@/lib/authLogging";
 
 export async function POST(req: Request) {
   try {
-    // Rate limit: 5 attempts per 15 minutes per IP
+    // Rate limit: 20 attempts per 15 minutes per IP (bypassed for internal NextAuth authorize calls)
     const rateLimitResult = await rateLimit(req, {
       windowMs: 15 * 60 * 1000, // 15 minutes
-      maxRequests: 5, // 5 attempts
+      maxRequests: 20, // 20 attempts
     });
 
     if (!rateLimitResult.allowed) {
-      const { email } = await req.json().catch(() => ({ email: "unknown" }));
+      const cloned = req.clone();
+      const { email } = await cloned.json().catch(() => ({ email: "unknown" }));
       logRateLimited(req, "login", email);
       return rateLimitResponse(rateLimitResult.resetTime);
     }
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
       affiliate = await db.collection("affiliate").findOne({ userId: user.id });
     }
 
-    // Generate JWT with role name (1 hour expiration)
+    // Generate JWT with role name (7 days expiration)
     const accessToken = jwt.sign(
       {
         id: user.id,
@@ -88,7 +89,7 @@ export async function POST(req: Request) {
         roleName: roleName,
       },
       process.env.JWT_SECRET as string,
-      { expiresIn: "1h" }
+      { expiresIn: "7d" }
     );
 
     // Generate refresh token (3 days expiration)

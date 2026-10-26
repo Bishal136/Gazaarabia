@@ -20,14 +20,19 @@ export const authService = {
         ? process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL
         : "";
 
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (typeof window === "undefined") {
+      headers["x-internal-auth"] = process.env.NEXTAUTH_SECRET || "internal-auth-secret";
+    }
+
     const res = await fetch(`${baseUrl}/api/front-end/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(data),
     });
 
     if (!res.ok) {
-      const errorData = await res.json();
+      const errorData = await res.json().catch(() => ({ message: "Login failed" }));
       throw new Error(errorData.message || "Login failed");
     }
 

@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
     const isSellerRoute =
         pathname.startsWith("/seller") && pathname !== "/seller/login" && pathname !== "/seller/register";
     const isAmbassadorRoute =
-        pathname.startsWith("/affiliate") && pathname !== "/ambassador/login" && pathname !== "/ambassador/register";
+        pathname.startsWith("/ambassador") && pathname !== "/ambassador/login" && pathname !== "/ambassador/register";
 
     // ================= ADMIN ROUTES ====================
     if (isAdminRoute) {

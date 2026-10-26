@@ -25,6 +25,12 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@prisma/client": [
+        "./src/lib/prisma-mongo.ts"
+      ],
+      "@prisma/client/*": [
+        "./src/lib/prisma-mongo.ts"
       ]
     }
   },
@@ -38,6 +44,7 @@
   ],
   "exclude": [
     "node_modules",
+    ".next",
     "shopify-app"
   ]
 }
