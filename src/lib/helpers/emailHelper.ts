@@ -1317,3 +1317,80 @@ export async function sendWelcomeEmail5({
 
   return emailResult;
 }
+
+// ========================= Registration OTP Email =========================
+
+export async function sendOtpEmail({
+  to,
+  name,
+  otp,
+}: {
+  to: string;
+  name?: string | null;
+  otp: string;
+}) {
+  const subject = `${otp} is your Gazaarabia verification code`;
+  const displayName = name || "Valued Customer";
+
+  console.log(`\n======================================================`);
+  console.log(`🔐 [AUTH OTP VERIFICATION CODE]`);
+  console.log(`📧 Recipient: ${to}`);
+  console.log(`🔑 OTP Code:  ${otp}`);
+  console.log(`⏱️  Expires:   10 minutes`);
+  console.log(`======================================================\n`);
+
+  const html = `
+  <div style="font-family:'Helvetica Neue',Arial,sans-serif;background:#f7f7f7;padding:50px 0;color:#111827;">
+    <table align="center" cellpadding="0" cellspacing="0" width="600"
+      style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.06);border:1px solid #e5e7eb;">
+
+      <!-- Header -->
+      <tr>
+        <td style="text-align:center;padding:32px 0 24px;border-bottom:3px solid #009639;background:#ffffff;">
+          <img src="${logoUrl}" alt="Gazaarabia" width="180" style="max-width:180px;display:inline-block;">
+        </td>
+      </tr>
+
+      <!-- Body -->
+      <tr>
+        <td style="padding:40px 48px;">
+          <h2 style="margin:0 0 16px;font-size:24px;font-weight:700;color:#111827;text-align:center;">
+            Verify Your Email Address
+          </h2>
+
+          <p style="font-size:15px;line-height:1.7;margin-bottom:24px;color:#4b5563;text-align:center;">
+            Hello <strong>${displayName}</strong>, welcome to <strong>Gazaarabia</strong>! Please use the 6-digit verification code below to complete your registration and activate your account.
+          </p>
+
+          <!-- OTP Code Box -->
+          <div style="background:#f9fafb;border:2px dashed #009639;border-radius:12px;padding:24px;text-align:center;margin:28px 0;">
+            <span style="font-family:monospace,'Courier New',Courier;font-size:36px;font-weight:700;letter-spacing:10px;color:#111827;display:inline-block;">
+              ${otp}
+            </span>
+          </div>
+
+          <p style="font-size:13px;line-height:1.6;margin-bottom:8px;color:#6b7280;text-align:center;">
+            ⏳ This code is valid for <strong>10 minutes</strong>.
+          </p>
+          <p style="font-size:13px;line-height:1.6;margin:0;color:#9ca3af;text-align:center;">
+            If you did not initiate this sign-up request, please disregard this email.
+          </p>
+        </td>
+      </tr>
+
+      <!-- Footer -->
+      <tr>
+        <td style="background:#111827;text-align:center;padding:24px 20px;">
+          <p style="color:#ffffff;font-size:13px;margin:0;line-height:1.5;">
+            &copy; ${new Date().getFullYear()} <strong>Gazaarabia</strong><br>
+            <span style="color:#9ca3af;">Where Modesty Meets Luxury</span>
+          </p>
+          <div style="height:3px;width:60px;background:#E82C3F;margin:12px auto 0;border-radius:4px;"></div>
+        </td>
+      </tr>
+    </table>
+  </div>
+  `;
+
+  return await sendEmail({ to, subject, html });
+}

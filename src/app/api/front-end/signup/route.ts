@@ -1,21 +1,19 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { PrismaClient, Prisma } from "@prisma/client";
-import { sendSubscribeConfirmationEmail, sendWelcomeEmail1 } from "@/lib/helpers/emailHelper";
+import { connectToDatabase, mongoose } from "@/lib/mongoose";
+import { sendOtpEmail } from "@/lib/helpers/emailHelper";
 import { generateReferralCode } from "@/lib/helpers/generateReferralCodeHelper";
 import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { logSignupAttempt, logRateLimited } from "@/lib/authLogging";
 import { validatePassword } from "@/lib/passwordValidator";
 
-const prisma: any = new PrismaClient();
-
 export async function POST(req: Request) {
   try {
-    // Rate limit: 3 signup attempts per hour per IP (prevent account spam)
+    // Rate limit: 10 signup attempts per hour per IP
     const rateLimitResult = await rateLimit(req, {
-      windowMs: 60 * 60 * 1000, // 1 hour
-      maxRequests: 3, // 3 attempts
-      keyGenerator: (r) => `signup:${getClientIp(r)}`, // Separate limit for signup
+      windowMs: 60 * 60 * 1000,
+      maxRequests: 10,
+      keyGenerator: (r) => `signup:${getClientIp(r)}`,
     });
 
     if (!rateLimitResult.allowed) {
@@ -24,17 +22,32 @@ export async function POST(req: Request) {
       return rateLimitResponse(rateLimitResult.resetTime);
     }
 
-    const { name, email, password, role = "customer", phone } = await req.json();
+    const { name, email, password, role = "customer", phone, shopName, website } = await req.json();
 
-    if (!name || !email || !password) {
-      logSignupAttempt(req, email || "unknown", false, "Missing required fields");
-      return NextResponse.json({ message: "All fields are required" }, { status: 400 });
+    const normalizedEmail = (email || "").trim().toLowerCase();
+    const normalizedName = (name || "").trim();
+    const requestedRole = (role || "customer").toString().trim().toLowerCase();
+
+    if (!normalizedName || !normalizedEmail || !password) {
+      logSignupAttempt(req, normalizedEmail || "unknown", false, "Missing required fields");
+      return NextResponse.json({ message: "Name, email, and password are required" }, { status: 400 });
+    }
+
+    // SECURITY: Strictly forbid admin or content_manager creation from public registration
+    if (requestedRole === "admin" || requestedRole === "content_manager" || requestedRole.includes("admin")) {
+      logSignupAttempt(req, normalizedEmail, false, `Security alert: attempt to register protected role: ${requestedRole}`);
+      return NextResponse.json(
+        {
+          message: "Creating an Administrator account from the public registration interface is strictly forbidden.",
+        },
+        { status: 403 }
+      );
     }
 
     // Validate password strength
     const passwordValidation = validatePassword(password);
     if (!passwordValidation.isValid) {
-      logSignupAttempt(req, email, false, `Weak password: ${passwordValidation.errors.join(", ")}`);
+      logSignupAttempt(req, normalizedEmail, false, `Weak password: ${passwordValidation.errors.join(", ")}`);
       return NextResponse.json(
         {
           message: "Password does not meet requirements",
@@ -44,152 +57,170 @@ export async function POST(req: Request) {
       );
     }
 
-    const existing = await prisma.users.findUnique({ where: { email } });
-    if (existing) {
-      logSignupAttempt(req, email, false, "Email already exists");
-      return NextResponse.json({ message: "Email already exists" }, { status: 400 });
+    await connectToDatabase();
+    const db = mongoose.connection.db;
+    if (!db) {
+      return NextResponse.json({ message: "Database connection failed" }, { status: 500 });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // default role can be customer or any role you have
-    // const defaultRole = await prisma.roles.findFirst({ where: { name: "customer" } });
-
-    // Normalise the requested role. Affiliates and ambassadors are BOTH stored
-    // with the user role "affiliate" and distinguished by Affiliate.type — so an
-    // "ambassador" signup resolves to the "affiliate" user role (no separate
-    // "ambassador" role row is required).
-    const requestedRole = (role ?? "customer").toLowerCase();
+    // Determine target role mapping
     const isAmbassador = requestedRole === "ambassador";
     const isAffiliate = requestedRole === "affiliate";
     const isPartner = isAmbassador || isAffiliate;
-
     const userRoleName = isPartner ? "affiliate" : requestedRole;
 
-    // Get the role record dynamically
-    const selectedRole = await prisma.roles.findFirst({
-      where: { name: userRoleName },
-    });
-
+    const selectedRole = await db.collection("roles").findOne({ name: userRoleName });
     if (!selectedRole) {
-      return NextResponse.json({ message: `Invalid role: ${userRoleName}` }, { status: 400 });
+      return NextResponse.json({ message: `Invalid registration role: ${userRoleName}` }, { status: 400 });
     }
 
-    const user = await prisma.users.create({
-      data: {
-        name,
-        email,
-        phone,
-        password: hashedPassword,
-        roleId: selectedRole.id,
-      },
-    });
+    const existingUser = await db.collection("users").findOne({ email: normalizedEmail });
 
-    // Send Welcome Email 1 (10% discount code)
-    await sendWelcomeEmail1({
-      to: user.email,
-      name: user.name,
-      userId: user.id,
-    });
+    // Generate 6-digit OTP code (10 minutes validity)
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    if (requestedRole === "seller") {
-      await prisma.seller.create({
-        data: {
-          userId: user.id,
-          // isApproved: false, // default to false, admin can approve later
-
-        },
-      });
+    // If an account already exists and is already verified
+    if (existingUser && existingUser.isVerified !== false) {
+      logSignupAttempt(req, normalizedEmail, false, "Email already exists");
+      return NextResponse.json(
+        { message: "An account with this email address already exists. Please log in." },
+        { status: 400 }
+      );
     }
-    else {
 
-      // Only affiliates/ambassadors get an Affiliate record (with a referral code
-      // and coupon-creation rights). Ordinary customers must NOT get one.
-      if (isPartner) {
-
-        // Get commission values from HomePageSetting
-        const settings = await prisma.homePageSetting.findFirst();
-
-        const baseCommission = settings?.affiliateCommission || 10;
-        const shareCommission = 7;
-
-
-        // ==============================
-        // GENERATE UNIQUE REFERRAL CODE
-        // ==============================
-        let referralCode = generateReferralCode();
-
-        // Ensure uniqueness
-        let exists = await prisma.affiliate.findUnique({
-          where: { referralCode },
-        });
-
-        while (exists) {
-          referralCode = generateReferralCode();
-          exists = await prisma.affiliate.findUnique({
-            where: { referralCode },
-          });
-        }
-
-
-        // Create affiliate entry using dynamic commissions.
-        // type distinguishes an ambassador from a regular affiliate.
-        await prisma.affiliate.create({
-          data: {
-            userId: user.id,
-            baseCommission: baseCommission,
-            shareCommission: shareCommission,
-            type: isAmbassador ? "ambassador" : "affiliate",
-            isActive: true,
-            referralCode
+    // If an unverified account already exists, update credentials and re-issue OTP
+    if (existingUser && existingUser.isVerified === false) {
+      await db.collection("users").updateOne(
+        { _id: existingUser._id },
+        {
+          $set: {
+            name: normalizedName,
+            phone: phone || existingUser.phone || "",
+            password: hashedPassword,
+            roleId: selectedRole.id,
+            otpCode,
+            otpExpiresAt,
+            updatedAt: new Date(),
           },
-        });
+        }
+      );
+
+      // Send fresh OTP email
+      await sendOtpEmail({
+        to: normalizedEmail,
+        name: normalizedName,
+        otp: otpCode,
+      });
+
+      logSignupAttempt(req, normalizedEmail, true, "Existing unverified user refreshed OTP");
+
+      return NextResponse.json(
+        {
+          success: true,
+          requiresOtp: true,
+          email: normalizedEmail,
+          message: "A new 6-digit verification code has been sent to your email address.",
+        },
+        { status: 200 }
+      );
+    }
+
+    // Create new user in MongoDB
+    const lastUser = await db.collection("users").find().sort({ id: -1 }).limit(1).toArray();
+    const nextUserId = (lastUser[0]?.id || 0) + 1;
+
+    const newUserDoc = {
+      id: nextUserId,
+      name: normalizedName,
+      email: normalizedEmail,
+      phone: phone || "",
+      password: hashedPassword,
+      roleId: selectedRole.id,
+      isGuest: false,
+      isVerified: false,
+      otpCode,
+      otpExpiresAt,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await db.collection("users").insertOne(newUserDoc);
+
+    // If seller role, create seller profile entry
+    if (requestedRole === "seller") {
+      const lastSeller = await db.collection("sellers").find().sort({ id: -1 }).limit(1).toArray();
+      const nextSellerId = (lastSeller[0]?.id || 0) + 1;
+      const cleanShopName = shopName || `${normalizedName}'s Store`;
+      const shopSlug = cleanShopName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "") + `-${nextUserId}`;
+
+      await db.collection("sellers").insertOne({
+        id: nextSellerId,
+        userId: nextUserId,
+        shopName: cleanShopName,
+        shopSlug,
+        status: "Pending",
+        isActive: true,
+        commissionValue: 5,
+        payoutDays: 30,
+        minimumPayout: 50,
+        availableBalance: 0,
+        pendingBalance: 0,
+        totalEarned: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    } else if (isPartner) {
+      // Create affiliate entry
+      const lastAffiliate = await db.collection("affiliate").find().sort({ id: -1 }).limit(1).toArray();
+      const nextAffiliateId = (lastAffiliate[0]?.id || 0) + 1;
+
+      let referralCode = generateReferralCode();
+      let codeExists = await db.collection("affiliate").findOne({ referralCode });
+      while (codeExists) {
+        referralCode = generateReferralCode();
+        codeExists = await db.collection("affiliate").findOne({ referralCode });
       }
 
-
-      // //If the role is affiliate → insert record into Affiliate table
-      // if (role.toLowerCase() === "affiliate") {
-      //   await prisma.affiliate.create({
-      //     data: {
-      //       userId: user.id,
-      //       baseCommission: 10,     // default 10%
-      //       shareCommission: 7,     // default 7%
-      //       isActive: true,
-      //     },
-      //   });
-      // }
-
-
-      //  AUTO-SUBSCRIBE LOGIC (IMPORTANT)
-      await prisma.subscriber.upsert({
-        where: { email },
-        update: {
-          name,
-          phone,
-          isActive: true,
-        },
-        create: {
-          email,
-          name,
-          phone,
-          isActive: true,
-        },
-      });
-
-      //  SEND subscriber CONFIRMATION EMAIL
-      await sendSubscribeConfirmationEmail({
-        to: email,
-        name,
+      await db.collection("affiliate").insertOne({
+        id: nextAffiliateId,
+        userId: nextUserId,
+        baseCommission: 10,
+        shareCommission: 7,
+        type: isAmbassador ? "ambassador" : "affiliate",
+        isActive: true,
+        website: website || "",
+        referralCode,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
     }
 
-    // Log successful signup
-    logSignupAttempt(req, user.email, true);
+    // Send OTP verification email
+    await sendOtpEmail({
+      to: normalizedEmail,
+      name: normalizedName,
+      otp: otpCode,
+    });
 
-    return NextResponse.json({ message: "User created", user }, { status: 201 });
+    logSignupAttempt(req, normalizedEmail, true, "New user registered, OTP dispatched");
+
+    return NextResponse.json(
+      {
+        success: true,
+        requiresOtp: true,
+        email: normalizedEmail,
+        message: "Account created! A 6-digit verification code has been sent to your email.",
+      },
+      { status: 201 }
+    );
   } catch (err: any) {
-    console.error(err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    console.error("Signup error:", err);
+    return NextResponse.json({ message: "Server error during registration" }, { status: 500 });
   }
 }
 
