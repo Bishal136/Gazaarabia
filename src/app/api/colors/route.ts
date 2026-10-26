@@ -1,36 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient, Prisma } from "@prisma/client";
-import { checkAuth } from "@/lib/authToken";
+import { getAuthenticatedUser } from "@/lib/authToken";
+import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
-const prisma = new PrismaClient();
-
-//  GET all colors (Protected)
+// GET all colors (Protected)
 export async function GET(req: NextRequest) {
-  const userId = await checkAuth(req);
-  if (!userId) {
+  const user = await getAuthenticatedUser(req);
+  if (!user) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await prisma.users.findUnique({
-    where: { id: userId },
-    include: { role: true }
-  });
-
   const allowedRoles = ["admin", "seller"];
-
-  if (!user || !allowedRoles.includes(user.role.name.toLowerCase())) {
+  if (!user.role || !allowedRoles.includes(user.role.name.toLowerCase())) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
-
   try {
-    const colors = await prisma.colors.findMany({
-      orderBy: { id: "desc" },
-    });
+    await connectToDatabase();
+    const db = mongoose.connection.db;
+    if (!db) {
+      return NextResponse.json(
+        { success: false, message: "Database not connected" },
+        { status: 500 }
+      );
+    }
+
+    const colors = await db
+      .collection("colors")
+      .find({})
+      .sort({ id: -1 })
+      .toArray();
 
     return NextResponse.json({ success: true, data: colors });
-  } catch (error) {
-    console.error(" GET Colors Error:", error);
+  } catch (error: any) {
+    console.error("GET Colors Error:", error);
     return NextResponse.json(
       { success: false, message: "Failed to fetch colors." },
       { status: 500 }
@@ -40,52 +42,59 @@ export async function GET(req: NextRequest) {
 
 // POST - Create new color (Protected)
 export async function POST(req: NextRequest) {
-  const userId = await checkAuth(req);
-  if (!userId) {
+  const user = await getAuthenticatedUser(req);
+  if (!user) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await prisma.users.findUnique({
-    where: { id: userId },
-    include: { role: true }
-  });
-
   const allowedRoles = ["admin"];
-
-  if (!user || !allowedRoles.includes(user.role.name.toLowerCase())) {
+  if (!user.role || !allowedRoles.includes(user.role.name.toLowerCase())) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
-
   try {
-    const { name, hexCode, rgbCode, description } = await req.json();
-
-    if (!name || !hexCode) {
+    await connectToDatabase();
+    const db = mongoose.connection.db;
+    if (!db) {
       return NextResponse.json(
-        { success: false, message: "Name and hex code are required." },
+        { success: false, message: "Database not connected" },
+        { status: 500 }
+      );
+    }
+
+    const { name, hexCode } = await req.json();
+
+    if (!name || name.trim() === "") {
+      return NextResponse.json(
+        { success: false, message: "Color name is required." },
         { status: 400 }
       );
     }
 
-    const color = await prisma.colors.create({
-      data: { name: name.trim(), hexCode: hexCode.trim(), rgbCode, description },
-    });
+    const lastColor = await db
+      .collection("colors")
+      .find()
+      .sort({ id: -1 })
+      .limit(1)
+      .toArray();
+    const nextId = (lastColor[0]?.id || 0) + 1;
 
-    return NextResponse.json({
-      success: true,
-      message: "Color created successfully.",
-      data: color,
-    });
+    const newColor = {
+      id: nextId,
+      name: name.trim(),
+      hexCode: hexCode || "#000000",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await db.collection("colors").insertOne(newColor);
+
+    return NextResponse.json(
+      { success: true, message: "Color created successfully.", data: newColor },
+      { status: 201 }
+    );
   } catch (error: any) {
     console.error("POST Color Error:", error);
-
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json(
-        { success: false, message: "A color with this name already exists." },
-        { status: 409 }
-      );
-    }
-
     return NextResponse.json(
       { success: false, message: "Failed to create color." },
       { status: 500 }

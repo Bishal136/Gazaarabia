@@ -1,151 +1,76 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { checkAuth } from "@/lib/authToken";
-import { getReviewDetails } from "@/lib/helpers/getReviewByOrderItemId";
-
-
-const prisma: any = new PrismaClient();
+import { getAuthenticatedUser } from "@/lib/authToken";
+import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
 export async function GET(req: NextRequest) {
   try {
-    //  Authentication check
-    const userId = await checkAuth(req);
-    if (!userId) {
+    const user = await getAuthenticatedUser(req);
+    if (!user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.users.findUnique({
-      where: { id: userId },
-      include: { role: true },
-    });
-
-    if (!user || user.role?.name.toLowerCase() !== "seller") {
+    if (!user.role || user.role.name.toLowerCase() !== "seller") {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
 
+    await connectToDatabase();
+    const db = mongoose.connection.db;
+    if (!db) {
+      return NextResponse.json({ message: "Database not connected" }, { status: 500 });
+    }
 
-    const seller = await prisma.seller.findUnique({
-      where: { userId: user.id },
-    });
-
+    const seller = await db.collection("sellers").findOne({ userId: user.id });
     if (!seller) {
       return NextResponse.json({ message: "Seller profile not found" }, { status: 404 });
     }
 
     const { searchParams } = new URL(req.url);
-    const search = searchParams.get("search")?.trim() || "";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
     const skip = (page - 1) * limit;
 
-    const sellerCondition = {
-      orderItems: {
-        some: { sellerId: seller.id }
-      }
-    };
+    const sellerItems = await db
+      .collection("orders_item")
+      .find({ sellerId: seller.id })
+      .toArray();
 
-    const where: any = search
-      ? {
-        AND: [
-          sellerCondition,
-          {
-            OR: [
-              { transactionId: { contains: search } },
-              { status: { contains: search } },
-              { paymentMethod: { contains: search } },
-              ...(isNaN(Number(search)) ? [] : [{ id: Number(search) }]),
-              {
-                user: {
-                  name: { contains: search },
-                },
-              },
-            ],
-          }
-        ]
-      }
-      : sellerCondition;
+    const orderIds = Array.from(new Set(sellerItems.map((i: any) => i.orderId)));
 
-
-    //  Fetch orders
     const [total, orders] = await Promise.all([
-      prisma.orders.count({ where }),
-      prisma.orders.findMany({
-        where,
-        include: {
-          user: {
-            select: { id: true, name: true, email: true },
-          },
-          orderItems: {
-            where: { sellerId: seller.id },
-            select: {
-              id: true,
-              sellerId: true,
-              quantity: true,
-              price: true,
-              commissionValue: true,
-              commissionAmount: true,
-              sellerEarning: true,
-              payoutDays: true,
-              isPayoutEligible: true,
-              isPaidOut: true,
-              product: { select: { title: true } },
-              variant: {
-                select: {
-                  sku: true,
-                  color: { select: { name: true } },
-                  size: { select: { name: true } },
-                },
-              },
-              reviewed: true
-            },
-          },
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-        skip,
-        take: limit,
-      })
+      db.collection("orders").countDocuments({ id: { $in: orderIds } }),
+      db
+        .collection("orders")
+        .find({ id: { $in: orderIds } })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .toArray(),
     ]);
-
-    // Batch fetch reviews to avoid N+1
-    const orderItemIds = orders.flatMap((o: any) => o.orderItems.map((i: any) => i.id));
-    const reviews = await prisma.review.findMany({
-      where: { orderItemId: { in: orderItemIds } },
-      include: {
-        product: { select: { title: true, productimage: { take: 1, select: { url: true } } } },
-        variant: { select: { sku: true } },
-        user: { select: { name: true, email: true } }
-      }
-    });
-
-    const reviewsMap = reviews.reduce((acc: any, r: any) => {
-      acc[r.orderItemId] = r;
-      return acc;
-    }, {});
 
     const formattedOrders = orders.map((order: any) => ({
       ...order,
-      orderItems: order.orderItems.map((item: any) => ({
-        ...item,
-        review: reviewsMap[item.id] || null
-      }))
+      orderItems: sellerItems
+        .filter((i: any) => i.orderId === order.id)
+        .map((item: any) => ({
+          ...item,
+          product: { title: item.productTitle || "Product" },
+          variant: { sku: item.sku || "" },
+          review: null,
+        })),
     }));
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       total,
       page,
       limit,
-      data: formattedOrders 
+      data: formattedOrders,
     });
-  } catch (error) {
-    console.error(" Orders GET Error:", error);
+  } catch (error: any) {
+    console.error("Orders GET Error:", error);
     return NextResponse.json(
       { success: false, message: "Failed to fetch orders" },
       { status: 500 }
     );
   }
 }
-
-

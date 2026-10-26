@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { PrismaClient } from "@prisma/client";
+import { connectToDatabase, mongoose } from "@/lib/mongoose";
 import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { logLoginAttempt, logRateLimited } from "@/lib/authLogging";
-
-const prisma = new PrismaClient();
 
 export async function POST(req: Request) {
   try {
@@ -30,21 +28,18 @@ export async function POST(req: Request) {
       );
     }
 
+    await connectToDatabase();
+    const db = mongoose.connection.db;
 
-    // Fetch the user and include the related role record
-    const user = await prisma.users.findUnique({
-      where: { email },
-      include: {
-        role: true,
-        affiliate: {
-          select: {
-            id: true,
-            type: true,     // returns "affiliate" | "ambassador"
-          }
-        }
+    if (!db) {
+      return NextResponse.json(
+        { message: "Database connection failed" },
+        { status: 500 }
+      );
+    }
 
-      }, //  this brings the role name
-    });
+    // Fetch user from MongoDB
+    const user = await db.collection("users").findOne({ email: email.trim().toLowerCase() });
 
     if (!user) {
       logLoginAttempt(req, email, false, "User not found");
@@ -54,8 +49,12 @@ export async function POST(req: Request) {
       );
     }
 
+    // Fetch user role
+    const userRole = await db.collection("roles").findOne({ id: user.roleId });
+    const roleName = userRole ? userRole.name : "";
+
     // Role-based validation
-    if (!user.role || user.role.name.toLowerCase() !== role.toLowerCase()) {
+    if (!roleName || roleName.toLowerCase() !== role.toLowerCase()) {
       logLoginAttempt(req, email, false, `Invalid role: ${role}`);
       return NextResponse.json(
         {
@@ -74,57 +73,59 @@ export async function POST(req: Request) {
       );
     }
 
-    //  Generate JWT with role name (1 hour expiration)
+    // Check affiliate if role is affiliate
+    let affiliate = null;
+    if (roleName.toLowerCase() === "affiliate") {
+      affiliate = await db.collection("affiliate").findOne({ userId: user.id });
+    }
+
+    // Generate JWT with role name (1 hour expiration)
     const accessToken = jwt.sign(
       {
         id: user.id,
         email: user.email,
         roleId: user.roleId,
-        roleName: user.role.name,
+        roleName: roleName,
       },
       process.env.JWT_SECRET as string,
       { expiresIn: "1h" }
     );
 
-    //  Generate refresh token (3 days expiration - security best practice)
+    // Generate refresh token (3 days expiration)
     const refreshTokenString = jwt.sign(
       { id: user.id, type: "refresh" },
       process.env.JWT_SECRET as string,
       { expiresIn: "3d" }
     );
 
-    //  Store refresh token in database
-    await prisma.refreshToken.create({
-      data: {
-        token: refreshTokenString,
-        userId: user.id,
-        expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-        isRevoked: false,
-      },
+    // Store refresh token in MongoDB
+    await db.collection("refresh_tokens").insertOne({
+      token: refreshTokenString,
+      userId: user.id,
+      expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      isRevoked: false,
+      createdAt: new Date(),
     });
 
-    //  Log successful login
+    // Log successful login
     logLoginAttempt(req, email, true);
 
-    //  Send role name in response
-    const res = NextResponse.json({
+    return NextResponse.json({
       message: "Login successful",
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
         roleId: user.roleId,
-        roleName: user.role.name,
-        affiliateId: user.role.name === "affiliate" ? user.affiliate?.id : null,
-        affiliateType: user.role.name === "affiliate" ? user.affiliate?.type : null,
-        stripeCustomerId: user.stripeCustomerId
+        roleName: roleName,
+        affiliateId: affiliate ? affiliate.id : null,
+        affiliateType: affiliate ? affiliate.type : null,
+        stripeCustomerId: user.stripeCustomerId || null,
       },
       accessToken,
       refreshToken: refreshTokenString,
     });
-
-    return res;
-  } catch (err) {
+  } catch (err: any) {
     console.error("Login error:", err);
     return NextResponse.json({ message: "Server error" }, { status: 500 });
   }

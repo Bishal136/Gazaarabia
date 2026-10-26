@@ -1,121 +1,102 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { checkAuth } from "@/lib/authToken";
+import { getAuthenticatedUser } from "@/lib/authToken";
+import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
-const prisma = new PrismaClient();
-
-/**
- * @route GET /api/material-care
- * @desc Get all material care records with search (Protected)
- */
 export async function GET(req: NextRequest) {
-  const userId = await checkAuth(req);
-  if (!userId) {
+  const user = await getAuthenticatedUser(req);
+  if (!user) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await prisma.users.findUnique({
-    where: { id: userId },
-    include: { role: true }
-  });
-
-  // const allowedRoles = ["admin"];
-  const allowedRoles = ["admin", "seller"]; // both admin and seller can access
-
-
-  if (!user || !allowedRoles.includes(user.role.name.toLowerCase())) {
+  const allowedRoles = ["admin", "seller"];
+  if (!user.role || !allowedRoles.includes(user.role.name.toLowerCase())) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
-
   try {
-    const { searchParams } = new URL(req.url);
-    const rawSearch = searchParams.get("search") || "";
-    const search = rawSearch.trim().toLowerCase();
+    await connectToDatabase();
+    const db = mongoose.connection.db;
+    if (!db) {
+      return NextResponse.json(
+        { message: "Database not connected" },
+        { status: 500 }
+      );
+    }
 
-    const where = search
+    const { searchParams } = new URL(req.url);
+    const search = (searchParams.get("search") || "").trim();
+
+    const query: any = search
       ? {
-        OR: [
-          { title: { contains: search } },
-          { careType: { contains: search } },
-          { material: { contains: search } },
-          { description: { contains: search } },
-        ],
-      }
+          $or: [
+            { title: { $regex: search, $options: "i" } },
+            { careType: { $regex: search, $options: "i" } },
+            { material: { $regex: search, $options: "i" } },
+            { description: { $regex: search, $options: "i" } },
+          ],
+        }
       : {};
 
-    const materialCares = await prisma.materialCare.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-    });
+    const materialCares = await db
+      .collection("material_care")
+      .find(query)
+      .sort({ createdAt: -1 })
+      .toArray();
 
-    return NextResponse.json({
-      success: true,
-      message: materialCares.length
-        ? "Material care records fetched successfully."
-        : "No records found.",
-      data: materialCares,
-    });
-  } catch (error) {
-    console.error(" GET MaterialCare Error:", error);
+    return NextResponse.json(materialCares);
+  } catch (error: any) {
+    console.error("GET Material Care Error:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to fetch material care records." },
+      { message: "Failed to fetch material care records" },
       { status: 500 }
     );
   }
 }
 
-/**
- * @route POST /api/material-care
- * @desc Create a new material care record (Protected)
- */
 export async function POST(req: NextRequest) {
-  const userId = await checkAuth(req);
-  if (!userId) {
+  const user = await getAuthenticatedUser(req);
+  if (!user) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await prisma.users.findUnique({
-    where: { id: userId },
-    include: { role: true }
-  });
-
   const allowedRoles = ["admin"];
-
-  if (!user || !allowedRoles.includes(user.role.name.toLowerCase())) {
+  if (!user.role || !allowedRoles.includes(user.role.name.toLowerCase())) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
-
   try {
-    const { title, description, careType, material, icon } = await req.json();
-
-    if (!title || !description) {
+    await connectToDatabase();
+    const db = mongoose.connection.db;
+    if (!db) {
       return NextResponse.json(
-        { success: false, message: "Title and description are required." },
-        { status: 400 }
+        { message: "Database not connected" },
+        { status: 500 }
       );
     }
 
-    const newItem = await prisma.materialCare.create({
-      data: {
-        title,
-        description,
-        careType: careType || null,
-        material: material || null,
-        icon: icon || null,
-      },
-    });
+    const body = await req.json();
+    const lastItem = await db
+      .collection("material_care")
+      .find()
+      .sort({ id: -1 })
+      .limit(1)
+      .toArray();
+    const nextId = (lastItem[0]?.id || 0) + 1;
 
-    return NextResponse.json({
-      success: true,
-      message: "Material care item created successfully.",
-      data: newItem,
-    });
-  } catch (error) {
-    console.error(" POST MaterialCare Error:", error);
+    const newItem = {
+      ...body,
+      id: nextId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await db.collection("material_care").insertOne(newItem);
+
+    return NextResponse.json(newItem, { status: 201 });
+  } catch (error: any) {
+    console.error("POST Material Care Error:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to create material care item." },
+      { message: "Failed to create material care record" },
       { status: 500 }
     );
   }

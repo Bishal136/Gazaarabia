@@ -1,47 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { checkAuth } from "@/lib/authToken";
-
-const prisma: any = new PrismaClient();
+import { getAuthenticatedUser } from "@/lib/authToken";
+import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
 // GET all subcategories with optional search (Protected)
 export async function GET(req: NextRequest) {
-  const userId = await checkAuth(req);
-  if (!userId) {
+  const user = await getAuthenticatedUser(req);
+  if (!user) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await prisma.users.findUnique({
-    where: { id: userId },
-    include: { role: true }
-  });
-
   const allowedRoles = ["admin", "seller"];
-
-  if (!user || !allowedRoles.includes(user.role.name.toLowerCase())) {
+  if (!user.role || !allowedRoles.includes(user.role.name.toLowerCase())) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
-
   try {
+    await connectToDatabase();
+    const db = mongoose.connection.db;
+    if (!db) {
+      return NextResponse.json({ success: false, message: "DB not connected" }, { status: 500 });
+    }
+
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
+    const categoryId = searchParams.get("categoryId");
 
-    const subcategories = await prisma.subcategory.findMany({
-      where: search
-        ? {
-          OR: [
-            { name: { contains: search } },
-            { category: { name: { contains: search } } },
-          ],
-        }
-        : undefined,
-      orderBy: { id: "desc" },
-      include: {
-        category: true,
-        subcategoryCommission: true
-      },
-    });
+    const query: any = {};
+    if (search) {
+      query.name = { $regex: search, $options: "i" };
+    }
+    if (categoryId) {
+      query.categoryId = Number(categoryId);
+    }
+
+    const subcategories = await db
+      .collection("subcategories")
+      .find(query)
+      .sort({ id: -1 })
+      .toArray();
 
     return NextResponse.json({
       success: true,
@@ -51,7 +47,7 @@ export async function GET(req: NextRequest) {
           : "Subcategories fetched successfully.",
       data: subcategories,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("GET Subcategories Error:", error);
     return NextResponse.json(
       { success: false, message: "Failed to fetch subcategories." },
@@ -62,91 +58,60 @@ export async function GET(req: NextRequest) {
 
 // Create new subcategory (Protected)
 export async function POST(req: NextRequest) {
-  const userId = await checkAuth(req);
-  if (!userId) {
+  const user = await getAuthenticatedUser(req);
+  if (!user) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await prisma.users.findUnique({
-    where: { id: userId },
-    include: { role: true }
-  });
-
   const allowedRoles = ["admin"];
-
-  if (!user || !allowedRoles.includes(user.role.name.toLowerCase())) {
+  if (!user.role || !allowedRoles.includes(user.role.name.toLowerCase())) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
-
   try {
-    const { name, slug, categoryId, commission, description } = await req.json();
+    await connectToDatabase();
+    const db = mongoose.connection.db;
+    if (!db) {
+      return NextResponse.json({ success: false, message: "DB not connected" }, { status: 500 });
+    }
+
+    const { name, slug, categoryId } = await req.json();
 
     if (!name || !slug || !categoryId) {
       return NextResponse.json(
-        { success: false, message: "Name, slug and Category are required." },
+        { success: false, message: "Name, slug, and categoryId are required." },
         { status: 400 }
       );
     }
 
-    const exists = await prisma.subcategory.findUnique({
-      where: { slug },
-    });
+    const lastSub = await db
+      .collection("subcategories")
+      .find()
+      .sort({ id: -1 })
+      .limit(1)
+      .toArray();
+    const nextId = (lastSub[0]?.id || 0) + 1;
 
-    if (exists) {
-      return NextResponse.json(
-        { success: false, message: "A subcategory with this name already exists." },
-        { status: 409 }
-      );
-    }
+    const newSubcategory = {
+      id: nextId,
+      name: name.trim(),
+      slug: slug.trim(),
+      categoryId: Number(categoryId),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
 
-    // Verify category exists
-    const category = await prisma.categories.findUnique({
-      where: { id: Number(categoryId) },
-    });
+    await db.collection("subcategories").insertOne(newSubcategory);
 
-    if (!category) {
-      return NextResponse.json(
-        { success: false, message: "Category not found." },
-        { status: 404 }
-      );
-    }
-
-    // Calculate next position for this category
-    const maxPosition = await prisma.subcategory.aggregate({
-      where: { categoryId: Number(categoryId) },
-      _max: { position: true },
-    });
-    const position = (maxPosition._max.position ?? -1) + 1;
-
-    const newSubcategory = await prisma.subcategory.create({
-      data: {
-        name,
-        slug,
-        categoryId,
-        description: description || null,
-        position,
-        ...(commission !== undefined && commission !== null && commission !== "" && !isNaN(parseFloat(commission))
-          ? {
-            subcategoryCommission: {
-              create: {
-                commission: parseFloat(commission),
-              },
-            },
-          }
-          : {}),
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Subcategory created successfully.",
+        data: newSubcategory,
       },
-      include: {
-        subcategoryCommission: true,
-      }
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: "Subcategory created successfully.",
-      data: newSubcategory,
-    });
-  } catch (error) {
+      { status: 201 }
+    );
+  } catch (error: any) {
     console.error("POST Subcategory Error:", error);
     return NextResponse.json(
       { success: false, message: "Failed to create subcategory." },

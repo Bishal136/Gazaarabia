@@ -1,37 +1,37 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { getTokenFromHeader, getUserIdFromToken } from "@/lib/authToken";
-
-const prisma: any = new PrismaClient();
+import { getAuthenticatedUser } from "@/lib/authToken";
+import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
 // GET all sizes (Protected)
-export async function GET(req: Request) {
-  const token: any = getTokenFromHeader(req);
-  const userId = getUserIdFromToken(token);
-
-  if (!userId) {
+export async function GET(req: any) {
+  const user = await getAuthenticatedUser(req);
+  if (!user) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await prisma.users.findUnique({
-    where: { id: userId },
-    include: { role: true }
-  });
-
   const allowedRoles = ["admin", "seller"];
-
-  if (!user || !allowedRoles.includes(user.role.name.toLowerCase())) {
+  if (!user.role || !allowedRoles.includes(user.role.name.toLowerCase())) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
-
   try {
-    const sizes = await prisma.sizes.findMany({
-      orderBy: { id: "desc" },
-    });
+    await connectToDatabase();
+    const db = mongoose.connection.db;
+    if (!db) {
+      return NextResponse.json(
+        { error: "Database not connected" },
+        { status: 500 }
+      );
+    }
+
+    const sizes = await db
+      .collection("sizes")
+      .find({})
+      .sort({ id: -1 })
+      .toArray();
 
     return NextResponse.json(sizes);
-  } catch (error) {
+  } catch (error: any) {
     console.error("GET Sizes Error:", error);
     return NextResponse.json(
       { error: "Failed to fetch sizes" },
@@ -41,42 +41,55 @@ export async function GET(req: Request) {
 }
 
 // CREATE new size (Protected)
-export async function POST(req: Request) {
-  const token: any = getTokenFromHeader(req);
-  const userId = getUserIdFromToken(token);
-
-  if (!userId) {
+export async function POST(req: any) {
+  const user = await getAuthenticatedUser(req);
+  if (!user) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await prisma.users.findUnique({
-    where: { id: userId },
-    include: { role: true }
-  });
-
   const allowedRoles = ["admin"];
-
-  if (!user || !allowedRoles.includes(user.role.name.toLowerCase())) {
+  if (!user.role || !allowedRoles.includes(user.role.name.toLowerCase())) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
-
   try {
-    const { name, description } = await req.json();
-
-    if (!name) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    await connectToDatabase();
+    const db = mongoose.connection.db;
+    if (!db) {
+      return NextResponse.json(
+        { error: "Database not connected" },
+        { status: 500 }
+      );
     }
 
-    const newSize = await prisma.sizes.create({
-      data: {
-        name,
-        description: description || null,
-      },
-    });
+    const { name } = await req.json();
 
-    return NextResponse.json(newSize);
-  } catch (error) {
+    if (!name || name.trim() === "") {
+      return NextResponse.json(
+        { message: "Size name is required" },
+        { status: 400 }
+      );
+    }
+
+    const lastSize = await db
+      .collection("sizes")
+      .find()
+      .sort({ id: -1 })
+      .limit(1)
+      .toArray();
+    const nextId = (lastSize[0]?.id || 0) + 1;
+
+    const newSize = {
+      id: nextId,
+      name: name.trim(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await db.collection("sizes").insertOne(newSize);
+
+    return NextResponse.json(newSize, { status: 201 });
+  } catch (error: any) {
     console.error("POST Size Error:", error);
     return NextResponse.json(
       { error: "Failed to create size" },
