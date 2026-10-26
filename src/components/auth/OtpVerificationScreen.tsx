@@ -10,6 +10,8 @@ import { getRedirectUrlByRole } from "@/lib/authRedirect";
 
 interface OtpVerificationScreenProps {
   email: string;
+  password?: string;
+  role?: string;
   onSuccess?: (user: any) => void;
   onBack?: () => void;
   callbackUrl?: string;
@@ -17,6 +19,8 @@ interface OtpVerificationScreenProps {
 
 export default function OtpVerificationScreen({
   email,
+  password,
+  role,
   onSuccess,
   onBack,
   callbackUrl,
@@ -115,12 +119,32 @@ export default function OtpVerificationScreen({
         onSuccess(res.user);
       }
 
-      // Auto-login into session
-      const targetUrl = getRedirectUrlByRole(res.user?.roleName, callbackUrl);
+      // If password provided, establish NextAuth session automatically
+      if (password) {
+        try {
+          await signIn("credentials", {
+            redirect: false,
+            email,
+            password,
+            role: role || res.user?.roleName || "unified",
+          });
+        } catch (e) {
+          console.warn("Auto sign-in error after OTP:", e);
+        }
+      }
+
+      // Determine redirect target
+      const targetUrl = password
+        ? getRedirectUrlByRole(res.user?.roleName, callbackUrl)
+        : (role === "seller"
+            ? "/seller/login"
+            : role === "affiliate"
+            ? "/affiliate/login"
+            : "/account/login") + `?verified=true&email=${encodeURIComponent(email)}`;
 
       setTimeout(() => {
-        router.replace(targetUrl);
-      }, 1200);
+        window.location.href = targetUrl;
+      }, 1000);
     } catch (err: any) {
       setErrorMsg(err.message || "Invalid or expired verification code. Please try again.");
     } finally {

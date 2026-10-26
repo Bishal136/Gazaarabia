@@ -24,7 +24,13 @@ export default function AffiliateLayout({ children }: { children: React.ReactNod
         }
     }, [status, session, isAllowed, router]);
 
-    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const checkScreen = () => setIsMobile(window.innerWidth < 768);
+        checkScreen();
+        window.addEventListener("resize", checkScreen);
+        return () => window.removeEventListener("resize", checkScreen);
+    }, []);
 
     //  Prevent background scroll when sidebar is open on mobile
     useEffect(() => {

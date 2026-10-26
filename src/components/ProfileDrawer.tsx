@@ -109,6 +109,32 @@ export default function ProfileDrawer({ isOpen, onClose }: Props) {
           {/* Menu Section */}
           {status === "authenticated" && (
             <div className="space-y-3">
+              {(session?.user as any)?.role && (session?.user as any)?.role !== "customer" && (
+                <Link
+                  href={
+                    (session?.user as any)?.role === "seller"
+                      ? "/seller"
+                      : (session?.user as any)?.role === "admin"
+                      ? "/admin"
+                      : "/affiliate"
+                  }
+                  onClick={onClose}
+                  className="flex items-center justify-between px-5 py-3 rounded-xl border border-emerald-300 bg-emerald-50/70 hover:shadow-md hover:bg-emerald-50 transition-all duration-200 group text-[#009639]"
+                >
+                  <div className="flex items-center gap-3 font-semibold">
+                    <Settings size={18} />
+                    <span>
+                      {(session?.user as any)?.role === "seller"
+                        ? "Seller Dashboard"
+                        : (session?.user as any)?.role === "admin"
+                        ? "Admin Console"
+                        : "Partner Dashboard"}
+                    </span>
+                  </div>
+                  <ChevronRight size={18} />
+                </Link>
+              )}
+
               {menuItems.map((item, i) => (
                 <Link
                   key={i}

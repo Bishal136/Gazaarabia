@@ -341,7 +341,7 @@ export default function ProductDetails() {
 
   return (
     <>
-      {(loading || status === "loading") && <Loader />}
+      {loading && <Loader />}
       {!product && !loading ? (
         <div className="mt-16 flex justify-center">
           <NoData message="No product found." />

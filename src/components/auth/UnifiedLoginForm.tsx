@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn, useSession } from "next-auth/react";
+import { signIn, useSession, getSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Mail,
@@ -94,9 +94,9 @@ export default function UnifiedLoginForm({
     }
   }, []);
 
-  // Handle post-login redirection when NextAuth session resolves
+  // Handle post-login redirection when NextAuth session is already authenticated on mount
   useEffect(() => {
-    if (status === "authenticated" && session?.user) {
+    if (status === "authenticated" && session?.user && !loading) {
       const userRole = (session.user as any).role || "customer";
       const token = (session.user as any).token;
 
@@ -108,7 +108,7 @@ export default function UnifiedLoginForm({
       const destination = getRedirectUrlByRole(userRole, callbackUrl);
       router.replace(destination);
     }
-  }, [status, session, router, callbackUrl, refreshCart]);
+  }, [status, session, router, callbackUrl, refreshCart, loading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,6 +159,28 @@ export default function UnifiedLoginForm({
       }
 
       setSuccessAlert("Login successful! Redirecting to your dashboard...");
+
+      // Fetch the authenticated session to get the real user role and destination
+      let userRole = initialRole;
+      let freshSession = await getSession();
+      if (!freshSession?.user) {
+        // Brief pause for cookie synchronization
+        await new Promise((r) => setTimeout(r, 150));
+        freshSession = await getSession();
+      }
+
+      if (freshSession?.user) {
+        userRole = (freshSession.user as any).role || userRole;
+        const token = (freshSession.user as any).token;
+
+        if (token) {
+          mergeLocalCartWithServer(token).catch(() => {});
+          refreshCart().catch(() => {});
+        }
+      }
+
+      const destination = getRedirectUrlByRole(userRole, callbackUrl);
+      window.location.href = destination;
     } catch (err: any) {
       if (err.requiresOtp) {
         setOtpRequiredEmail(err.email || emailTrimmed);
@@ -227,6 +249,8 @@ export default function UnifiedLoginForm({
           >
             <OtpVerificationScreen
               email={otpRequiredEmail}
+              password={form.password}
+              role={initialRole || "unified"}
               callbackUrl={callbackUrl}
               onBack={() => setOtpRequiredEmail(null)}
             />

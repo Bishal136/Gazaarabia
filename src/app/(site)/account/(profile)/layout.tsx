@@ -14,6 +14,7 @@ import PopupAlert from "@/components/PopupAlert";
 import AlertMessage from "@/components/AlertMessage";
 import Loader from "@/components/Loader";
 import { ROUTES } from "@/constants/routes";
+import { getRedirectUrlByRole } from "@/lib/authRedirect";
 
 const menuItems = [
   { key: "orders", label: "Orders", path: "/account/orders", icon: <Package size={18} /> },
@@ -39,8 +40,12 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
   //  Redirect if not logged in
   useEffect(() => {
     if (status === "loading") return;
-    if (status === "unauthenticated") router.replace(ROUTES.USER.LOGIN);
-    else if (status === "authenticated" && session?.user?.role !== "customer") router.replace(ROUTES.HOME);
+    if (status === "unauthenticated") {
+      router.replace(ROUTES.USER.LOGIN);
+    } else if (status === "authenticated" && session?.user?.role !== "customer") {
+      const destination = getRedirectUrlByRole(session?.user?.role);
+      router.replace(destination);
+    }
   }, [status, session, router]);
 
   //  Handle logout after confirmation
@@ -51,8 +56,6 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
 
   return (
     <>
-      {(status === "loading") && <Loader />}
-
       <div className="min-h-screen bg-[var(--background)] text-[var(--text-primary)] pt-24 pb-10 px-4 md:px-16 lg:px-24">
 
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-10">

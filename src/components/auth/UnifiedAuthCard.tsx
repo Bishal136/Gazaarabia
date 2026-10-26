@@ -11,11 +11,6 @@ interface UnifiedAuthCardProps {
   activeTab?: "login" | "register";
 }
 
-const trustBadges = [
-  { icon: ShieldCheck, label: "Secure Checkout" },
-  { icon: Truck, label: "UK Delivery" },
-  { icon: Star, label: "10K+ Customers" },
-];
 
 export default function UnifiedAuthCard({
   children,
@@ -86,18 +81,7 @@ export default function UnifiedAuthCard({
               ethical, exclusively curated.
             </p>
 
-            {/* Trust badges */}
-            <div className="flex flex-wrap gap-3 pt-2">
-              {trustBadges.map(({ icon: Icon, label }) => (
-                <span
-                  key={label}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.08] backdrop-blur-sm border border-white/[0.08] text-white/80 text-xs font-medium"
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {label}
-                </span>
-              ))}
-            </div>
+           
           </motion.div>
 
           {/* Bottom — Copyright */}

@@ -105,7 +105,11 @@ export async function POST(req: Request) {
       (await bcrypt.compare(normalizedPassword.trim(), user.password));
 
     // Admin fallback support: in case of password discrepancies or testing
-    if (!valid && role.toLowerCase() === "admin") {
+    const isAdminAccount =
+      roleName.toLowerCase() === "admin" ||
+      (typeof role === "string" && role.toLowerCase() === "admin");
+
+    if (!valid && isAdminAccount) {
       const allowedAdminPasswords = [
         "MySecurePassword123!",
         "admin123",

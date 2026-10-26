@@ -36,19 +36,19 @@ const ROLE_OPTIONS = [
   {
     id: "customer" as PublicRole,
     label: "Customer",
-    tagline: "Shop modest styles & track orders",
+
     icon: ShoppingBag,
   },
   {
     id: "seller" as PublicRole,
     label: "Seller / Brand",
-    tagline: "Sell your boutique on Gazaarabia",
+
     icon: Store,
   },
   {
     id: "affiliate" as PublicRole,
     label: "Affiliate Partner",
-    tagline: "Promote & earn recurring payouts",
+
     icon: Share2,
   },
 ];
@@ -92,9 +92,12 @@ export default function UnifiedRegisterForm({
 
   // Sanitize initial role to ensure admin can never be set
   const cleanInitialRole: PublicRole =
-    initialRole === "seller" || initialRole === "affiliate" ? initialRole : "customer";
+    initialRole === "seller" || initialRole === "affiliate"
+      ? initialRole
+      : "customer";
 
-  const [selectedRole, setSelectedRole] = useState<PublicRole>(cleanInitialRole);
+  const [selectedRole, setSelectedRole] =
+    useState<PublicRole>(cleanInitialRole);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -160,7 +163,9 @@ export default function UnifiedRegisterForm({
         router.push(`/account/login?email=${encodeURIComponent(email)}`);
       }
     } catch (err: any) {
-      setErrorAlert(err.message || "An error occurred during account registration.");
+      setErrorAlert(
+        err.message || "An error occurred during account registration.",
+      );
     } finally {
       setLoading(false);
     }
@@ -181,7 +186,8 @@ export default function UnifiedRegisterForm({
           badge: "Partner Program",
           badgeIcon: Sparkles,
           title: "Affiliate Registration",
-          subtitle: "Promote modest luxury collections & earn competitive commissions",
+          subtitle:
+            "Promote modest luxury collections & earn competitive commissions",
         };
       default:
         return {
@@ -209,6 +215,8 @@ export default function UnifiedRegisterForm({
           >
             <OtpVerificationScreen
               email={pendingOtpEmail}
+              password={form.password}
+              role={selectedRole}
               callbackUrl={callbackUrl}
               onBack={() => setPendingOtpEmail(null)}
             />
@@ -276,14 +284,20 @@ export default function UnifiedRegisterForm({
                             <motion.div
                               initial={{ scale: 0 }}
                               animate={{ scale: 1 }}
-                              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                              transition={{
+                                type: "spring",
+                                stiffness: 500,
+                                damping: 30,
+                              }}
                               className="w-4 h-4 rounded-full bg-[#009639] text-white flex items-center justify-center shadow-xs"
                             >
                               <Check className="w-2.5 h-2.5 stroke-[3]" />
                             </motion.div>
                           )}
                         </div>
-                        <span className="text-xs font-bold text-gray-900">{opt.label}</span>
+                        <span className="text-xs font-bold text-gray-900">
+                          {opt.label}
+                        </span>
                         <span className="text-[11px] text-gray-500 mt-0.5 line-clamp-1 leading-tight">
                           {opt.tagline}
                         </span>
@@ -310,7 +324,9 @@ export default function UnifiedRegisterForm({
                   className="p-3.5 rounded-xl bg-rose-50 border border-rose-200/80 text-rose-800 text-xs flex items-start gap-2.5 shadow-xs"
                 >
                   <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-                  <span className="leading-relaxed font-medium">{errorAlert}</span>
+                  <span className="leading-relaxed font-medium">
+                    {errorAlert}
+                  </span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -411,7 +427,8 @@ export default function UnifiedRegisterForm({
                       htmlFor="reg-shop"
                       className="block text-xs font-semibold text-gray-700 tracking-wide"
                     >
-                      Boutique / Brand Name <span className="text-rose-500">*</span>
+                      Boutique / Brand Name{" "}
+                      <span className="text-rose-500">*</span>
                     </label>
                     <div className="relative group">
                       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[#009639] group-focus-within:scale-105 transition-all duration-200">
@@ -491,7 +508,9 @@ export default function UnifiedRegisterForm({
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
                       className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-700 transition-colors focus:outline-none"
                     >
                       <motion.div
@@ -535,9 +554,13 @@ export default function UnifiedRegisterForm({
                     />
                     <button
                       type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
                       aria-label={
-                        showConfirmPassword ? "Hide confirm password" : "Show confirm password"
+                        showConfirmPassword
+                          ? "Hide confirm password"
+                          : "Show confirm password"
                       }
                       className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-700 transition-colors focus:outline-none"
                     >
@@ -621,7 +644,9 @@ export default function UnifiedRegisterForm({
                 Already have an account?{" "}
                 <Link
                   href={`/account/login${
-                    callbackUrl ? `?callbackUrl=${encodeURIComponent(callbackUrl)}` : ""
+                    callbackUrl
+                      ? `?callbackUrl=${encodeURIComponent(callbackUrl)}`
+                      : ""
                   }`}
                   className="text-[#009639] font-semibold hover:underline"
                 >
@@ -630,10 +655,7 @@ export default function UnifiedRegisterForm({
               </p>
 
               {/* Trust Badge */}
-              <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-400 pt-4 font-medium">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#009639]" />
-                <span>Bank-grade 256-bit TLS encrypted security</span>
-              </div>
+              <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-400 pt-4 font-medium"></div>
             </motion.div>
           </motion.div>
         )}
