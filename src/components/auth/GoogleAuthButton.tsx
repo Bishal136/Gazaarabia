@@ -31,10 +31,10 @@ export default function GoogleAuthButton({
       type="button"
       onClick={handleGoogleSignIn}
       disabled={loading}
-      whileHover={{ scale: 1.01, boxShadow: "0 4px 12px rgba(0,0,0,0.06)" }}
-      whileTap={{ scale: 0.99 }}
-      transition={{ duration: 0.15 }}
-      className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-xl bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-[#009639] transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+      whileHover={{ scale: 1.01, y: -0.5, boxShadow: "0 4px 14px rgba(0,0,0,0.06)" }}
+      whileTap={{ scale: 0.99, y: 0 }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      className="w-full flex items-center justify-center gap-3 py-2.5 px-4 border border-gray-200 rounded-xl bg-gray-50/40 hover:bg-white text-gray-700 text-sm font-medium hover:border-gray-300 focus:outline-none focus:border-[#009639] focus:ring-4 focus:ring-[#009639]/10 transition-all duration-200 shadow-xs disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
     >
       {loading ? (
         <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
