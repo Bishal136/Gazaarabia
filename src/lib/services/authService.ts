@@ -16,7 +16,13 @@ export const authService = {
       body: JSON.stringify(data),
     });
     const result = await res.json().catch(() => ({ message: "Signup failed" }));
-    if (!res.ok) throw new Error(result.message || "Signup failed");
+    if (!res.ok) {
+      const detailedError =
+        Array.isArray(result.errors) && result.errors.length > 0
+          ? result.errors.join(". ")
+          : result.message || "Signup failed";
+      throw new Error(detailedError);
+    }
     return result;
   },
 

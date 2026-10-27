@@ -36,24 +36,24 @@ const ROLE_OPTIONS = [
   {
     id: "customer" as PublicRole,
     label: "Customer",
-
+    tagline: "Shop modest luxury & support causes",
     icon: ShoppingBag,
   },
   {
     id: "seller" as PublicRole,
     label: "Seller / Brand",
-
+    tagline: "Sell your boutique fashion & access buyers",
     icon: Store,
   },
   {
     id: "affiliate" as PublicRole,
     label: "Affiliate Partner",
-
+    tagline: "Earn commissions by sharing collections",
     icon: Share2,
   },
 ];
 
-const containerVariants = {
+const containerVariants: any = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -69,7 +69,7 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: any = {
   hidden: { opacity: 0, y: 10 },
   visible: {
     opacity: 1,
@@ -136,6 +136,11 @@ export default function UnifiedRegisterForm({
 
     if (form.password.length < 8) {
       setErrorAlert("Password must be at least 8 characters long.");
+      return;
+    }
+
+    if (!/[A-Za-z]/.test(form.password) || !/[0-9]/.test(form.password)) {
+      setErrorAlert("Password must contain a mix of letters and numbers.");
       return;
     }
 

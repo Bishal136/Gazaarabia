@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       logSignupAttempt(req, normalizedEmail, false, `Weak password: ${passwordValidation.errors.join(", ")}`);
       return NextResponse.json(
         {
-          message: "Password does not meet requirements",
+          message: passwordValidation.errors[0] || "Password does not meet requirements",
           errors: passwordValidation.errors,
         },
         { status: 400 }
