@@ -30,6 +30,7 @@ import { getRedirectUrlByRole } from "@/lib/authRedirect";
 interface UnifiedLoginFormProps {
   initialRole?: string;
   callbackUrl?: string;
+  onOtpStepChange?: (isOtpStep: boolean) => void;
 }
 
 // Staggered motion variants for smooth entrance
@@ -65,6 +66,7 @@ const itemVariants = {
 export default function UnifiedLoginForm({
   initialRole,
   callbackUrl: propCallbackUrl,
+  onOtpStepChange,
 }: UnifiedLoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -85,6 +87,10 @@ export default function UnifiedLoginForm({
 
   // OTP Fallback state if user is unverified
   const [otpRequiredEmail, setOtpRequiredEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    onOtpStepChange?.(!!otpRequiredEmail);
+  }, [otpRequiredEmail, onOtpStepChange]);
 
   // Load remembered email
   useEffect(() => {
@@ -252,7 +258,9 @@ export default function UnifiedLoginForm({
               password={form.password}
               role={initialRole || "unified"}
               callbackUrl={callbackUrl}
-              onBack={() => setOtpRequiredEmail(null)}
+              onBack={() => {
+                setOtpRequiredEmail(null);
+              }}
             />
           </motion.div>
         ) : (

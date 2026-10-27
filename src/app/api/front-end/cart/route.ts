@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { checkAuth } from "@/lib/authToken";
+import { checkAuth, getAuthenticatedUser } from "@/lib/authToken";
 import { connectToDatabase, mongoose } from "@/lib/mongoose";
 import { getProductAvailableQuantity, getVariantAvailableQuantity } from "@/lib/helpers/stockHelper";
 
@@ -144,10 +144,22 @@ export async function GET(req: Request) {
 // POST — Add item to cart
 export async function POST(req: Request) {
   try {
-    const userId = await checkAuth(req as any);
-    if (!userId) {
+    const authUser = await getAuthenticatedUser(req as any);
+    if (!authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const roleName = (authUser.role?.name || "").toLowerCase().trim();
+    if (roleName && roleName !== "customer") {
+      return NextResponse.json(
+        {
+          error: "Only standard customer accounts can add products to the cart. Admins, sellers, and management accounts cannot make purchases.",
+        },
+        { status: 403 }
+      );
+    }
+
+    const userId = authUser.id;
 
     const body = await req.json();
     const { productId, quantity = 1, variantId, colorId, sizeId } = body;
@@ -204,10 +216,22 @@ export async function POST(req: Request) {
 // PUT — Update quantity
 export async function PUT(req: Request) {
   try {
-    const userId = await checkAuth(req as any);
-    if (!userId) {
+    const authUser = await getAuthenticatedUser(req as any);
+    if (!authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const roleName = (authUser.role?.name || "").toLowerCase().trim();
+    if (roleName && roleName !== "customer") {
+      return NextResponse.json(
+        {
+          error: "Only standard customer accounts can modify the cart.",
+        },
+        { status: 403 }
+      );
+    }
+
+    const userId = authUser.id;
 
     const { productId, variantId, quantity } = await req.json();
     if ((!variantId && !productId) || !quantity || quantity <= 0) {

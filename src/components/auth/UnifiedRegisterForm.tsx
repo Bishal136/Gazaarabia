@@ -28,6 +28,7 @@ import { authService } from "@/lib/services/authService";
 interface UnifiedRegisterFormProps {
   initialRole?: string;
   callbackUrl?: string;
+  onOtpStepChange?: (isOtpStep: boolean) => void;
 }
 
 type PublicRole = "customer" | "seller" | "affiliate";
@@ -85,6 +86,7 @@ const itemVariants: any = {
 export default function UnifiedRegisterForm({
   initialRole = "customer",
   callbackUrl: propCallbackUrl,
+  onOtpStepChange,
 }: UnifiedRegisterFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -115,6 +117,10 @@ export default function UnifiedRegisterForm({
 
   // State when OTP is required to activate
   const [pendingOtpEmail, setPendingOtpEmail] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    onOtpStepChange?.(!!pendingOtpEmail);
+  }, [pendingOtpEmail, onOtpStepChange]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -223,7 +229,9 @@ export default function UnifiedRegisterForm({
               password={form.password}
               role={selectedRole}
               callbackUrl={callbackUrl}
-              onBack={() => setPendingOtpEmail(null)}
+              onBack={() => {
+                setPendingOtpEmail(null);
+              }}
             />
           </motion.div>
         ) : (

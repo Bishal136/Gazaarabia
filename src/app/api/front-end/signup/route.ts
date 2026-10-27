@@ -6,6 +6,7 @@ import { generateReferralCode } from "@/lib/helpers/generateReferralCodeHelper";
 import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { logSignupAttempt, logRateLimited } from "@/lib/authLogging";
 import { validatePassword } from "@/lib/passwordValidator";
+import { otpService } from "@/lib/services/otpService";
 
 export async function POST(req: Request) {
   try {
@@ -100,18 +101,23 @@ export async function POST(req: Request) {
             phone: phone || existingUser.phone || "",
             password: hashedPassword,
             roleId: selectedRole.id,
-            otpCode,
-            otpExpiresAt,
             updatedAt: new Date(),
           },
         }
       );
 
+      // Save in dedicated Otp schema in MongoDB
+      const { otp: refreshedOtp } = await otpService.createOtp({
+        email: normalizedEmail,
+        purpose: "registration",
+        validityMinutes: 10,
+      });
+
       // Send fresh OTP email
-      await sendOtpEmail({
+      const emailResult = await sendOtpEmail({
         to: normalizedEmail,
         name: normalizedName,
-        otp: otpCode,
+        otp: refreshedOtp,
       });
 
       logSignupAttempt(req, normalizedEmail, true, "Existing unverified user refreshed OTP");
@@ -147,6 +153,13 @@ export async function POST(req: Request) {
     };
 
     await db.collection("users").insertOne(newUserDoc);
+
+    // Save in dedicated Otp schema in MongoDB
+    await otpService.createOtp({
+      email: normalizedEmail,
+      purpose: "registration",
+      validityMinutes: 10,
+    });
 
     // If seller role, create seller profile entry
     if (requestedRole === "seller") {
@@ -201,7 +214,7 @@ export async function POST(req: Request) {
     }
 
     // Send OTP verification email
-    await sendOtpEmail({
+    const emailResult = await sendOtpEmail({
       to: normalizedEmail,
       name: normalizedName,
       otp: otpCode,

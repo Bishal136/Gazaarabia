@@ -115,6 +115,13 @@ export default function CartPage() {
 
 
   const handleCheckoutClick = async () => {
+    // Restrict Admins, Sellers, and management roles from checkout
+    const userRole = session?.user?.role?.toLowerCase();
+    if (userRole && userRole !== "customer") {
+      setErrorMsg("Only standard customer accounts can place orders. Management and vendor accounts cannot make purchases.");
+      return;
+    }
+
     // 1️. Check that cart isn't empty
     if (cartItems.length === 0) {
       setErrorMsg("Your cart is empty. Please add some items before checking out.");

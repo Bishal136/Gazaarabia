@@ -109,6 +109,16 @@ export default function WishlistPage() {
       return;
     }
 
+    const userRole = session?.user?.role?.toLowerCase();
+    if (userRole && userRole !== "customer") {
+      setAlert({
+        isOpen: true,
+        type: "error",
+        message: "Only standard customer accounts can add products to bag. Admins and sellers cannot make purchases.",
+      });
+      return;
+    }
+
     try {
       await cartService.add(token, Number(product.id), 1);
       await refreshCart();

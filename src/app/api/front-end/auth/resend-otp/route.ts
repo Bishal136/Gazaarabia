@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase, mongoose } from "@/lib/mongoose";
 import { sendOtpEmail } from "@/lib/helpers/emailHelper";
 import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
+import { otpService } from "@/lib/services/otpService";
 
 export async function POST(req: Request) {
   try {
@@ -41,16 +42,14 @@ export async function POST(req: Request) {
       });
     }
 
-    // Generate fresh 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    // Generate fresh 6-digit OTP in dedicated Otp schema & users collection
+    const { otp } = await otpService.createOtp({
+      email: user.email,
+      purpose: "registration",
+      validityMinutes: 10,
+    });
 
-    await db.collection("users").updateOne(
-      { _id: user._id },
-      { $set: { otpCode: otp, otpExpiresAt, updatedAt: new Date() } }
-    );
-
-    await sendOtpEmail({
+    const emailResult = await sendOtpEmail({
       to: user.email,
       name: user.name,
       otp,

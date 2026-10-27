@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { checkAuth } from "@/lib/authToken";
+import { checkAuth, getAuthenticatedUser } from "@/lib/authToken";
 import { getAvailableQuantity } from "@/lib/helpers/stockHelper";
 import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
@@ -48,8 +48,22 @@ interface SyncResponse {
 
 export async function POST(req: Request) {
   try {
-    const userId = await checkAuth(req as any);
+    const authUser = await getAuthenticatedUser(req as any);
+    const userId = authUser ? authUser.id : await checkAuth(req as any);
     const isGuest = !userId;
+
+    if (!isGuest && authUser) {
+      const roleName = (authUser.role?.name || "").toLowerCase().trim();
+      if (roleName && roleName !== "customer") {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Only standard customer accounts can synchronize or purchase cart items.",
+          },
+          { status: 403 }
+        );
+      }
+    }
 
     const body = await req.json().catch(() => null);
     if (!body) {

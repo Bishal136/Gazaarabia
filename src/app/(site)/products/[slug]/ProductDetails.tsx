@@ -251,6 +251,13 @@ export default function ProductDetails() {
 
   //  Zoom effect
   const handleAddToCart = async () => {
+    // Restrict Admins, Sellers, and management roles from purchasing
+    const userRole = session?.user?.role?.toLowerCase();
+    if (userRole && userRole !== "customer") {
+      setErrorMsg("Only standard customer accounts can add products to the cart or place orders. Admins, sellers, and management accounts cannot make purchases.");
+      return;
+    }
+
     // Require a selection only for the dimensions the product actually exposes.
     if (
       hasVariantOptions &&

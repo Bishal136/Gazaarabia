@@ -237,6 +237,22 @@ export default function CheckoutPage() {
     }
   }, [token]);
 
+  // Role-based access control: Only standard customers or guests can checkout
+  useEffect(() => {
+    const userRole = session?.user?.role?.toLowerCase();
+    if (userRole && userRole !== "customer") {
+      const destination =
+        userRole === "admin"
+          ? "/admin"
+          : userRole === "seller"
+          ? "/seller"
+          : userRole === "affiliate"
+          ? "/affiliate"
+          : "/";
+      router.replace(destination);
+    }
+  }, [session, router]);
+
 
   // Track Initiate Checkout
   useEffect(() => {

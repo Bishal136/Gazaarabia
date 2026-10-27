@@ -101,6 +101,49 @@ export async function middleware(request: NextRequest) {
         }
     }
 
+    // ================= CUSTOMER USER PANEL ROUTES ====================
+    const isUserPanelRoute =
+        pathname.startsWith("/account") &&
+        !pathname.startsWith("/account/login") &&
+        !pathname.startsWith("/account/register") &&
+        !pathname.startsWith("/account/forgot-password") &&
+        !pathname.startsWith("/account/reset-password");
+
+    if (isUserPanelRoute) {
+        if (!token) {
+            return NextResponse.redirect(new URL(ROUTES.USER.LOGIN, request.url));
+        }
+
+        // Only standard customer role can access customer panel
+        if (role !== "customer") {
+            const roleRedirects: Record<string, string> = {
+                admin: ROUTES.ADMIN.DASHBOARD || "/admin",
+                seller: ROUTES.SELLER.DASHBOARD || "/seller",
+                affiliate: ROUTES.AFFILIATE.DASHBOARD || "/affiliate",
+                ambassador: ROUTES.AFFILIATE.DASHBOARD || "/affiliate",
+                content_manager: "/admin/blogs",
+            };
+            const target = (role && roleRedirects[role]) || "/unauthorized";
+            return NextResponse.redirect(new URL(target, request.url));
+        }
+    }
+
+    // ================= CHECKOUT ROUTE ====================
+    if (pathname.startsWith("/checkout")) {
+        // Only standard customers (or unauthenticated guests) can checkout; restrict Admins & Sellers
+        if (token && role && role !== "customer") {
+            const roleRedirects: Record<string, string> = {
+                admin: ROUTES.ADMIN.DASHBOARD || "/admin",
+                seller: ROUTES.SELLER.DASHBOARD || "/seller",
+                affiliate: ROUTES.AFFILIATE.DASHBOARD || "/affiliate",
+                ambassador: ROUTES.AFFILIATE.DASHBOARD || "/affiliate",
+                content_manager: "/admin/blogs",
+            };
+            const target = roleRedirects[role] || "/";
+            return NextResponse.redirect(new URL(target, request.url));
+        }
+    }
+
     // Add pathname to request headers
     const response = NextResponse.next()
     response.headers.set('x-pathname', pathname)

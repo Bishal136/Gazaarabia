@@ -120,27 +120,32 @@ export default function OtpVerificationScreen({
       }
 
       // If password provided, establish NextAuth session automatically
+      let signInOk = false;
       if (password) {
         try {
-          await signIn("credentials", {
+          const signInRes = await signIn("credentials", {
             redirect: false,
             email,
             password,
             role: role || res.user?.roleName || "unified",
           });
+          signInOk = !!(signInRes && !signInRes.error);
         } catch (e) {
           console.warn("Auto sign-in error after OTP:", e);
         }
       }
 
       // Determine redirect target
-      const targetUrl = password
+      const loginBase =
+        role === "seller"
+          ? "/seller/login"
+          : role === "affiliate"
+          ? "/affiliate/login"
+          : "/account/login";
+
+      const targetUrl = signInOk
         ? getRedirectUrlByRole(res.user?.roleName, callbackUrl)
-        : (role === "seller"
-            ? "/seller/login"
-            : role === "affiliate"
-            ? "/affiliate/login"
-            : "/account/login") + `?verified=true&email=${encodeURIComponent(email)}`;
+        : `${loginBase}?verified=true&email=${encodeURIComponent(email)}`;
 
       setTimeout(() => {
         window.location.href = targetUrl;

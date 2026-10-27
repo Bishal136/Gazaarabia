@@ -347,17 +347,17 @@ export async function sendEmail({
   html: string;
 }) {
   try {
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: `"Gazaarabia" <${process.env.SMTP_USER}>`,
       to,
       subject,
       html,
     });
 
-    return { success: true };
-  } catch (error) {
-    console.error("Email send error:", error);
-    return { success: false };
+    return { success: true, messageId: info?.messageId };
+  } catch (error: any) {
+    console.error("Email send error:", error?.message || error);
+    return { success: false, error: error?.message || "Failed to send email" };
   }
 }
 
@@ -1392,5 +1392,13 @@ export async function sendOtpEmail({
   </div>
   `;
 
-  return await sendEmail({ to, subject, html });
+  const sendResult = await sendEmail({ to, subject, html });
+
+  if (!sendResult.success) {
+    console.warn(
+      `\n⚠️  [SMTP DELIVERY NOTICE]\nCould not deliver email to ${to} via SMTP: ${(sendResult as any).error || "SMTP Authentication/Connection Failure"}.\nIf you are running locally, the OTP is: >>> ${otp} <<<\n`
+    );
+  }
+
+  return { ...sendResult, otp };
 }

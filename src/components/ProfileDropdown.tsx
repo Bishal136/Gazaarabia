@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { X, LogOut, User, Settings, Heart, ShoppingBag } from "lucide-react";
+import { X, LogOut, User, Settings, Heart, ShoppingBag, LayoutDashboard } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ROUTES } from "@/constants/routes";
 import { logoutUser } from "@/lib/logout";
+import { getRedirectUrlByRole } from "@/lib/authRedirect";
 import { useEffect, useRef } from "react";
 
 interface Props {
@@ -49,38 +50,49 @@ export default function ProfileDropdown({ onClose }: Props) {
 
       {status === "authenticated" ? (
         <div className="flex flex-col p-2 text-sm">
-          <Link
-            href={ROUTES.USER.PROFILE}
-            className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-50 transition"
-            onClick={onClose}
-          >
-            <User size={18} />
-            My Account
-          </Link>
-          <Link
-            href="/wishlist"
-            className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-50 transition"
-            onClick={onClose}
-          >
-            <Heart size={18} />
-            Wishlist
-          </Link>
-          <Link
-            href="/orders"
-            className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-50 transition"
-            onClick={onClose}
-          >
-            <ShoppingBag size={18} />
-            Orders
-          </Link>
-          <Link
-            href="/account/settings"
-            className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-50 transition"
-            onClick={onClose}
-          >
-            <Settings size={18} />
-            Settings
-          </Link>
+          {session?.user?.role && session.user.role !== "customer" ? (
+            <Link
+              href={getRedirectUrlByRole(session?.user?.role)}
+              className="flex items-center gap-2 p-2 rounded-md bg-emerald-50 text-[#009639] font-medium hover:bg-emerald-100/70 transition mb-1"
+              onClick={onClose}
+            >
+              <LayoutDashboard size={18} />
+              {session.user.role === "admin"
+                ? "Admin Dashboard"
+                : session.user.role === "seller"
+                ? "Seller Dashboard"
+                : session.user.role === "affiliate"
+                ? "Affiliate Portal"
+                : "Management Portal"}
+            </Link>
+          ) : (
+            <>
+              <Link
+                href={ROUTES.USER.PROFILE}
+                className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-50 transition"
+                onClick={onClose}
+              >
+                <User size={18} />
+                My Account
+              </Link>
+              <Link
+                href="/wishlist"
+                className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-50 transition"
+                onClick={onClose}
+              >
+                <Heart size={18} />
+                Wishlist
+              </Link>
+              <Link
+                href="/account/orders"
+                className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-50 transition"
+                onClick={onClose}
+              >
+                <ShoppingBag size={18} />
+                Orders
+              </Link>
+            </>
+          )}
 
           <button
             onClick={handleLogout}

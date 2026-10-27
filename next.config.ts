@@ -85,21 +85,21 @@ const nextConfig: NextConfig = {
               "frame-ancestors 'none'",
 
               // Scripts
-              "script-src 'self' 'unsafe-inline' https://www.paypal.com https://js.stripe.com https://apple-pay-gateway.apple.com https://pay.google.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paypal.com https://js.stripe.com https://apple-pay-gateway.apple.com https://pay.google.com https://www.googletagmanager.com https://*.googletagmanager.com https://*.google-analytics.com https://connect.facebook.net",
 
               // Styles (unsafe-inline allowed for Next.js/React styles)
-              "style-src 'self' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
 
               // Images
-              "img-src 'self' data: https: https://www.paypalobjects.com https://www.paypal.com",
+              "img-src 'self' data: https: https://www.paypalobjects.com https://www.paypal.com https://www.facebook.com https://*.google-analytics.com https://*.googletagmanager.com",
 
               // Fonts
-              "font-src 'self' data:",
+              "font-src 'self' data: https://fonts.gstatic.com",
 
-              "frame-src https://www.paypal.com https://js.stripe.com https://apple-pay-gateway.apple.com https://pay.google.com",
+              "frame-src https://www.paypal.com https://js.stripe.com https://apple-pay-gateway.apple.com https://pay.google.com https://www.googletagmanager.com",
 
               // API / backend calls
-              "connect-src 'self' https: https://www.paypal.com https://www.paypalobjects.com https://api.stripe.com https://apple-pay-gateway.apple.com https://pay.google.com",
+              "connect-src 'self' https: https://www.paypal.com https://www.paypalobjects.com https://api.stripe.com https://apple-pay-gateway.apple.com https://pay.google.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://connect.facebook.net",
 
               // Forms
               "form-action 'self'",

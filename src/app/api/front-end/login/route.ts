@@ -78,12 +78,14 @@ export async function POST(req: Request) {
       const now = new Date();
       let otpCode = user.otpCode;
       if (!otpCode || !user.otpExpiresAt || new Date(user.otpExpiresAt) < now) {
-        otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
-        await db.collection("users").updateOne(
-          { _id: user._id },
-          { $set: { otpCode, otpExpiresAt } }
-        );
+        const { otpService } = await import("@/lib/services/otpService");
+        const { otp } = await otpService.createOtp({
+          email: user.email,
+          purpose: "registration",
+          validityMinutes: 10,
+        });
+        otpCode = otp;
+
         import("@/lib/helpers/emailHelper").then((m) =>
           m.sendOtpEmail({ to: user.email, name: user.name, otp: otpCode })
         ).catch((e) => console.error("OTP send error:", e));

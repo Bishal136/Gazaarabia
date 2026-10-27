@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { checkAuth } from "@/lib/authToken";
+import { checkAuth, getAuthenticatedUser } from "@/lib/authToken";
 import { sendOrderConfirmationEmail } from "@/lib/helpers/emailHelper";
 import { generateCustomerInvoice } from "@/lib/utils/generateCustomerInvoice";
 import { getAmbassadorForProduct } from "@/lib/helpers/ambassador";
@@ -16,10 +16,23 @@ const prisma: any = new PrismaClient();
 
 //  CREATE NEW ORDER
 export async function POST(req: NextRequest) {
-  const userId = await checkAuth(req);
-  if (!userId) {
+  const authUser = await getAuthenticatedUser(req);
+  if (!authUser) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
+
+  const roleName = (authUser.role?.name || "").toLowerCase().trim();
+  if (roleName !== "customer") {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Only standard customer accounts can place orders. Admins, sellers, and management accounts cannot make purchases.",
+      },
+      { status: 403 }
+    );
+  }
+
+  const userId = authUser.id;
 
   try {
     const { payment, address, orderItems, coupon, charity, referral } = await req.json();

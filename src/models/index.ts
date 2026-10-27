@@ -39,6 +39,50 @@ export const UserSchema = new Schema(
 export const User = getOrCreateModel("User", UserSchema);
 
 // ------------------------------------------------------------------------------
+// 1b. OTP Verification Schema (with auto-expiring MongoDB TTL index)
+// ------------------------------------------------------------------------------
+export const OtpSchema = new Schema(
+  {
+    email: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+    },
+    otp: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    purpose: {
+      type: String,
+      enum: ["registration", "login", "password_reset"],
+      default: "registration",
+    },
+    expiresAt: {
+      type: Date,
+      required: true,
+      index: { expires: 0 }, // MongoDB TTL: deletes document once expiresAt is reached
+    },
+    isUsed: {
+      type: Boolean,
+      default: false,
+    },
+    attempts: {
+      type: Number,
+      default: 0,
+    },
+  },
+  { timestamps: true, strict: false }
+);
+
+OtpSchema.index({ email: 1, purpose: 1 });
+OtpSchema.index({ email: 1, otp: 1 });
+
+export const Otp = getOrCreateModel("Otp", OtpSchema);
+
+// ------------------------------------------------------------------------------
 // 2. Sellers & Stores
 // ------------------------------------------------------------------------------
 export const SellerSchema = new Schema(

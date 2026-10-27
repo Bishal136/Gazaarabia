@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import { connectToDatabase, mongoose } from "@/lib/mongoose";
 import { sendWelcomeEmail1, sendSubscribeConfirmationEmail } from "@/lib/helpers/emailHelper";
+import { otpService } from "@/lib/services/otpService";
 
 export async function POST(req: Request) {
   try {
@@ -36,30 +37,19 @@ export async function POST(req: Request) {
       });
     }
 
-    // Check OTP
-    if (!user.otpCode || user.otpCode.toString().trim() !== normalizedOtp) {
+    // Check OTP using dedicated Otp schema in MongoDB (with user fallback)
+    const verifyResult = await otpService.verifyOtp({
+      email: normalizedEmail,
+      otp: normalizedOtp,
+      purpose: "registration",
+    });
+
+    if (!verifyResult.isValid) {
       return NextResponse.json(
-        { message: "Invalid verification code. Please check and try again." },
+        { message: verifyResult.message || "Invalid verification code. Please check and try again." },
         { status: 400 }
       );
     }
-
-    // Check expiration
-    if (user.otpExpiresAt && new Date() > new Date(user.otpExpiresAt)) {
-      return NextResponse.json(
-        { message: "Verification code has expired. Please request a new one." },
-        { status: 400 }
-      );
-    }
-
-    // Activate user
-    await db.collection("users").updateOne(
-      { _id: user._id },
-      {
-        $set: { isVerified: true, updatedAt: new Date() },
-        $unset: { otpCode: "", otpExpiresAt: "" },
-      }
-    );
 
     // Fetch user role
     const userRole = await db.collection("roles").findOne({ id: user.roleId });

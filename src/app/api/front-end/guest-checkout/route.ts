@@ -4,12 +4,14 @@ import nodemailer from "nodemailer";
 import { generateCustomerInvoice } from "@/lib/utils/generateCustomerInvoice";
 import { sendSubscribeConfirmationEmail } from "@/lib/helpers/emailHelper";
 import { getAmbassadorForProduct } from "@/lib/helpers/ambassador";
-import { prisma } from "@/lib/prisma";
+import { prisma as rawPrisma } from "@/lib/prisma";
+const prisma: any = rawPrisma;
 import { stripe } from "@/lib/stripe";
 import { validateStockInTransaction } from "@/lib/helpers/stockHelper";
 import { computeCouponDiscount } from "@/lib/helpers/couponDiscount";
 import { pushExternalItemsForOrder } from "@/lib/orderPush";
 import { deriveVerifiedOrderStatus } from "@/lib/payments/verifyPaymentStatus";
+import { getAuthenticatedUser } from "@/lib/authToken";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -19,6 +21,20 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  */
 export async function POST(req: NextRequest) {
   try {
+    const authUser = await getAuthenticatedUser(req);
+    if (authUser) {
+      const roleName = (authUser.role?.name || "").toLowerCase().trim();
+      if (roleName && roleName !== "customer") {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Only standard customer accounts can place orders. Management and vendor accounts cannot make purchases.",
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     const { address, orderItems, payment, coupon, charity, referral } = await req.json();
 
     // Validate required fields

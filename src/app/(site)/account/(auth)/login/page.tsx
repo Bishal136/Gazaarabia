@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import UnifiedAuthCard from "@/components/auth/UnifiedAuthCard";
-import UnifiedLoginForm from "@/components/auth/UnifiedLoginForm";
+import LoginClient from "./LoginClient";
 
 export const metadata: Metadata = {
   title: "Sign In | Gazaarabia",
@@ -8,9 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function LoginPage() {
-  return (
-    <UnifiedAuthCard activeTab="login">
-      <UnifiedLoginForm />
-    </UnifiedAuthCard>
-  );
+  return <LoginClient />;
 }

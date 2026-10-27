@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import UnifiedAuthCard from "@/components/auth/UnifiedAuthCard";
-import UnifiedRegisterForm from "@/components/auth/UnifiedRegisterForm";
+import RegisterClient from "./RegisterClient";
 
 export const metadata: Metadata = {
   title: "Create Account | Gazaarabia",
@@ -8,9 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function RegisterPage() {
-  return (
-    <UnifiedAuthCard activeTab="register">
-      <UnifiedRegisterForm initialRole="customer" />
-    </UnifiedAuthCard>
-  );
+  return <RegisterClient />;
 }
