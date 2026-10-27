@@ -41,6 +41,12 @@ export const shopService = {
     if (filters.sort) {
       params.append("sort", filters.sort);
     }
+    if (filters.q) {
+      params.append("q", filters.q);
+    }
+    if (filters.rating) {
+      params.append("rating", String(filters.rating));
+    }
 
     if (filters.priceMin !== undefined)
       params.append("priceMin", filters.priceMin);

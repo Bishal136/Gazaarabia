@@ -26,7 +26,7 @@ export default function SiteLayoutWrapper({
   return (
     <>
       <Header />
-      <main className="pt-20">{children}</main>
+      <main className={pathname === "/" ? "" : "pt-20"}>{children}</main>
       <Footer />
     </>
   );

@@ -57,7 +57,7 @@ export default function BestSellers({ products }: BestSellersProps) {
 
         {/* Featured Row */}
         {featured.length > 0 && (
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-6 mb-2 sm:mb-3 md:mb-6">
+          <div className="grid grid-cols-4 gap-2 sm:gap-3 md:gap-6 mb-2 sm:mb-3 md:mb-6">
             {featured.map((p, i) => (
               <motion.div
                 key={p.id}

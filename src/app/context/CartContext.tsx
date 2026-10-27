@@ -12,6 +12,9 @@ interface CartContextProps {
   loading: boolean;
   refreshCart: () => Promise<void>;
   setCart: React.Dispatch<React.SetStateAction<any[]>>;
+  isCartDrawerOpen: boolean;
+  openCartDrawer: () => void;
+  closeCartDrawer: () => void;
 }
 
 const CartContext = createContext<CartContextProps | undefined>(undefined);
@@ -24,6 +27,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [subtotal, setSubtotal] = useState(0);
   const [cartCount, setCartCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
+
+  const openCartDrawer = () => setIsCartDrawerOpen(true);
+  const closeCartDrawer = () => setIsCartDrawerOpen(false);
 
   // Unified refreshCart
   const refreshCart = async () => {
@@ -50,7 +57,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   return (
     <CartContext.Provider
-      value={{ cart, subtotal, cartCount, loading, refreshCart, setCart }}
+      value={{
+        cart,
+        subtotal,
+        cartCount,
+        loading,
+        refreshCart,
+        setCart,
+        isCartDrawerOpen,
+        openCartDrawer,
+        closeCartDrawer,
+      }}
     >
       {children}
     </CartContext.Provider>

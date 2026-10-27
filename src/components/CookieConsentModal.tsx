@@ -32,6 +32,9 @@ export default function CookieConsentModal() {
         setOpen(false);
         setPreferencesOpen(false);   // NEW
         document.body.style.overflow = "";
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("cookieConsentResolved"));
+        }
     };
 
 
@@ -40,6 +43,9 @@ export default function CookieConsentModal() {
         setOpen(false);
         setPreferencesOpen(false);   // NEW
         document.body.style.overflow = "";
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("cookieConsentResolved"));
+        }
     };
 
 

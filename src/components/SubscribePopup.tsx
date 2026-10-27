@@ -2,6 +2,7 @@
 
 import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { subscriberService } from "@/lib/services/front-end/subscriberService";
+import { getCookieConsent } from "@/lib/cookies";
 
 export default function SubscribePopup() {
     const [show, setShow] = useState<boolean>(false);
@@ -14,14 +15,13 @@ export default function SubscribePopup() {
     const [emailError, setEmailError] = useState<string>("");
     const [finalError, setFinalError] = useState<string>("");
 
-    const [loading, setLoading] = useState<boolean>(false); //  NEW
+    const [loading, setLoading] = useState<boolean>(false);
 
-    // useEffect(() => {
-    //     const seen = localStorage.getItem("subscribeShown");
-    //     if (!seen) {
-    //         setTimeout(() => setShow(true), 1200);
-    //     }
-    // }, []);
+    const dismissPopup = () => {
+        const expiryDate = Date.now() + 30 * 24 * 60 * 60 * 1000;
+        localStorage.setItem("subscribeShown", expiryDate.toString());
+        setShow(false);
+    };
 
     useEffect(() => {
         const seen = localStorage.getItem("subscribeShown");
@@ -31,7 +31,31 @@ export default function SubscribePopup() {
             if (Date.now() < expiry) return;  // Within 30 days → do not show
         }
 
-        setTimeout(() => setShow(true), 1200);
+        let timer: NodeJS.Timeout | null = null;
+
+        const schedulePopup = (delay: number = 2500) => {
+            timer = setTimeout(() => {
+                setShow(true);
+            }, delay);
+        };
+
+        // Queue behind CookieConsentModal: wait until cookie consent is answered if not already given
+        if (getCookieConsent()) {
+            schedulePopup(3000);
+        } else {
+            const handleConsentResolved = () => {
+                schedulePopup(2500);
+            };
+            window.addEventListener("cookieConsentResolved", handleConsentResolved, { once: true });
+            return () => {
+                if (timer) clearTimeout(timer);
+                window.removeEventListener("cookieConsentResolved", handleConsentResolved);
+            };
+        }
+
+        return () => {
+            if (timer) clearTimeout(timer);
+        };
     }, []);
 
 
@@ -72,10 +96,7 @@ export default function SubscribePopup() {
 
         try {
             await subscriberService.complete(email, fullName, phone);
-            const expiryDate = Date.now() + 30 * 24 * 60 * 60 * 1000;
-            localStorage.setItem("subscribeShown", expiryDate.toString());
-            setShow(false);
-
+            dismissPopup();
         } catch {
             setFinalError("subscribe failed. Please try again.");
         }
@@ -86,16 +107,19 @@ export default function SubscribePopup() {
     if (!show) return null;
 
     return (
-        <div style={styles.overlay}>
+        <div
+            style={styles.overlay}
+            onClick={(e) => {
+                if (e.target === e.currentTarget) dismissPopup();
+            }}
+        >
             <div style={styles.popup}>
 
                 {/* Close button */}
-                <button style={styles.closeBtn}
-                    onClick={() => {
-                        const expiryDate = Date.now() + 30 * 24 * 60 * 60 * 1000;
-                        localStorage.setItem("subscribeShown", expiryDate.toString());
-                        setShow(false);
-                    }}
+                <button
+                    style={styles.closeBtn}
+                    onClick={dismissPopup}
+                    aria-label="Close newsletter popup"
                 >
                     <svg
                         width="20"
@@ -199,7 +223,7 @@ const styles: Record<string, React.CSSProperties> = {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 9999,
+        zIndex: 9990,
     },
     popup: {
         width: "90%",

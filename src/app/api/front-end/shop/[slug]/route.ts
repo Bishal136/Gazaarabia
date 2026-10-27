@@ -21,8 +21,10 @@ export async function GET(
   const skip = (page - 1) * limit;
 
   /* ---------------- Filters ---------------- */
+  const q = (searchParams.get("q") || "").trim();
   const priceMin = Number(searchParams.get("priceMin")) || 0;
   const priceMax = Number(searchParams.get("priceMax")) || 100000;
+  const ratingMin = Number(searchParams.get("rating")) || 0;
 
   const availability = searchParams.getAll("availability[]"); // ["In stock"]
   const sizes = searchParams.getAll("sizes[]").map(Number);
@@ -51,6 +53,25 @@ export async function GET(
         lte: priceMax,
       },
     };
+
+    // Real-time search keyword within category
+    if (q) {
+      const term = q.toLowerCase();
+      productWhere.OR = [
+        { title: { contains: term } },
+        { slug: { contains: term } },
+        { shortDescription: { contains: term } },
+      ];
+    }
+
+    // Rating filter (minimum rating stars)
+    if (ratingMin > 0) {
+      productWhere.reviews = {
+        some: {
+          rating: { gte: ratingMin },
+        },
+      };
+    }
 
     // baseQty stock filter
     if (hasInStock && !hasOutOfStock) {
@@ -93,25 +114,41 @@ export async function GET(
       orderBy = { soldCount: "desc" }; // uses products.soldCount
     }
 
-    /* ---------------- Category / Subcategory ---------------- */
+    /* ---------------- Category / Subcategory / Menu Routing ---------------- */
     let products: any[] = [];
     let total = 0;
     let subcategories: any[] = [];
     let parentCategory: any = null;
 
+    const PRODUCT_SELECT = {
+      id: true,
+      slug: true,
+      title: true,
+      sellingPrice: true,
+      discountPrice: true,
+      baseQty: true,
+      productimage: {
+        select: { url: true, alt: true, primary: true }
+      },
+      productvariant: {
+        select: {
+          id: true,
+          price: true,
+          stock: true,
+          color: { select: { name: true, hexCode: true } },
+          size: { select: { name: true } }
+        }
+      },
+      brand: { select: { name: true } },
+      categories: { select: { id: true, name: true, slug: true } },
+      reviews: { select: { rating: true } },
+    };
+
     if (slug === "all") {
       [products, total, subcategories] = await Promise.all([
         prisma.products.findMany({
           where: productWhere,
-          include: {
-            productimage: true,
-            productvariant: {
-              include: { color: true, size: true },
-            },
-            brand: true,
-            categories: true,
-            subcategories: true,
-          },
+          select: PRODUCT_SELECT,
           skip,
           take: limit,
           orderBy,
@@ -120,123 +157,167 @@ export async function GET(
           where: productWhere,
         }),
         prisma.subcategory.findMany({
-          take: 10, // Just return some subcategories for the header
+          take: 12,
           orderBy: { name: "asc" },
         }),
       ]);
 
       parentCategory = { id: 0, name: "All Products", slug: "all" };
     } else {
-      const category = await prisma.categories.findUnique({
+      // 1. Check if slug matches a Top-Level Menu (e.g. "women", "men")
+      const menu = await prisma.menus.findFirst({
         where: { slug },
-        select: { id: true, name: true, slug: true },
       });
 
-      if (category) {
+      if (menu) {
+        const menuSubmenus = await prisma.submenus.findMany({
+          where: { menuId: menu.id },
+          select: { id: true }
+        });
+        const subIds = menuSubmenus.map((s: any) => s.id);
+        const categoriesInMenu = await prisma.categories.findMany({
+          where: { submenuId: { in: subIds } },
+          select: { id: true, name: true, slug: true }
+        });
+        const catIds = categoriesInMenu.map((c: any) => c.id);
+
         [products, total, subcategories] = await Promise.all([
           prisma.products.findMany({
             where: {
-              categoryId: category.id,
+              categoryId: { in: catIds },
               ...productWhere,
             },
-            select: {
-              id: true,
-              slug: true,
-              title: true,
-              sellingPrice: true,
-              discountPrice: true,
-              baseQty: true,
-              productimage: {
-                select: { url: true, alt: true, primary: true }
-              },
-              productvariant: {
-                select: {
-                  id: true,
-                  price: true,
-                  stock: true,
-                  color: { select: { name: true, hexCode: true } },
-                  size: { select: { name: true } }
-                }
-              },
-              brand: { select: { name: true } },
-            },
+            select: PRODUCT_SELECT,
             skip,
             take: limit,
             orderBy,
           }),
           prisma.products.count({
             where: {
-              categoryId: category.id,
+              categoryId: { in: catIds },
               ...productWhere,
             },
           }),
           prisma.subcategory.findMany({
-            where: { categoryId: category.id },
+            where: { categoryId: { in: catIds } },
             orderBy: { name: "asc" },
           }),
         ]);
 
-        parentCategory = category;
+        const displayName = menu.name.toUpperCase() === "WOMEN" ? "Women's Collection" : menu.name.toUpperCase() === "MEN" ? "Men's Collection" : menu.name;
+        parentCategory = { id: menu.id, name: displayName, slug: menu.slug };
       } else {
-        const subcategory = await prisma.subcategory.findUnique({
+        // 2. Check if slug matches a Submenu (e.g. "clothing", "clothing-m", "new-in", "accessories")
+        const submenu = await prisma.submenus.findFirst({
           where: { slug },
-          select: { id: true, categoryId: true, name: true, slug: true },
         });
 
-        if (!subcategory) {
-          return NextResponse.json(
-            { error: "Invalid category or subcategory slug" },
-            { status: 404 }
-          );
+        if (submenu) {
+          const categoriesInSubmenu = await prisma.categories.findMany({
+            where: { submenuId: submenu.id },
+            select: { id: true }
+          });
+          const catIds = categoriesInSubmenu.map((c: any) => c.id);
+
+          [products, total, subcategories] = await Promise.all([
+            prisma.products.findMany({
+              where: {
+                categoryId: { in: catIds },
+                ...productWhere,
+              },
+              select: PRODUCT_SELECT,
+              skip,
+              take: limit,
+              orderBy,
+            }),
+            prisma.products.count({
+              where: {
+                categoryId: { in: catIds },
+                ...productWhere,
+              },
+            }),
+            prisma.subcategory.findMany({
+              where: { categoryId: { in: catIds } },
+              orderBy: { name: "asc" },
+            }),
+          ]);
+
+          parentCategory = { id: submenu.id, name: submenu.name, slug: submenu.slug };
+        } else {
+          // 3. Check if slug matches a Category
+          const category = await prisma.categories.findUnique({
+            where: { slug },
+            select: { id: true, name: true, slug: true },
+          });
+
+          if (category) {
+            [products, total, subcategories] = await Promise.all([
+              prisma.products.findMany({
+                where: {
+                  categoryId: category.id,
+                  ...productWhere,
+                },
+                select: PRODUCT_SELECT,
+                skip,
+                take: limit,
+                orderBy,
+              }),
+              prisma.products.count({
+                where: {
+                  categoryId: category.id,
+                  ...productWhere,
+                },
+              }),
+              prisma.subcategory.findMany({
+                where: { categoryId: category.id },
+                orderBy: { name: "asc" },
+              }),
+            ]);
+
+            parentCategory = category;
+          } else {
+            // 4. Check if slug matches a Subcategory
+            const subcategory = await prisma.subcategory.findUnique({
+              where: { slug },
+              select: { id: true, categoryId: true, name: true, slug: true },
+            });
+
+            if (!subcategory) {
+              return NextResponse.json(
+                { error: "Invalid category or subcategory slug" },
+                { status: 404 }
+              );
+            }
+
+            [products, total, subcategories] = await Promise.all([
+              prisma.products.findMany({
+                where: {
+                  subcategoryId: subcategory.id,
+                  ...productWhere,
+                },
+                select: PRODUCT_SELECT,
+                skip,
+                take: limit,
+                orderBy,
+              }),
+              prisma.products.count({
+                where: {
+                  subcategoryId: subcategory.id,
+                  ...productWhere,
+                },
+              }),
+              prisma.subcategory.findMany({
+                where: { categoryId: subcategory.categoryId },
+                orderBy: { name: "asc" },
+              }),
+            ]);
+
+            parentCategory = await prisma.categories.findUnique({
+              where: { id: subcategory.categoryId },
+              select: { id: true, name: true, slug: true },
+            });
+          }
         }
-
-        [products, total, subcategories] = await Promise.all([
-          prisma.products.findMany({
-            where: {
-              subcategoryId: subcategory.id,
-              ...productWhere,
-            },
-            select: {
-              id: true,
-              slug: true,
-              title: true,
-              sellingPrice: true,
-              discountPrice: true,
-              baseQty: true,
-              productimage: {
-                select: { url: true, alt: true, primary: true }
-              },
-              productvariant: {
-                select: {
-                  id: true,
-                  price: true,
-                  stock: true,
-                  color: { select: { name: true, hexCode: true } },
-                  size: { select: { name: true } }
-                }
-              },
-              brand: { select: { name: true } },
-            },
-            skip,
-            take: limit,
-            orderBy,
-          }),
-          prisma.products.count({
-            where: {
-              subcategoryId: subcategory.id,
-              ...productWhere,
-            },
-          }),
-          prisma.subcategory.findMany({
-            where: { categoryId: subcategory.categoryId },
-            orderBy: { name: "asc" },
-          }),
-        ]);
-
-        parentCategory = await prisma.categories.findUnique({
-          where: { id: subcategory.categoryId },
-          select: { id: true, name: true, slug: true },
-        });
       }
     }
 

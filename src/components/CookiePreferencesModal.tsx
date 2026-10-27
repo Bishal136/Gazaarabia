@@ -20,6 +20,9 @@ export default function CookiePreferencesModal({ onClose }: Props) {
             marketing: onsiteMarketing || offsiteMarketing,
         });
 
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("cookieConsentResolved"));
+        }
         onClose();  // CLOSE ALL
     };
 
@@ -31,6 +34,9 @@ export default function CookiePreferencesModal({ onClose }: Props) {
             marketing: true,
         });
 
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("cookieConsentResolved"));
+        }
         onClose(); // CLOSE ALL
     };
 

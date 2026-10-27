@@ -40,7 +40,7 @@ export default function CategoryHeader({
   return (
     <div
       ref={containerRef}
-      className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 mb-12 text-center relative pt-20"
+      className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 mb-6 text-center relative pt-4 md:pt-6"
     >
       {/*  Title */}
       <h1 className="text-3xl md:text-4xl font-semibold text-[var(--text-primary)] tracking-wide capitalize mb-4">

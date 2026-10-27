@@ -34,6 +34,7 @@ import StripePaymentModal from "@/components/StripePaymentModal";
 import { PaymentIntent } from "@stripe/stripe-js";
 import { fbEvent } from "@/components/analytics/FacebookPixel";
 import { gaEvent } from "@/components/analytics/GoogleAnalytics";
+import { calculateShipping, formatGBP, roundCurrency } from "@/lib/utils/shipping";
 
 
 interface AffiliateInfo {
@@ -104,11 +105,17 @@ export default function CheckoutPage() {
       ? discountAmount
       : 0;
 
-  const grandTotal =
+  const currentCountry = selectedAddress?.country || guestAddress?.country || "United Kingdom";
+  const shippingInfo = calculateShipping(subtotal, currentCountry);
+  const shippingFee = shippingInfo.fee;
+
+  const grandTotal = roundCurrency(
     subtotal -
     finalAffiliateDiscount -
     finalCouponDiscount +
-    donation;
+    donation +
+    shippingFee
+  );
 
 
   useEffect(() => {
@@ -297,6 +304,7 @@ export default function CheckoutPage() {
           totalAmount: grandTotal,
           itemsTotal: subtotal,
           subtotal: subtotal,
+          shippingCost: shippingFee,
           paymentMethod: "stripe",
           paymentStatus: pi.status,
           transactionId: pi.id,
@@ -511,6 +519,7 @@ export default function CheckoutPage() {
           totalAmount: grandTotal,
           itemsTotal: subtotal,
           subtotal: subtotal,
+          shippingCost: shippingFee,
           paymentMethod: "paypal",
           paymentStatus,
           transactionId: paypalOrderId,
@@ -1024,13 +1033,28 @@ export default function CheckoutPage() {
                 />
               </div>
 
+              {/* Shipping Line */}
+              <div className="flex justify-between items-center text-sm pt-2 text-gray-700">
+                <div className="flex flex-col">
+                  <span>Shipping ({currentCountry})</span>
+                  <span className="text-[11px] text-[var(--text-muted)]">
+                    {shippingInfo.isFree
+                      ? "Free shipping applied"
+                      : `Standard delivery (${formatGBP(shippingInfo.remainingForFree)} away from free)`}
+                  </span>
+                </div>
+                <span className={`font-semibold ${shippingInfo.isFree ? "text-emerald-600" : "text-gray-900"}`}>
+                  {shippingInfo.isFree ? "FREE" : formatGBP(shippingFee)}
+                </span>
+              </div>
+
               {/* -------------------------------------------------------------------  */}
 
               <Divider />
               <div className="flex justify-between font-bold pt-3 text-lg text-[var(--brand-primary)]">
                 <span>Total</span>
                 {/* <span>£{(subtotal - discountAmount).toFixed(2)}</span> */}
-                <span>£{grandTotal.toFixed(2)}</span>
+                <span>{formatGBP(grandTotal)}</span>
 
               </div>
 

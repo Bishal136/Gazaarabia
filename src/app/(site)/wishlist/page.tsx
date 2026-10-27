@@ -78,8 +78,8 @@ export default function WishlistPage() {
   }, [status, token, currentPage]);
 
   useEffect(() => {
-    if (status === "authenticated") {
-      router.push(`?page=${currentPage}`, { scroll: false });
+    if (status === "authenticated" && currentPage > 1) {
+      router.replace(`?page=${currentPage}`, { scroll: false });
     }
   }, [currentPage, router, status]);
 

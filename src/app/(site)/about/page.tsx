@@ -101,7 +101,7 @@ export default function AboutPage() {
                     </div>
                     <div>
                         <h3 className="text-5xl font-bold text-[var(--brand-primary)] mb-2">
-                            1M+
+                            15,000+
                         </h3>
                         <p className="text-[var(--text-secondary)] text-lg">
                             Happy Customers

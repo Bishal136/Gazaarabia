@@ -236,9 +236,9 @@ select:focus {
 /* ===========================
    TAILWIND INPUT STYLING
 =========================== */
-input:not(.MuiInputBase-input):focus,
-textarea:not(.MuiInputBase-input):focus,
-select:not(.MuiInputBase-input):focus {
+input:not(.MuiInputBase-input):not(.no-focus-ring):focus,
+textarea:not(.MuiInputBase-input):not(.no-focus-ring):focus,
+select:not(.MuiInputBase-input):not(.no-focus-ring):focus {
   outline: none;
   border-color: var(--brand-secondary);
   box-shadow: 0 0 0 2px var(--brand-secondary);
@@ -500,4 +500,30 @@ html {
   }
 }
 
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 /* ========== mobile view side bar menu drawer animation end ==================  */
+
+/* ========== Utility classes ========== */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

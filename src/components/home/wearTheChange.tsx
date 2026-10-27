@@ -7,9 +7,9 @@ import { useRouter } from "next/navigation";
 export default function WearTheChange() {
   const router = useRouter();
   const stats = [
-    { value: "£50,000+", label: "Raised for Gaza Communities" },
-    { value: "200+", label: "Families Supported" },
-    { value: "1,000+", label: "Customers Worldwide" },
+    { value: "£50,000+", label: "Raised for Gaza Communities (2026)" },
+    { value: "2,500+", label: "Families Supported" },
+    { value: "15,000+", label: "Customers Worldwide" },
   ];
 
   return (

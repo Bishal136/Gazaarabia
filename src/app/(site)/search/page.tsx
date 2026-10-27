@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { Metadata } from "next";
 import { BreadcrumbSchema } from "@/components/BreadcrumbSchema";
 import SearchContent from "./SearchContent";
+import ProductGridSkeleton from "@/components/shop/ProductGridSkeleton";
 
 export async function generateMetadata({
   searchParams,
@@ -46,7 +48,15 @@ export default async function SearchPage({ searchParams }: Props) {
           },
         ]}
       />
-      <SearchContent />
+      <Suspense
+        fallback={
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <ProductGridSkeleton count={8} />
+          </div>
+        }
+      >
+        <SearchContent />
+      </Suspense>
     </>
   );
 }

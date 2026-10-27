@@ -26,8 +26,8 @@ const impactSections = {
         { title: "Empowerment", desc: "Uplifting women artisans across communities.", icon: <FaFemale /> },
     ],
     stats: [
-        { value: "1M+", label: "Customers Worldwide" },
-        { value: "30+", label: "Countries Reached" },
+        { value: "15,000+", label: "Customers Worldwide" },
+        { value: "2,500+", label: "Families Supported" },
         { value: "500+", label: "Artisans Supported" },
     ],
     gallery: [

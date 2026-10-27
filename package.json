@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "seed:admin": "node scripts/seedAdmin.js",
+    "seed:catalog": "tsx scripts/seed-fresh-products.ts",
     "create-admin": "tsx scripts/create-admin.ts",
     "test:auth": "tsx scripts/test-auth-complete.ts",
     "check": "tsx scripts/test-mongo-fullstack.ts",

@@ -14,6 +14,7 @@ import { cartService } from "@/lib/services/front-end/cartService";
 import { localCartService } from "@/lib/services/front-end/localCartService";
 import { useCart } from "@/app/context/CartContext";
 import ErrorAlert from "./ErrorAlert";
+import { calculateShipping, formatGBP } from "@/lib/utils/shipping";
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -64,8 +65,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   }, [isOpen]); // token
 
 
-  const freeShippingThreshold = 60;
-  const remaining = Math.max(0, freeShippingThreshold - subtotal);
+  const shipping = calculateShipping(subtotal);
 
   //  Remove item
   const removeItem = async (productId: number, variantId: number) => {
@@ -207,7 +207,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   {item.product.title}
                 </p>
                 <p className="mt-1 text-[15px] font-semibold text-[var(--brand-primary)]">
-                  £{(item.selectedVariantData?.price || item.product.sellingPrice * item.quantity).toFixed(2)}
+                  {formatGBP((item.selectedVariantData?.price ?? item.product?.sellingPrice ?? 0) * (item.quantity || 1))}
                 </p>
 
                 <div className="flex items-center justify-between mt-3">
@@ -271,17 +271,17 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
           {/*  Free shipping message */}
           <div className="flex items-center justify-center gap-2 px-4 py-3 text-sm bg-[var(--soft-gray)]/30">
             <Truck size={18} className="text-[var(--brand-primary)]" />
-            {remaining > 0 ? (
+            {!shipping.isFree ? (
               <span className="text-[var(--text-muted)]">
                 Spend{" "}
                 <span className="font-semibold text-[var(--brand-primary)]">
-                  £{remaining}
+                  {formatGBP(shipping.remainingForFree)}
                 </span>{" "}
-                more for free shipping.
+                more for free delivery.
               </span>
             ) : (
               <span className="font-medium text-[var(--brand-primary)]">
-                You’ve unlocked free shipping!
+                You’ve unlocked free UK shipping!
               </span>
             )}
           </div>

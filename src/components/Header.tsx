@@ -13,6 +13,7 @@ import MobileMenuDrawer from "./MobileMenuDrawer";
 import { FaFacebookF, FaInstagram, FaYoutube, FaTiktok } from "react-icons/fa";
 import { getAllProducts } from "@/lib/services/front-end/productService";
 import ProductCard from "./ProductCard";
+import AdvancedSearchModal from "@/components/search/AdvancedSearchModal";
 import { fbEvent } from "@/components/analytics/FacebookPixel";
 import { gaEvent } from "@/components/analytics/GoogleAnalytics";
 
@@ -70,7 +71,7 @@ export default function Header() {
   const isHomePage = pathname === "/";
 
   const { data: session } = useSession();
-  const { cartCount } = useCart();
+  const { cartCount, isCartDrawerOpen, openCartDrawer, closeCartDrawer } = useCart();
 
   // Navigation State
   const [menus, setMenus] = useState<MenuItem[]>([]);
@@ -85,7 +86,6 @@ export default function Header() {
   const [mounted, setMounted] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [profileDrawer, setProfileDrawer] = useState(false);
-  const [cartDrawer, setCartDrawer] = useState(false);
 
   // Search State
   const [searchMode, setSearchMode] = useState(false);
@@ -296,7 +296,7 @@ export default function Header() {
             }`}
         >
           <div className="max-w-[1600px] mx-auto px-6 flex items-center justify-between uppercase font-bold">
-            <span>{toolbarText || "Free shipping on orders over £100"}</span>
+            <span>{toolbarText || "Free UK shipping over £60 | Free international over £120"}</span>
             <div className="hidden sm:flex gap-4 items-center">
               <Link href="https://instagram.com/gazaarabia" target="_blank"><FaInstagram /></Link>
               <Link href="https://facebook.com/gazaarabia" target="_blank"><FaFacebookF /></Link>
@@ -363,7 +363,7 @@ export default function Header() {
               <button onClick={() => router.push("/wishlist")} className="hidden lg:flex p-2 hover:bg-black/5 rounded-full transition">
                 <Heart size={20} />
               </button>
-              <button onClick={() => setCartDrawer(true)} className="relative p-2 hover:bg-black/5 rounded-full transition">
+              <button onClick={() => openCartDrawer()} className="relative p-2 hover:bg-black/5 rounded-full transition">
                 <ShoppingBag size={22} />
                 {cartCount > 0 && (
                   <span className="absolute top-1 right-1 bg-[var(--brand-primary)] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
@@ -471,98 +471,11 @@ export default function Header() {
         </div>
       </header>
 
-      {/* FULL-WIDTH SEARCH OVERLAY */}
-      <div className={`fixed inset-0 z-[200] bg-white transition-all duration-500 ${searchMode ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full pointer-events-none"}`}>
-        <div className="h-full flex flex-col">
-          {/* Search Header */}
-          <div className="max-w-[1600px] mx-auto w-full px-4 lg:px-10 py-6 flex items-center gap-6 border-b border-gray-100">
-            <button onClick={() => { setSearchMode(false); setSearchQuery(""); }} className="p-2 hover:bg-gray-100 rounded-full transition">
-              <ArrowLeft size={28} />
-            </button>
-            <div className="flex-1 flex items-center">
-              <Search size={24} className="text-gray-400 mr-4" />
-              <input
-                autoFocus
-                type="text"
-                placeholder="WHAT ARE YOU LOOKING FOR?"
-                className="w-full text-2xl lg:text-4xl font-bold uppercase tracking-widest outline-none border-none placeholder:text-gray-200"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && searchQuery.trim()) {
-                    router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-                    setSearchMode(false);
-                  }
-                }}
-              />
-            </div>
-            {searchQuery && (
-              <button onClick={() => setSearchQuery("")} className="text-gray-400 hover:text-black">
-                <X size={32} />
-              </button>
-            )}
-          </div>
-
-          {/* Search Content */}
-          <div className="flex-1 overflow-y-auto no-scrollbar py-12">
-            <div className="max-w-[1600px] mx-auto px-4 lg:px-10">
-              {searchLoading ? (
-                <div className="flex flex-col items-center justify-center h-64 gap-4">
-                  <Loader className="animate-spin text-[var(--brand-primary)]" size={48} />
-                  <span className="text-sm font-bold tracking-[0.3em] text-gray-400 uppercase">Searching...</span>
-                </div>
-              ) : productsData?.products?.length > 0 ? (
-                <div className="space-y-12">
-                  <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-                    <h3 className="text-sm font-black tracking-[0.2em] uppercase text-gray-400">Results ({productsData.total})</h3>
-                    <button
-                      onClick={() => {
-                        router.push(`/search?q=${searchQuery}`);
-                        setSearchMode(false);
-                      }}
-                      className="text-[12px] font-bold uppercase tracking-widest text-[var(--brand-primary)] hover:underline"
-                    >
-                      View All Results
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-10">
-                    {productsData.products.slice(0, 10).map((product: any) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        onCardClick={() => setSearchMode(false)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : debouncedQuery.length >= 2 ? (
-                <div className="text-center py-24">
-                  <p className="text-2xl font-bold text-gray-300 tracking-widest uppercase">No results found for "{searchQuery}"</p>
-                  <p className="text-sm text-gray-400 mt-4 uppercase tracking-widest">Try different keywords or check your spelling</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                  <div>
-                    <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em] mb-6">Trending Categories</h3>
-                    <div className="flex flex-wrap gap-3">
-                      {["Abayas", "Kaftans", "Hijabs", "New In", "Sale"].map(cat => (
-                        <Link
-                          key={cat}
-                          href={`/shop/${cat.toLowerCase()}`}
-                          className="px-6 py-3 border border-gray-200 rounded-full text-sm font-bold uppercase tracking-widest hover:bg-black hover:text-white transition-all"
-                          onClick={() => setSearchMode(false)}
-                        >
-                          {cat}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* ADVANCED FULL-WIDTH SEARCH MODAL */}
+      <AdvancedSearchModal
+        isOpen={searchMode}
+        onClose={() => setSearchMode(false)}
+      />
 
       {/* MENU BACKDROP */}
       {activeMenu && (
@@ -584,7 +497,7 @@ export default function Header() {
 
       {/* Other Drawers */}
       <ProfileDrawer isOpen={profileDrawer} onClose={() => setProfileDrawer(false)} />
-      <CartDrawer isOpen={cartDrawer} onClose={() => setCartDrawer(false)} />
+      <CartDrawer isOpen={isCartDrawerOpen} onClose={() => closeCartDrawer()} />
     </>
   );
 }

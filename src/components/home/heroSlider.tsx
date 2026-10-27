@@ -34,8 +34,7 @@ export default function HeroSlider({ heroSlides }: HeroSliderProps) {
     const canLoop = slides.length > 1;
 
     return (
-        // <section className="relative w-full h-[100vh] overflow-hidden -mt-[120px]">
-        <section className="relative w-full h-[100vh] overflow-hidden -mt-[80px]">
+        <section className="relative w-full h-[100vh] overflow-hidden">
             <Swiper
                 key={`hero-swiper-${slides.length}-${canLoop}`}
                 modules={[Autoplay, Pagination, EffectFade]}

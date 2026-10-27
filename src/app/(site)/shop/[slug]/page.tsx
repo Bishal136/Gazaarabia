@@ -8,37 +8,56 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
-
+async function getCategoryData(slug: string) {
   if (slug === "all") {
+    return { name: "All Products", description: "Explore our full collection of modest fashion, including hijabs, abayas, thobes, and more." };
+  }
+
+  // 1. Check Menu (e.g. Women, Men)
+  const menu = await prisma.menus.findFirst({ where: { slug } });
+  if (menu) {
+    const displayName = menu.name.toUpperCase() === "WOMEN" ? "Women's Collection" : menu.name.toUpperCase() === "MEN" ? "Men's Collection" : menu.name;
     return {
-      title: "All Products | Gazaarabia",
-      description: "Explore our full collection of modest fashion, including hijabs, abayas, and more.",
-      robots: { index: true, follow: true },
-      alternates: { canonical: "https://gazaarabia.com/shop/all" },
+      name: displayName,
+      description: `Explore our ${displayName} featuring ethically crafted modest wear, abayas, kaftans, thobes, and accessories.`,
     };
   }
 
+  // 2. Check Submenu (e.g. Clothing, New In)
+  const submenu = await prisma.submenus.findFirst({ where: { slug } });
+  if (submenu) {
+    return {
+      name: submenu.name,
+      description: `Explore our ${submenu.name} collection at Gazaarabia.`,
+    };
+  }
+
+  // 3. Check Category
   const category = await prisma.categories.findUnique({
     where: { slug },
   });
+  if (category) return category;
+
+  // 4. Check Subcategory
+  const subcategory = await prisma.subcategory.findUnique({
+    where: { slug },
+  });
+  if (subcategory) return subcategory;
+
+  return null;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const category = await getCategoryData(slug);
 
   if (!category) {
-    const subcategory = await prisma.subcategory.findUnique({
-      where: { slug },
-    });
-
-    if (subcategory) {
-      return {
-        title: `${subcategory.name} | Gazaarabia`,
-        description: subcategory.description || `Shop our ${subcategory.name} collection.`,
-        robots: { index: true, follow: true },
-        alternates: { canonical: `https://gazaarabia.com/shop/${slug}` },
-      };
-    }
-
-    return { title: "Shop | Gazaarabia" };
+    return {
+      title: "Shop Modest Fashion | Gazaarabia",
+      description: "Explore our curated collections of modest fashion, thobes, and abayas.",
+      robots: { index: true, follow: true },
+      alternates: { canonical: `https://gazaarabia.com/shop/${slug}` },
+    };
   }
 
   return {
@@ -47,21 +66,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     robots: { index: true, follow: true },
     alternates: { canonical: `https://gazaarabia.com/shop/${slug}` },
   };
-}
-
-async function getCategoryData(slug: string) {
-  const category = await prisma.categories.findUnique({
-    where: { slug },
-  });
-
-  if (!category) {
-    const subcategory = await prisma.subcategory.findUnique({
-      where: { slug },
-    });
-    return subcategory;
-  }
-
-  return category;
 }
 
 export default async function Page({ params }: Props) {

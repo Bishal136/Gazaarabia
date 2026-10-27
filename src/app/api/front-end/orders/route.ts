@@ -98,7 +98,11 @@ export async function POST(req: NextRequest) {
       tempFinalDiscountTotal = tempReferralAffiliateDiscount;
     }
 
-    const expectedTotal = calculatedItemsTotal - tempFinalDiscountTotal + (parseFloat(charity?.amount || "0"));
+    const shippingFee = payment.shippingCost !== undefined
+      ? Number(payment.shippingCost)
+      : (calculatedItemsTotal >= 60 ? 0 : 3.99);
+
+    const expectedTotal = calculatedItemsTotal - tempFinalDiscountTotal + (parseFloat(charity?.amount || "0")) + shippingFee;
 
     // Check if difference is more than 0.01 (handling floating point issues)
     if (Math.abs(expectedTotal - payment.totalAmount) > 0.01) {
@@ -443,6 +447,7 @@ export async function POST(req: NextRequest) {
         totalAmount: payment.totalAmount,
         itemsTotal: payment.itemsTotal,
         subtotal: payment.subtotal,
+        shippingCost: shippingFee,
         paymentMethod: payment.paymentMethod,
         transactionId: payment.transactionId,
 

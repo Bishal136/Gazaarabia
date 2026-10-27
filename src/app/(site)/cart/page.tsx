@@ -17,6 +17,7 @@ import { localCartService } from "@/lib/services/front-end/localCartService";
 import ErrorAlert from "@/components/ErrorAlert";
 import { useCart } from "@/app/context/CartContext";
 import UnavailableStockAlert from "@/components/UnavailableStockAlert";
+import { calculateShipping, formatGBP } from "@/lib/utils/shipping";
 
 export default function CartPage() {
   const { data: session } = useSession();
@@ -26,6 +27,8 @@ export default function CartPage() {
   // const [cartItems, setCartItems] = useState<any[]>([]);
   // const [subtotal, setSubtotal] = useState<number>(0);
   const { cart: cartItems, subtotal, refreshCart, loading } = useCart();
+  const shipping = calculateShipping(subtotal);
+  const estimatedTotal = subtotal + shipping.fee;
 
   // const [loading, setLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -428,9 +431,28 @@ export default function CartPage() {
 
                 <Divider />
 
-                <div className="flex justify-between font-bold pt-3 text-lg text-[var(--brand-primary)]">
-                  <span>Subtotal</span>
-                  <span>£{subtotal.toFixed(2)}</span>
+                <div className="flex justify-between text-sm pt-2">
+                  <span className="text-[var(--text-secondary)]">Subtotal</span>
+                  <span className="font-semibold">{formatGBP(subtotal)}</span>
+                </div>
+
+                <div className="flex justify-between text-sm items-center">
+                  <div className="flex flex-col">
+                    <span className="text-[var(--text-secondary)]">Estimated Shipping</span>
+                    <span className="text-[11px] text-[var(--text-muted)]">
+                      {shipping.isFree ? "Free UK delivery applied" : `Spend ${formatGBP(shipping.remainingForFree)} more for Free UK delivery`}
+                    </span>
+                  </div>
+                  <span className={`font-semibold ${shipping.isFree ? "text-emerald-600" : ""}`}>
+                    {shipping.isFree ? "FREE" : formatGBP(shipping.fee)}
+                  </span>
+                </div>
+
+                <Divider />
+
+                <div className="flex justify-between font-bold pt-2 text-lg text-[var(--brand-primary)]">
+                  <span>Estimated Total</span>
+                  <span>{formatGBP(estimatedTotal)}</span>
                 </div>
               </div>
 
