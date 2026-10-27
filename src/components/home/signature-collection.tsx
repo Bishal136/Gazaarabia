@@ -31,6 +31,12 @@ export default function SignatureCollection({ products }: SignatureProductsProps
     }
   };
 
+  const productList = Array.isArray(products) ? products : [];
+  if (productList.length === 0) return null;
+
+  // Max slidesPerView across breakpoints is 5 (at >=1400px).
+  // Loop mode requires slide count to strictly exceed maximum slidesPerView (>= 6).
+  const canLoop = productList.length >= 6;
 
   return (
     <section className="bg-[#ffffff] pt-8 pb-16 md:pt-10 md:pb-20 overflow-hidden">
@@ -51,12 +57,13 @@ export default function SignatureCollection({ products }: SignatureProductsProps
         {/* Swiper Slider */}
         <div className="overflow-hidden w-full">
           <Swiper
+            key={`sig-swiper-${productList.length}-${canLoop}`}
             grabCursor={true}
             modules={[Autoplay]}
-            autoplay={{ delay: 4000, disableOnInteraction: false }}
+            autoplay={canLoop ? { delay: 4000, disableOnInteraction: false } : false}
             spaceBetween={5}
             slidesPerView={2.1} //Minimum 2 visible on mobile
-            loop={true}
+            loop={canLoop}
             // breakpoints={{
             //   480: { slidesPerView: 2 },
             //   768: { slidesPerView: 3 },
@@ -73,7 +80,7 @@ export default function SignatureCollection({ products }: SignatureProductsProps
             speed={800}
             className="!overflow-visible w-full"
           >
-            {products.map((p, i) => (
+            {productList.map((p, i) => (
               // <SwiperSlide key={i} className="!w-[260px] sm:!w-[280px] md:!w-[300px]" onClick={() => { handleCardClick(p) }}>
 
               <SwiperSlide key={i} onClick={() => handleCardClick(p)}>

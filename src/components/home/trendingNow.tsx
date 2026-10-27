@@ -32,7 +32,12 @@ export default function TrendingNow({ products }: TrendingNowProps) {
   const router = useRouter();
   const swiperRef = useRef<SwiperType | null>(null);
 
-  if (!products || products.length === 0) return null;
+  const productList = Array.isArray(products) ? products : [];
+  if (productList.length === 0) return null;
+
+  // Max slidesPerView across breakpoints is 5 (at >=1400px).
+  // Loop mode requires slide count to strictly exceed maximum slidesPerView (>= 6).
+  const canLoop = productList.length >= 6;
 
   const handleCardClick = (slug: string) => {
     router.push(`/products/${slug}`);
@@ -94,12 +99,13 @@ export default function TrendingNow({ products }: TrendingNowProps) {
         {/* Carousel */}
         <div className="overflow-hidden -mx-1 px-1">
           <Swiper
+            key={`trending-swiper-${productList.length}-${canLoop}`}
             onSwiper={(swiper) => { swiperRef.current = swiper; }}
             modules={[Autoplay, Navigation]}
-            autoplay={{ delay: 4500, disableOnInteraction: false }}
+            autoplay={canLoop ? { delay: 4500, disableOnInteraction: false } : false}
             spaceBetween={8}
             slidesPerView={2}
-            loop={products.length > 4}
+            loop={canLoop}
             speed={700}
             breakpoints={{
               380: { slidesPerView: 2.15, spaceBetween: 8 },
@@ -111,7 +117,7 @@ export default function TrendingNow({ products }: TrendingNowProps) {
             }}
             className="!overflow-visible"
           >
-            {products.map((p, i) => (
+            {productList.map((p, i) => (
               <SwiperSlide key={p.id}>
                 <motion.div
                   initial={{ opacity: 0, y: 30 }}

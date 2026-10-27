@@ -28,18 +28,24 @@ export default function HeroSlider({ heroSlides }: HeroSliderProps) {
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
+    const slides = Array.isArray(heroSlides) ? heroSlides : [];
+    if (slides.length === 0) return null;
+
+    const canLoop = slides.length > 1;
+
     return (
         // <section className="relative w-full h-[100vh] overflow-hidden -mt-[120px]">
         <section className="relative w-full h-[100vh] overflow-hidden -mt-[80px]">
             <Swiper
+                key={`hero-swiper-${slides.length}-${canLoop}`}
                 modules={[Autoplay, Pagination, EffectFade]}
                 effect="fade"
-                pagination={{ clickable: true }}
-                autoplay={{ delay: 5000, disableOnInteraction: false }}
-                loop
+                pagination={canLoop ? { clickable: true } : false}
+                autoplay={canLoop ? { delay: 5000, disableOnInteraction: false } : false}
+                loop={canLoop}
                 className="h-full w-full"
             >
-                {heroSlides.map((slide, index) => (
+                {slides.map((slide, index) => (
                     <SwiperSlide key={index}>
                         <div className="relative w-full h-[100vh]">
                             <Image
