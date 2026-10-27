@@ -57,17 +57,17 @@ export async function POST(req: Request) {
     const userRole = await db.collection("roles").findOne({ id: user.roleId });
     const roleName = userRole ? userRole.name : "customer";
 
-    // Role-based validation (only if a specific portal role is requested, e.g. from legacy clients)
+    // Role-based validation: protect restricted administrative portal
+    const isTargetingAdminPortal = role && role.toLowerCase() === "admin";
     if (
-      role &&
-      role !== "unified" &&
-      role !== "any" &&
-      roleName.toLowerCase() !== role.toLowerCase()
+      isTargetingAdminPortal &&
+      roleName.toLowerCase() !== "admin" &&
+      roleName.toLowerCase() !== "content_manager"
     ) {
-      logLoginAttempt(req, normalizedEmail, false, `Role mismatch: expected ${role}, got ${roleName}`);
+      logLoginAttempt(req, normalizedEmail, false, `Role mismatch: expected admin portal, got ${roleName}`);
       return NextResponse.json(
         {
-          message: `Access denied. This account has the role "${roleName}", not "${role}".`,
+          message: `Access denied. This account has the role "${roleName}", not "admin".`,
         },
         { status: 403 }
       );

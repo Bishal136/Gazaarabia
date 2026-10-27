@@ -10,7 +10,6 @@ export default function LoginClient() {
   return (
     <UnifiedAuthCard activeTab={isOtpStep ? undefined : "login"}>
       <UnifiedLoginForm
-        initialRole="customer"
         onOtpStepChange={setIsOtpStep}
       />
     </UnifiedAuthCard>
