@@ -37,8 +37,9 @@ import {
 } from "lucide-react";
 import PopupAlert from "../PopupAlert";
 import { useEffect, useState } from "react";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { ROUTES } from "@/constants/routes";
+import { logoutUser } from "@/lib/logout";
 
 
 
@@ -185,17 +186,14 @@ export default function AdminSidebar({
   // Auth check
   useEffect(() => {
     if (status === "loading") return;
-    if (status === "unauthenticated") router.replace(ROUTES.ADMIN.LOGIN);
+    if (status === "unauthenticated") router.replace(ROUTES.USER.LOGIN);
     else if (status === "authenticated" && !alowedRoles.includes(session?.user?.role))
       router.replace(ROUTES.HOME);
   }, [status, session, router]);
 
   const handleLogout = async () => {
-    if (session?.user?.role == 'content_manager') {
-      await signOut({ callbackUrl: ROUTES.CONTENT_MANAGER.LOGIN });
-    } else {
-      await signOut({ callbackUrl: ROUTES.ADMIN.LOGIN });
-    }
+    setConfirmLogout(false);
+    await logoutUser();
   };
 
   return (

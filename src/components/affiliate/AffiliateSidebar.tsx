@@ -19,9 +19,10 @@ import {
     CreditCard,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import PopupAlert from "../PopupAlert";
 import { ROUTES } from "@/constants/routes";
+import { logoutUser } from "@/lib/logout";
 
 const affiliateLinks = [
     { href: "/affiliate", label: "Dashboard", icon: LayoutDashboard },
@@ -62,7 +63,7 @@ export default function AffiliateSidebar({
     useEffect(() => {
         if (status === "loading") return;
         if (status === "unauthenticated") {
-            router.replace(ROUTES.AFFILIATE.LOGIN);
+            router.replace(ROUTES.USER.LOGIN);
             return;
         }
         if (session?.user?.role !== "affiliate") {
@@ -71,7 +72,8 @@ export default function AffiliateSidebar({
     }, [status, session, router]);
 
     const handleLogout = async () => {
-        await signOut({ callbackUrl: ROUTES.AFFILIATE.LOGIN });
+        setConfirmLogout(false);
+        await logoutUser();
     };
 
 

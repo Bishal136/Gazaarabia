@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { X, LogOut, User, Settings, Heart, ShoppingBag } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ROUTES } from "@/constants/routes";
+import { logoutUser } from "@/lib/logout";
 import { useEffect, useRef } from "react";
 
 interface Props {
@@ -28,7 +29,8 @@ export default function ProfileDropdown({ onClose }: Props) {
   }, [onClose]);
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: ROUTES.USER.LOGIN });
+    onClose();
+    await logoutUser();
   };
 
   return (

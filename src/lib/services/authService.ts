@@ -95,4 +95,10 @@ export const authService = {
       method: "POST",
       body: JSON.stringify({ token, password }),
     }),
+
+  // Universal Logout API
+  logout: async (callbackUrl?: string) => {
+    const { logoutUser } = await import("@/lib/logout");
+    return logoutUser({ callbackUrl });
+  },
 };

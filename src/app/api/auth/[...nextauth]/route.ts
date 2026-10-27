@@ -69,6 +69,7 @@ export const authOptions: any = {
 
   pages: {
     signIn: "/account/login",
+    signOut: "/account/login",
     error: "/account/login",
   },
 

@@ -38,8 +38,9 @@ import {
 } from "lucide-react";
 import PopupAlert from "../PopupAlert";
 import { useEffect, useState } from "react";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { ROUTES } from "@/constants/routes";
+import { logoutUser } from "@/lib/logout";
 
 
 
@@ -149,13 +150,14 @@ export default function SellerSidebar({
   // Auth check
   useEffect(() => {
     if (status === "loading") return;
-    if (status === "unauthenticated") router.replace(ROUTES.SELLER.LOGIN);
+    if (status === "unauthenticated") router.replace(ROUTES.USER.LOGIN);
     else if (status === "authenticated" && !alowedRoles.includes(session?.user?.role))
       router.replace(ROUTES.HOME);
   }, [status, session, router]);
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: ROUTES.SELLER.LOGIN });
+    setConfirmLogout(false);
+    await logoutUser();
   };
 
   return (

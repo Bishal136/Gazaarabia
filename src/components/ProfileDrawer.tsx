@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import {
   X,
   LogOut,
@@ -14,6 +14,7 @@ import {
 import { Drawer, IconButton } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { ROUTES } from "@/constants/routes";
+import { logoutUser } from "@/lib/logout";
 import { useEffect, useState } from "react";
 
 interface Props {
@@ -37,7 +38,8 @@ export default function ProfileDrawer({ isOpen, onClose }: Props) {
   }, []);
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: ROUTES.USER.LOGIN });
+    onClose();
+    await logoutUser();
   };
 
   const menuItems = [

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import {
   User,
   LogOut,
@@ -15,6 +15,7 @@ import AlertMessage from "@/components/AlertMessage";
 import Loader from "@/components/Loader";
 import { ROUTES } from "@/constants/routes";
 import { getRedirectUrlByRole } from "@/lib/authRedirect";
+import { logoutUser } from "@/lib/logout";
 
 const menuItems = [
   { key: "orders", label: "Orders", path: "/account/orders", icon: <Package size={18} /> },
@@ -51,7 +52,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
   //  Handle logout after confirmation
   const handleLogout = async () => {
     setConfirmLogout(false);
-    await signOut({ callbackUrl: ROUTES.USER.LOGIN });
+    await logoutUser();
   };
 
   return (
