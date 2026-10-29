@@ -1061,12 +1061,16 @@ export async function seedFreshCatalog() {
   await db.collection("variant_images").deleteMany({});
   await db.collection("variantimages").deleteMany({});
 
-  // Clean stale cart & wishlist items
+  // Clean stale cart, wishlist, review, and demo order items
   await db.collection("carts").deleteMany({});
   await db.collection("wishlists").deleteMany({});
   await db.collection("wishlist").deleteMany({});
+  await db.collection("review").deleteMany({});
+  await db.collection("reviews").deleteMany({});
+  await db.collection("orderitems").deleteMany({});
+  await db.collection("orders_item").deleteMany({});
 
-  console.log("✅ Collections cleared: products, categories, subcategories, variants, images, carts, wishlist.");
+  console.log("✅ Collections cleared: products, categories, subcategories, variants, images, carts, wishlist, reviews, orders.");
 
   // 3. Insert fresh categories & subcategories
   console.log("\n📦 Inserting fresh categories...");
@@ -1212,6 +1216,58 @@ export async function seedFreshCatalog() {
     await db.collection("variant_images").insertMany(variantImageDocs);
     console.log(`✅ Inserted ${variantImageDocs.length} variant images`);
   }
+
+  // 4b. Insert verified customer reviews for fresh products
+  console.log("\n⭐ Inserting verified customer reviews...");
+  const reviewDocs = [
+    {
+      id: 1,
+      productId: 201, // Sakina Embroidered Black Abaya
+      userName: "Amina K. (London)",
+      rating: 5,
+      comment: "MashaAllah, the quality of the Korean Nida fabric is out of this world. Soft, elegant, and perfectly modest drape.",
+      createdAt: new Date(Date.now() - 3 * 86400000),
+      updatedAt: new Date(Date.now() - 3 * 86400000),
+    },
+    {
+      id: 2,
+      productId: 215, // Men’s Classic White Thobe UK
+      userName: "Tariq M. (Manchester)",
+      rating: 5,
+      comment: "Best tailored thobe I have ordered in the UK. Crisp collar, tailored fit, and doesn't crease easily.",
+      createdAt: new Date(Date.now() - 5 * 86400000),
+      updatedAt: new Date(Date.now() - 5 * 86400000),
+    },
+    {
+      id: 3,
+      productId: 208, // GAZAARABIA Black Moroccan Kaftan
+      userName: "Fatima S. (Birmingham)",
+      rating: 5,
+      comment: "The sfifa braiding and velvet details are breathtaking. Felt like royalty wearing this for Eid.",
+      createdAt: new Date(Date.now() - 8 * 86400000),
+      updatedAt: new Date(Date.now() - 8 * 86400000),
+    },
+    {
+      id: 4,
+      productId: 225, // Palestine Keffiyeh Jacquard Jersey
+      userName: "Yusuf A. (Leeds)",
+      rating: 5,
+      comment: "Top tier athletic quality! The jacquard keffiyeh weave looks even better in person. Proud to wear it.",
+      createdAt: new Date(Date.now() - 11 * 86400000),
+      updatedAt: new Date(Date.now() - 11 * 86400000),
+    },
+    {
+      id: 5,
+      productId: 227, // Premium Palestine Heritage Modal Hijab
+      userName: "Maryam H. (Glasgow)",
+      rating: 5,
+      comment: "Breathable, doesn't slip, and the tatreez inspired border is stunning. Will definitely buy more colors.",
+      createdAt: new Date(Date.now() - 14 * 86400000),
+      updatedAt: new Date(Date.now() - 14 * 86400000),
+    },
+  ];
+  await db.collection("review").insertMany(reviewDocs);
+  console.log(`✅ Inserted ${reviewDocs.length} customer reviews`);
 
   // 5. Update Homepage Settings
   console.log("\n🏡 Updating homepage settings with new catalog IDs...");
