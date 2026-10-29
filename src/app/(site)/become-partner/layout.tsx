@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-const domain = process.env.NEXT_PUBLIC_BASE_URL!;
+const domain = process.env.DOMAIN || process.env.NEXTAUTH_URL || "https://gazaarabia.com";
 const pageUrl = `${domain}/become-partner`;
 const ogImage = `${domain}/images/partner-banner.png`;
 

@@ -175,9 +175,27 @@ export const authOptions: any = {
     },
 
     async redirect({ url, baseUrl }: any) {
-      if (url.startsWith("/")) return `${baseUrl}${url}`;
-      if (url.startsWith(baseUrl)) return url;
-      return baseUrl;
+      const isProduction = process.env.NODE_ENV === "production";
+      const domainUrl = process.env.DOMAIN || (isProduction ? "https://gazaarabia.com" : "http://localhost:3000");
+      const effectiveBase = isProduction && (!baseUrl || baseUrl.includes("localhost"))
+        ? domainUrl
+        : (baseUrl || domainUrl);
+
+      if (url.startsWith("/")) return `${effectiveBase}${url}`;
+      try {
+        const parsed = new URL(url);
+        if (
+          parsed.hostname === "gazaarabia.com" ||
+          parsed.hostname === "localhost" ||
+          parsed.origin === effectiveBase
+        ) {
+          return url;
+        }
+      } catch {
+        // invalid URL string, fallback
+      }
+      if (url.startsWith(effectiveBase)) return url;
+      return effectiveBase;
     },
   },
 

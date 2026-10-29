@@ -164,25 +164,33 @@ export default function AffiliateProfilePage() {
                 <h2 className="text-lg font-semibold text-gray-800">Your Referral Link</h2>
 
                 <div className="flex items-center gap-3">
-                    <input
-                        type="text"
-                        readOnly
-                        value={`${process.env.NEXT_PUBLIC_BASE_URL}/?ref=${profile.referralCode}`}
-                        className="p-2 border rounded-lg w-full"
-                    />
+                    {(() => {
+                        const origin = typeof window !== "undefined"
+                            ? window.location.origin
+                            : (process.env.DOMAIN || "https://gazaarabia.com");
+                        const referralUrl = `${origin}/?ref=${profile.referralCode}`;
+                        return (
+                            <>
+                                <input
+                                    type="text"
+                                    readOnly
+                                    value={referralUrl}
+                                    className="p-2 border rounded-lg w-full"
+                                />
 
-                    <button
-                        onClick={() => {
-                            navigator.clipboard.writeText(
-                                `${process.env.NEXT_PUBLIC_BASE_URL}/?ref=${profile.referralCode}`
-                            );
-                            setCopied(true);
-                            setTimeout(() => setCopied(false), 1500);
-                        }}
-                        className="bg-blue-600 text-white px-3 py-2 rounded-lg"
-                    >
-                        Copy
-                    </button>
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(referralUrl);
+                                        setCopied(true);
+                                        setTimeout(() => setCopied(false), 1500);
+                                    }}
+                                    className="bg-blue-600 text-white px-3 py-2 rounded-lg"
+                                >
+                                    Copy
+                                </button>
+                            </>
+                        );
+                    })()}
                 </div>
 
                 {copied && (

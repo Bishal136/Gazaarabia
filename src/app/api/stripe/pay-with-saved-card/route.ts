@@ -30,7 +30,8 @@ export async function POST(req: Request) {
         }
 
         // Get origin for return_url
-        const origin = req.headers.get("origin") || req.headers.get("referer")?.split("/").slice(0, 3).join("/") || "http://localhost:3000";
+        const fallbackOrigin = process.env.DOMAIN || (process.env.NODE_ENV === "production" ? "https://gazaarabia.com" : "http://localhost:3000");
+        const origin = req.headers.get("origin") || req.headers.get("referer")?.split("/").slice(0, 3).join("/") || fallbackOrigin;
         const returnUrl = `${origin}/payment/callback`;
 
         // 3. Charge saved card

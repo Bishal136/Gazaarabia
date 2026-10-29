@@ -35,7 +35,8 @@ export async function POST(req: Request) {
         });
 
         // 4. Build reset URL
-        const resetUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${token}`;
+        const baseUrl = process.env.DOMAIN || process.env.NEXTAUTH_URL || (process.env.NODE_ENV === "production" ? "https://gazaarabia.com" : "http://localhost:3000");
+        const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
         // 5. Send branded email (our new template)
         await sendForgotPasswordLinkEmail({

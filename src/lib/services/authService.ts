@@ -51,7 +51,7 @@ export const authService = {
   login: async (data: { email: string; password: string; role?: string }) => {
     const baseUrl =
       typeof window === "undefined"
-        ? process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || ""
+        ? process.env.INTERNAL_API_URL || `http://127.0.0.1:${process.env.PORT || 3000}`
         : "";
 
     const headers: Record<string, string> = { "Content-Type": "application/json" };

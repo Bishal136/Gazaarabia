@@ -315,11 +315,16 @@ export default function AdvancedSearchModal({
                           >
                             <div className="relative w-full aspect-[3/4] rounded-xl overflow-hidden bg-gray-50 mb-2.5">
                               <Image
-                                src={product.imageUrl}
+                                src={product.imageUrl || "/images/placeholder.png"}
                                 alt={product.title}
                                 fill
                                 sizes="(max-width: 768px) 50vw, 25vw"
                                 className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                onError={(e: any) => {
+                                  if (e?.currentTarget && e.currentTarget.src !== "/images/placeholder.png") {
+                                    e.currentTarget.src = "/images/placeholder.png";
+                                  }
+                                }}
                               />
                               {!product.inStock && (
                                 <span className="absolute bottom-2 left-2 bg-black/80 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase">
@@ -527,11 +532,16 @@ export default function AdvancedSearchModal({
                         >
                           <div className="relative w-full aspect-square sm:aspect-[4/5] rounded-xl overflow-hidden bg-gray-50 mb-2">
                             <Image
-                              src={p.imageUrl}
+                              src={p.imageUrl || "/images/placeholder.png"}
                               alt={p.title}
                               fill
                               sizes="(max-width: 768px) 50vw, 25vw"
                               className="object-cover group-hover:scale-105 transition-transform duration-500"
+                              onError={(e: any) => {
+                                if (e?.currentTarget && e.currentTarget.src !== "/images/placeholder.png") {
+                                  e.currentTarget.src = "/images/placeholder.png";
+                                }
+                              }}
                             />
                             {p.discountPrice && (
                               <span className="absolute top-2 left-2 bg-[var(--brand-primary)] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">

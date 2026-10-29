@@ -31,5 +31,13 @@ app.prepare().then(() => {
     .listen(port, hostname, () => {
       console.log(`> Gazaarabia server listening on http://${hostname}:${port} (mode: ${dev ? "development" : "production"})`);
     });
+
+  // Graceful shutdown handling for PM2 cluster reload
+  const shutdown = () => {
+    console.log("> Gazaarabia server received termination signal, shutting down gracefully...");
+    process.exit(0);
+  };
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 });
 

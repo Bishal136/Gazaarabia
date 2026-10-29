@@ -23,8 +23,6 @@ const nextConfig: NextConfig = {
   // Do not expose source maps in production
   productionBrowserSourceMaps: false,
 
-  turbopack: {},
-
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,

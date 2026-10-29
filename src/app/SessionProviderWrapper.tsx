@@ -11,10 +11,12 @@ interface Props {
 }
 
 export default function SessionProviderWrapper({ children, session }: Props) {
-  return <SessionProvider session={session}>
-    <Suspense fallback={null}>
-      {children}
-    </Suspense>
-  </SessionProvider>;
+  return (
+    <SessionProvider basePath="/api/auth" session={session}>
+      <Suspense fallback={null}>
+        {children}
+      </Suspense>
+    </SessionProvider>
+  );
 }
 

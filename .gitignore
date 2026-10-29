@@ -6,6 +6,7 @@
 # 1. DEPENDENCIES & PACKAGE MANAGERS
 # ------------------------------------------------------------------------------
 /node_modules
+/docs
 /.pnp
 .pnp.*
 .yarn/*
