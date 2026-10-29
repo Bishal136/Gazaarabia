@@ -2,9 +2,7 @@
 set -e
 
 APP_DIR="/var/www/Gazaarabia"
-LOG_FILE="/var/www/webhook-deploy/deploy.log"
-
-mkdir -p /var/www/webhook-deploy
+LOG_FILE="/var/www/Gazaarabia/deploy-webhook.log"
 exec >> "$LOG_FILE" 2>&1
 
 echo "========================================="
