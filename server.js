@@ -1,8 +1,12 @@
 const { createServer } = require("http");
 const { parse } = require("url");
 const next = require("next");
+const { loadEnvConfig } = require("@next/env");
 
-const dev = process.env.NODE_ENV !== "production";
+// Load .env files before initializing Next
+loadEnvConfig(process.cwd());
+
+const dev = process.env.NODE_ENV === "development";
 const hostname = process.env.HOSTNAME || "0.0.0.0";
 const port = parseInt(process.env.PORT, 10) || 3000;
 
@@ -25,6 +29,7 @@ app.prepare().then(() => {
       process.exit(1);
     })
     .listen(port, hostname, () => {
-      console.log(`> Gazaarabia server listening on http://${hostname}:${port}`);
+      console.log(`> Gazaarabia server listening on http://${hostname}:${port} (mode: ${dev ? "development" : "production"})`);
     });
 });
+
