@@ -77,9 +77,6 @@ export default function BlogListPage() {
         blog.content?.toLowerCase().includes(term)
     );
   }, [blogs, searchTerm]);
-        blog.content.toLowerCase().includes(term)
-    );
-  }, [blogs, searchTerm]);
 
   const totalPages = Math.ceil(filteredBlogs.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
