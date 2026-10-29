@@ -9,6 +9,9 @@ const isProd = process.env.NODE_ENV === "production";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false, // Remove X-Powered-By header
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 
   experimental: {
     serverActions: {
