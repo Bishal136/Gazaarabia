@@ -3,19 +3,22 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, Search, User, Heart, ShoppingBag, Loader, ChevronRight, ArrowLeft } from "lucide-react";
-import ProfileDrawer from "@/components/ProfileDrawer";
-import CartDrawer from "@/components/CartDrawer";
 import { useSession } from "next-auth/react";
 import { useCart } from "@/app/context/CartContext";
-import MobileMenuDrawer from "./MobileMenuDrawer";
 import { FaFacebookF, FaInstagram, FaYoutube, FaTiktok } from "react-icons/fa";
 import { getAllProducts } from "@/lib/services/front-end/productService";
 import ProductCard from "./ProductCard";
-import AdvancedSearchModal from "@/components/search/AdvancedSearchModal";
 import { fbEvent } from "@/components/analytics/FacebookPixel";
 import { gaEvent } from "@/components/analytics/GoogleAnalytics";
+
+// Dynamically split heavy interactive drawers & modals off the critical initial bundle
+const ProfileDrawer = dynamic(() => import("@/components/ProfileDrawer"), { ssr: false });
+const CartDrawer = dynamic(() => import("@/components/CartDrawer"), { ssr: false });
+const MobileMenuDrawer = dynamic(() => import("./MobileMenuDrawer"), { ssr: false });
+const AdvancedSearchModal = dynamic(() => import("@/components/search/AdvancedSearchModal"), { ssr: false });
 
 // ============================================================================
 // TYPE DEFINITIONS

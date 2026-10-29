@@ -196,13 +196,15 @@ export async function GET(req: Request) {
       };
     });
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       success: true,
       products: formattedProducts,
       total,
       totalPages: Math.ceil(total / limit),
       page,
     });
+    res.headers.set("Cache-Control", "public, s-maxage=30, stale-while-revalidate=120");
+    return res;
   } catch (error: any) {
     console.error("Products search API error:", error);
     return NextResponse.json(

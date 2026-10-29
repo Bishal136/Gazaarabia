@@ -16,6 +16,7 @@ interface ProductCardProps {
   onWishlistToggle?: (id: number, isInWishlist: boolean) => void;
   onCardClick?: () => void;
   viewMode?: "grid" | "list";
+  priority?: boolean;
 }
 
 export default function ProductCard({
@@ -23,6 +24,7 @@ export default function ProductCard({
   onWishlistToggle,
   onCardClick,
   viewMode = "grid",
+  priority = false,
 }: ProductCardProps) {
   const router = useRouter();
   const [wishlist, setWishlist] = useState(product.isInWishlist);
@@ -92,7 +94,8 @@ export default function ProductCard({
                     alt={product.title}
                     fill
                     sizes="(max-width: 640px) 100vw, 224px"
-                    priority={index === 0}
+                    priority={Boolean(priority && index === 0)}
+                    loading={priority && index === 0 ? "eager" : "lazy"}
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                     onError={(e: any) => {
                       if (e.target && e.target.src) {
@@ -272,7 +275,8 @@ export default function ProductCard({
                   alt={product.title}
                   fill
                   sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
-                  priority={index === 0}
+                  priority={Boolean(priority && index === 0)}
+                  loading={priority && index === 0 ? "eager" : "lazy"}
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                   onError={(e: any) => {
                     // Fallback to placeholder on broken asset

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { ShoppingBag, Heart } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -97,10 +98,13 @@ export default function ProductCard({
         onClick={handleCardClick}
         className="relative w-full aspect-[3/4] overflow-hidden rounded-2xl bg-white flex items-center justify-center shadow-sm hover:shadow-lg transition-all duration-300 hover:ring-2 hover:ring-[var(--brand-secondary)] pointer-events-auto"
       >
-        <img
-          src={product.img}
+        <Image
+          src={product.img || "/images/placeholder.png"}
           alt={product.title}
-          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          fill
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          loading="lazy"
+          className="object-cover group-hover:scale-105 transition-transform duration-500"
         />
       </div>
 

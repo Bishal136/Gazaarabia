@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 // @ts-ignore
 import "swiper/css";
 // @ts-ignore
@@ -11,20 +12,22 @@ import "swiper/css/effect-fade";
 
 import { motion } from "framer-motion";
 import SignatureCollection from "@/components/home/signature-collection";
-import CustomerStories from "@/components/home/customer-stories";
 import InfoGridSection from "@/components/home/infoGrid";
-import WearTheChange from "@/components/home/wearTheChange";
 import ShopByCategory from "@/components/home/shopByCategory";
-import MoreThanFashionSection from "@/components/home/moreThanFashionSection";
 import HeroSlider from "@/components/home/heroSlider";
 import LaunchAnnouncementBanner from "@/components/home/LaunchAnnouncementBanner";
 import { homePageFrontend } from "@/lib/services/front-end/homePage";
 import Loader from "@/components/Loader";
-import SubscribePopup from "@/components/SubscribePopup";
-import BecomeAffiliateSection from "@/components/home/becomeAffiliateSection";
 import TrendingNow from "@/components/home/trendingNow";
 import BestSellers from "@/components/home/bestSellers";
-import ShopByColor from "@/components/home/shopByColor";
+
+// Below-the-fold & interactive sections dynamically split off initial critical chunk
+const SubscribePopup = dynamic(() => import("@/components/SubscribePopup"), { ssr: false });
+const CustomerStories = dynamic(() => import("@/components/home/customer-stories"), { ssr: false });
+const WearTheChange = dynamic(() => import("@/components/home/wearTheChange"), { ssr: false });
+const MoreThanFashionSection = dynamic(() => import("@/components/home/moreThanFashionSection"), { ssr: false });
+const BecomeAffiliateSection = dynamic(() => import("@/components/home/becomeAffiliateSection"), { ssr: false });
+const ShopByColor = dynamic(() => import("@/components/home/shopByColor"), { ssr: false });
 
 export default function HomeContent({ initialData }: { initialData?: any }) {
 
@@ -126,7 +129,7 @@ export default function HomeContent({ initialData }: { initialData?: any }) {
               src={homeData?.midBanner}
               alt="Luxury Modestwear Banner"
               fill
-              priority
+              loading="lazy"
               sizes="100vw"
               className="object-cover object-center"
             />

@@ -14,20 +14,47 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
 
+  compiler: {
+    removeConsole: isProd ? { exclude: ["error", "warn"] } : false,
+  },
+
   experimental: {
     serverActions: {
       bodySizeLimit: "1024mb",
     },
+    optimizePackageImports: [
+      "lucide-react",
+      "react-icons",
+      "framer-motion",
+      "@dnd-kit/core",
+      "@dnd-kit/sortable",
+      "moment",
+    ],
   },
 
   // Do not expose source maps in production
   productionBrowserSourceMaps: false,
 
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.alias = {
       ...config.resolve.alias,
       "@prisma/client": path.resolve(__dirname, "src/lib/prisma-mongo.ts"),
     };
+
+    if (!isServer) {
+      config.optimization = config.optimization || {};
+      config.optimization.splitChunks = config.optimization.splitChunks || {};
+      config.optimization.splitChunks.cacheGroups = {
+        ...config.optimization.splitChunks.cacheGroups,
+        framework: {
+          name: "framework",
+          test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+          priority: 40,
+          chunks: "all",
+        },
+      };
+    }
+
     return config;
   },
 

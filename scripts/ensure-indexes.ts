@@ -18,6 +18,9 @@ async function run() {
   await db.collection("products").createIndex({ categoryId: 1, active: 1, isDeleted: 1 }, { background: true });
   await db.collection("products").createIndex({ subcategoryId: 1, active: 1, isDeleted: 1 }, { background: true });
   await db.collection("products").createIndex({ active: 1, isDeleted: 1, soldCount: -1 }, { background: true });
+  await db.collection("products").createIndex({ active: 1, isDeleted: 1, sellingPrice: 1 }, { background: true });
+  await db.collection("products").createIndex({ active: 1, isDeleted: 1, sellingPrice: -1 }, { background: true });
+  await db.collection("products").createIndex({ active: 1, isDeleted: 1, createdAt: -1 }, { background: true });
   await db.collection("products").createIndex({ sellerId: 1, active: 1 }, { background: true });
   await db.collection("categories").createIndex({ status: 1, order: 1 }, { background: true });
   await db.collection("categories").createIndex({ submenuId: 1 }, { background: true });

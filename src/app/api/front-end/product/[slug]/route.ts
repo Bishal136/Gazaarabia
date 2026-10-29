@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { getTokenFromHeader, getUserIdFromToken } from "@/lib/authToken";
 import { isProductInWishlist, getWishlistProductIds } from "@/lib/helpers/wishlist";
 import { getProductAvailableQuantity, getVariantAvailableQuantity } from "@/lib/helpers/stockHelper";
 import { connectToDatabase, mongoose } from "@/lib/mongoose";
-
-const prisma: any = new PrismaClient();
 
 export const dynamic = "force-dynamic";
 
