@@ -33,11 +33,8 @@ async function runMigration() {
 
   // 2. Discover all tables in current MySQL database
   console.log("Discovering SQL tables in database...");
-  const tablesResult: any[] = await prisma.$queryRawUnsafe(
-    "SELECT TABLE_NAME as tableName FROM information_schema.tables WHERE table_schema = DATABASE() AND TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME ASC"
-  );
-
-  const tables = tablesResult.map((t) => t.tableName || t.TABLE_NAME);
+  const tablesResult: any[] = await prisma.$queryRawUnsafe("SHOW TABLES");
+  const tables = tablesResult.map((t) => Object.values(t)[0] as string);
   console.log(`Found ${tables.length} tables in MySQL database.\n`);
 
   const results: Array<{
