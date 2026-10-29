@@ -34,7 +34,7 @@ export default function ShopByCategory({ categories }: ShopByCategoryProps) {
       <div className="max-w-[1500px] mx-auto px-3 sm:px-4 md:px-10">
         {/* Section Heading */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={false}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
@@ -60,7 +60,7 @@ export default function ShopByCategory({ categories }: ShopByCategoryProps) {
             return (
               <motion.div
                 key={cat.id}
-                initial={{ opacity: 0, y: 25 }}
+                initial={false}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: Math.min(index * 0.08, 0.4) }}

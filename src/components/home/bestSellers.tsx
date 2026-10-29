@@ -36,7 +36,7 @@ export default function BestSellers({ products }: BestSellersProps) {
       <div className="max-w-[1500px] mx-auto px-3 sm:px-4 md:px-10">
         {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={false}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
@@ -61,7 +61,7 @@ export default function BestSellers({ products }: BestSellersProps) {
             {featured.map((p, i) => (
               <motion.div
                 key={p.id}
-                initial={{ opacity: 0, y: 30 }}
+                initial={false}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.15, duration: 0.6 }}
@@ -122,7 +122,7 @@ export default function BestSellers({ products }: BestSellersProps) {
             {gridItems.map((p, i) => (
               <motion.div
                 key={p.id}
-                initial={{ opacity: 0, y: 25 }}
+                initial={false}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: Math.min(i * 0.08, 0.4), duration: 0.5 }}
@@ -174,7 +174,7 @@ export default function BestSellers({ products }: BestSellersProps) {
 
         {/* CTA */}
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
+          initial={false}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.3 }}

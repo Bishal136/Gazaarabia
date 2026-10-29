@@ -22,7 +22,7 @@ export default function ViewLookbook() {
       {/* Overlay Content */}
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
         <motion.h2
-          initial={{ opacity: 0, y: 30 }}
+          initial={false}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
@@ -34,7 +34,7 @@ export default function ViewLookbook() {
         </motion.h2>
 
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
+          initial={false}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.2, duration: 0.8 }}
@@ -44,7 +44,7 @@ export default function ViewLookbook() {
         </motion.p>
 
         <motion.button
-          initial={{ opacity: 0 }}
+          initial={false}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.4, duration: 0.6 }}

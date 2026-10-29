@@ -38,7 +38,7 @@ export default function ShopByColor({ colors }: ShopByColorProps) {
       <div className="max-w-[1500px] mx-auto px-3 sm:px-4 md:px-10">
         {/* Section Header */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={false}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
@@ -63,7 +63,7 @@ export default function ShopByColor({ colors }: ShopByColorProps) {
             {colors.map((color, i) => (
               <motion.div
                 key={color.id}
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={false}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: Math.min(i * 0.06, 0.5), duration: 0.4, ease: "easeOut" }}

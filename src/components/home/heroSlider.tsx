@@ -51,7 +51,8 @@ export default function HeroSlider({ heroSlides }: HeroSliderProps) {
                                 src={isMobile ? slide.mobile : slide.desktop}
                                 alt={`Hero Slide ${index + 1}`}
                                 fill
-                                priority
+                                priority={index === 0}
+                                sizes="100vw"
                                 className="object-cover object-center w-full h-full"
                             />
                         </div>

@@ -86,7 +86,7 @@ export default function SignatureCollection({ products }: SignatureProductsProps
               <SwiperSlide key={i} onClick={() => handleCardClick(p)}>
                 <motion.div
                   className="overflow-hidden rounded-2xl bg-[#F8F8F8] group shadow-sm hover:shadow-[0_8px_25px_rgba(0,0,0,0.08)] transition-all duration-700"
-                  initial={{ opacity: 0, y: 40 }}
+                  initial={false}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.15 }}

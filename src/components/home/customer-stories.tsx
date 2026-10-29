@@ -109,7 +109,7 @@ export default function CustomerStories({ reviews }: ReviewsProps) {
           {reviews.map((r, i) => (
             <SwiperSlide key={i}>
               <motion.div
-                initial={{ opacity: 0, y: 30 }}
+                initial={false}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: i * 0.1 }}

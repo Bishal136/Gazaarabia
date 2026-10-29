@@ -48,7 +48,7 @@ export default function TrendingNow({ products }: TrendingNowProps) {
       <div className="max-w-[1500px] mx-auto px-3 sm:px-4 md:px-10">
         {/* Section Header */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={false}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
@@ -120,7 +120,7 @@ export default function TrendingNow({ products }: TrendingNowProps) {
             {productList.map((p, i) => (
               <SwiperSlide key={p.id}>
                 <motion.div
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={false}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: Math.min(i * 0.08, 0.4), duration: 0.5 }}

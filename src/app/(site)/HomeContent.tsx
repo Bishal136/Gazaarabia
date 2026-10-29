@@ -116,7 +116,7 @@ export default function HomeContent({ initialData }: { initialData?: any }) {
       {homeData?.midBanner &&
         <section className="relative w-full h-[40vh] sm:h-[50vh] md:h-[70vh] lg:h-[80vh] overflow-hidden">
           <motion.div
-            initial={{ scale: 1.05, opacity: 0 }}
+            initial={false}
             whileInView={{ scale: 1, opacity: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 1.5, ease: "easeOut" }}

@@ -19,7 +19,7 @@ export default function BecomeAffiliateSection({ data }: affiliateProps) {
 
                 {/* LEFT CONTENT */}
                 <motion.div
-                    initial={{ opacity: 0, x: -20 }}
+                    initial={false}
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.6 }}
@@ -34,7 +34,7 @@ export default function BecomeAffiliateSection({ data }: affiliateProps) {
                     </p>
 
                     <motion.div
-                        initial={{ opacity: 0, y: 10 }}
+                        initial={false}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.5, delay: 0.1 }}
@@ -52,7 +52,7 @@ export default function BecomeAffiliateSection({ data }: affiliateProps) {
 
                 {/* RIGHT — PROFESSIONAL STAT CARD */}
                 <motion.div
-                    initial={{ opacity: 0, x: 20 }}
+                    initial={false}
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.6 }}

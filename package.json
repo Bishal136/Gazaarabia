@@ -14,6 +14,7 @@
     "test": "tsx scripts/test-mongo-fullstack.ts",
     "db:migrate:mongo": "tsx scripts/migrate-sql-to-mongo.ts",
     "build": "node scripts/copy-tinymce.mjs && next build",
+    "postbuild": "node scripts/precompress-assets.mjs",
     "start": "next start",
     "postinstall": "node scripts/copy-tinymce.mjs"
   },

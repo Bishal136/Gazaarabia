@@ -19,7 +19,7 @@ export default function WearTheChange() {
       <div className="relative max-w-[1400px] mx-auto px-6 md:px-10 text-center">
         {/* Heading */}
         <motion.h2
-          initial={{ opacity: 0, y: 30 }}
+          initial={false}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
@@ -30,7 +30,7 @@ export default function WearTheChange() {
 
         {/* Subtitle */}
         <motion.p
-          initial={{ opacity: 0, y: 15 }}
+          initial={false}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.2, duration: 0.6 }}
@@ -45,7 +45,7 @@ export default function WearTheChange() {
           {stats.map((stat, index) => (
             <motion.div
               key={index}
-              initial={{ opacity: 0, y: 30 }}
+              initial={false}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.15, duration: 0.6 }}
