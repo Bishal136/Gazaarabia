@@ -1,0 +1,29 @@
+import mongoose from "mongoose";
+
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/gazaarabia";
+
+async function run() {
+  console.log("Connecting to MongoDB to ensure indexes...");
+  await mongoose.connect(MONGODB_URI);
+  const db = mongoose.connection.db;
+  if (!db) throw new Error("DB connection failed");
+
+  console.log("Creating compound and query indexes...");
+  await db.collection("productimage").createIndex({ productId: 1 }, { background: true });
+  await db.collection("productvariant").createIndex({ productId: 1 }, { background: true });
+  await db.collection("productvariants").createIndex({ productId: 1 }, { background: true });
+  await db.collection("products").createIndex({ status: 1, createdAt: -1 }, { background: true });
+  await db.collection("products").createIndex({ status: 1, isTrending: 1 }, { background: true });
+  await db.collection("products").createIndex({ status: 1, isFeatured: 1 }, { background: true });
+  await db.collection("categories").createIndex({ status: 1, order: 1 }, { background: true });
+  await db.collection("reviews").createIndex({ productId: 1, status: 1 }, { background: true });
+  await db.collection("orders").createIndex({ createdAt: -1, status: 1 }, { background: true });
+
+  console.log("✓ All performance indexes ensured successfully.");
+  await mongoose.disconnect();
+}
+
+run().catch((err) => {
+  console.error("Index creation error:", err);
+  process.exit(1);
+});
