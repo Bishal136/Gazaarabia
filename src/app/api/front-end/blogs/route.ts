@@ -28,7 +28,9 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ success: true, data: blogs });
+    const res = NextResponse.json({ success: true, data: blogs });
+    res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+    return res;
   } catch (error) {
     console.error("Error fetching blogs:", error);
     return NextResponse.json({ error: "Failed to fetch blogs" }, { status: 500 });

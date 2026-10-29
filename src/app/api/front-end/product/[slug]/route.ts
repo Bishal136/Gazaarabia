@@ -239,7 +239,7 @@ export async function GET(
     }
 
     //  Return clean, structured response
-    return NextResponse.json({
+    const res = NextResponse.json({
       ...product,
       seller: sellerInfo || product.seller || null,
       productvariant: variantsWithStock,      // include stock per variant
@@ -254,6 +254,14 @@ export async function GET(
       isInWishlist,
       deliverySettings,
     });
+
+    if (!userId) {
+      res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+    } else {
+      res.headers.set("Cache-Control", "private, no-cache");
+    }
+
+    return res;
   } catch (error: any) {
     console.error("Error fetching product by slug:", error);
     return NextResponse.json(

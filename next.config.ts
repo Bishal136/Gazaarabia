@@ -43,7 +43,11 @@ const nextConfig: NextConfig = {
   // HTTPS host (consistent with the CSP `img-src … https:` above). To lock this down
   // to known platforms, replace the `**` entry with explicit `hostname` entries
   // (e.g. "cdn.shopify.com").
+  compress: true,
+
   images: {
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 2592000,
     remotePatterns: [
       { protocol: "https", hostname: "**" },
     ],
@@ -71,6 +75,24 @@ const nextConfig: NextConfig = {
 
   async headers() {
     return [
+      {
+        source: "/images/(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
+      {
+        source: "/uploads/(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=2592000, stale-while-revalidate=86400",
+          },
+        ],
+      },
       {
         source: "/(.*)",
         headers: [

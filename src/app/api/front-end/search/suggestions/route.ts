@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// In-memory cache for default search discovery (empty query)
+let cachedDiscovery: { data: any; expiry: number } | null = null;
+const DISCOVERY_CACHE_TTL_MS = 60 * 1000;
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -8,9 +12,17 @@ export async function GET(req: Request) {
 
     // If query is empty or 1 char, return popular categories & trending items
     if (!q || q.length < 2) {
-      // Find active products to identify collections and styles with actual inventory
+      const now = Date.now();
+      if (cachedDiscovery && now < cachedDiscovery.expiry) {
+        const res = NextResponse.json(cachedDiscovery.data);
+        res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+        return res;
+      }
+
+      // Find top active products with limit to avoid full collection scans
       const activeProducts = await prisma.products.findMany({
         where: { active: true, isDeleted: false },
+        take: 24,
         select: {
           id: true,
           title: true,
@@ -54,7 +66,7 @@ export async function GET(req: Request) {
 
       const trendingProducts = activeProducts.slice(0, 4);
 
-      return NextResponse.json({
+      const payload = {
         success: true,
         data: {
           products: trendingProducts.map((p: any) => ({
@@ -73,7 +85,16 @@ export async function GET(req: Request) {
           popularTags: topSubcategories.map((s: any) => s.name),
           query: q,
         },
-      });
+      };
+
+      cachedDiscovery = {
+        data: payload,
+        expiry: Date.now() + DISCOVERY_CACHE_TTL_MS,
+      };
+
+      const res = NextResponse.json(payload);
+      res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+      return res;
     }
 
     const searchTerm = q.toLowerCase();

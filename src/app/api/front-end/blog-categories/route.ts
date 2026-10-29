@@ -7,7 +7,9 @@ export async function GET(req: NextRequest) {
             orderBy: { createdAt: "desc" },
         });
 
-        return NextResponse.json({ success: true, data: categories });
+        const res = NextResponse.json({ success: true, data: categories });
+        res.headers.set("Cache-Control", "public, s-maxage=120, stale-while-revalidate=600");
+        return res;
     } catch (error) {
         console.error("GET Categories Error:", error);
         return NextResponse.json(

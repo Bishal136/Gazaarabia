@@ -1,6 +1,15 @@
 import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
+// In-memory cache for high-concurrency homepage traffic
+let cachedHomepage: { data: any; expiry: number } | null = null;
+const HOMEPAGE_CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
 export async function fetchHomepageData() {
+  const now = Date.now();
+  if (cachedHomepage && now < cachedHomepage.expiry) {
+    return cachedHomepage.data;
+  }
+
   await connectToDatabase();
   const db = mongoose.connection.db;
 
@@ -11,7 +20,7 @@ export async function fetchHomepageData() {
   const settings = await db.collection("homepage_settings").findOne();
 
   if (!settings) {
-    return {
+    const empty = {
       heroSlides: [],
       shopByCategory: [],
       midBanner: null,
@@ -22,6 +31,8 @@ export async function fetchHomepageData() {
       affiliateCommission: 0,
       reviews: [],
     };
+    cachedHomepage = { data: empty, expiry: now + HOMEPAGE_CACHE_TTL_MS };
+    return empty;
   }
 
   const catIds = (settings.shopByCategory || []).map(Number);
@@ -29,6 +40,13 @@ export async function fetchHomepageData() {
   const trendIds = (settings.trendingProducts || []).map(Number);
   const colorIds = (settings.shopByColors || []).map(Number);
   const bestSellerIds = (settings.bestSellerProducts || []).map(Number);
+
+  // Determine exactly which product IDs are featured to avoid querying entire collections
+  const neededProductIds = Array.from(new Set([
+    ...sigIds,
+    ...trendIds,
+    ...bestSellerIds,
+  ])).filter(Boolean);
 
   const [
     categories,
@@ -53,26 +71,38 @@ export async function fetchHomepageData() {
     db
       .collection("review")
       .find()
+      .project({ id: 1, rating: 1, comment: 1, userName: 1, createdAt: 1 })
       .sort({ createdAt: -1 })
       .limit(10)
       .toArray(),
     db
       .collection("products")
       .find(trendIds.length ? { id: { $in: trendIds } } : {})
+      .project({ id: 1, title: 1, slug: 1, sellingPrice: 1, discountPrice: 1 })
       .limit(12)
       .toArray(),
     db
       .collection("products")
       .find(bestSellerIds.length ? { id: { $in: bestSellerIds } } : {})
+      .project({ id: 1, title: 1, slug: 1, sellingPrice: 1, discountPrice: 1 })
       .limit(12)
       .toArray(),
     db
       .collection("colors")
       .find(colorIds.length ? { id: { $in: colorIds } } : {})
+      .project({ id: 1, name: 1, hexCode: 1 })
       .limit(12)
       .toArray(),
-    db.collection("productimage").find().toArray(),
-    db.collection("productvariant").find().toArray(),
+    db
+      .collection("productimage")
+      .find(neededProductIds.length ? { productId: { $in: neededProductIds } } : {})
+      .project({ productId: 1, url: 1 })
+      .toArray(),
+    db
+      .collection("productvariant")
+      .find(neededProductIds.length ? { productId: { $in: neededProductIds } } : {})
+      .project({ id: 1, productId: 1, colorId: 1 })
+      .toArray(),
   ]);
 
   const imagesByProduct = new Map<number, Array<{ url: string }>>();
@@ -130,7 +160,7 @@ export async function fetchHomepageData() {
     _count: { productvariant: 1 },
   }));
 
-  return JSON.parse(
+  const result = JSON.parse(
     JSON.stringify({
       affiliateCommission: settings.affiliateCommission || 0,
       heroSlides: settings.heroSlides || [],
@@ -143,4 +173,11 @@ export async function fetchHomepageData() {
       shopByColors: formattedColors,
     })
   );
+
+  cachedHomepage = {
+    data: result,
+    expiry: Date.now() + HOMEPAGE_CACHE_TTL_MS,
+  };
+
+  return result;
 }

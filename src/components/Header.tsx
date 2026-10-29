@@ -166,7 +166,7 @@ export default function Header() {
   // Fetch menu data
   const fetchMenus = useCallback(async () => {
     try {
-      const res = await fetch("/api/header", { cache: "no-store" });
+      const res = await fetch("/api/header", { next: { revalidate: 60 } });
       const data = await res.json();
       if (data.success) {
         setMenus(data.data);

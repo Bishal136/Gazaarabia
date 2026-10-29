@@ -35,18 +35,29 @@ interface FormattedMenu {
   dropdown: MenuDropdown;
 }
 
+// In-memory cache for high-concurrency header traffic
+let cachedHeader: { data: any; expiry: number } | null = null;
+const HEADER_CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
 export async function GET() {
+  const now = Date.now();
+  if (cachedHeader && now < cachedHeader.expiry) {
+    const res = NextResponse.json(cachedHeader.data);
+    res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+    return res;
+  }
+
   try {
     await connectToDatabase();
     const db = mongoose.connection.db;
 
     if (db) {
       const [menus, submenus, categories, subcategories, homepage] = await Promise.all([
-        db.collection("menus").find().sort({ position: 1 }).toArray(),
-        db.collection("submenus").find().sort({ position: 1 }).toArray(),
-        db.collection("categories").find().sort({ position: 1 }).toArray(),
-        db.collection("subcategories").find().sort({ position: 1 }).toArray(),
-        db.collection("homepage_settings").findOne(),
+        db.collection("menus").find().project({ id: 1, name: 1, slug: 1, type: 1, images: 1, position: 1 }).sort({ position: 1 }).toArray(),
+        db.collection("submenus").find().project({ id: 1, menuId: 1, name: 1, slug: 1, position: 1 }).sort({ position: 1 }).toArray(),
+        db.collection("categories").find().project({ id: 1, submenuId: 1, name: 1, slug: 1, image: 1, position: 1 }).sort({ position: 1 }).toArray(),
+        db.collection("subcategories").find().project({ id: 1, categoryId: 1, name: 1, slug: 1 }).toArray(),
+        db.collection("homepage_settings").findOne({}, { projection: { headerText: 1 } }),
       ]);
 
       const formatted: FormattedMenu[] = menus.map((menu: any) => {
@@ -96,11 +107,20 @@ export async function GET() {
         };
       });
 
-      return NextResponse.json({
+      const payload = {
         success: true,
         headerText: homepage?.headerText || "",
         data: formatted,
-      });
+      };
+
+      cachedHeader = {
+        data: payload,
+        expiry: Date.now() + HEADER_CACHE_TTL_MS,
+      };
+
+      const res = NextResponse.json(payload);
+      res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+      return res;
     }
 
     return NextResponse.json(
