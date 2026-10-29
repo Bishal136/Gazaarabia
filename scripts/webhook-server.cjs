@@ -26,7 +26,7 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
   // Health check
-  if (req.method === "GET" && (url.pathname === "/health" || url.pathname === "/")) {
+  if (req.method === "GET" && (url.pathname === "/health" || url.pathname === "/" || url.pathname === "/api/webhook/github")) {
     res.writeHead(200, { "Content-Type": "application/json" });
     return res.end(JSON.stringify({ status: "healthy", isDeploying, timestamp: new Date().toISOString() }));
   }
