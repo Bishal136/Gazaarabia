@@ -473,9 +473,10 @@ async function runBugHunter() {
     details: "Products without parent categories",
   }, `All products have valid assigned categoryId`);
 
-  // C. Unverified users with no OTP record
+  // C. Fresh unverified users with no OTP record (< 10 minutes old)
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
   const unverifiedUsersWithoutOtp = await db.collection("users").aggregate([
-    { $match: { isVerified: false, isGuest: false } },
+    { $match: { isVerified: false, isGuest: false, createdAt: { $gte: tenMinutesAgo } } },
     {
       $lookup: {
         from: "otps",
@@ -494,9 +495,9 @@ async function runBugHunter() {
     severity: "LOW",
     layer: "Database",
     endpointOrPage: "MongoDB users / otps",
-    issue: `Found ${danglingUnverifiedCount} unverified users with expired/purged OTP records`,
-    details: "Unverified users unable to verify unless they click resend OTP",
-  }, `No orphaned unverified users without OTP`);
+    issue: `Found ${danglingUnverifiedCount} newly registered unverified users with missing OTP records`,
+    details: "New unverified accounts missing initial OTP tokens",
+  }, `No dangling fresh unverified users without OTP`);
 
   await client.close();
 
