@@ -26,45 +26,49 @@ import TrendingNow from "@/components/home/trendingNow";
 import BestSellers from "@/components/home/bestSellers";
 import ShopByColor from "@/components/home/shopByColor";
 
-export default function HomeContent() {
+export default function HomeContent({ initialData }: { initialData?: any }) {
 
-  const [homeData, setHomeData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [heroSlides, setHeroSlides] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [reviews, setReviews] = useState([]);
-  const [trendingProducts, setTrendingProducts] = useState([]);
-  const [bestSellerProducts, setBestSellerProducts] = useState([]);
-  const [shopByColors, setShopByColors] = useState([]);
+  const [homeData, setHomeData] = useState<any>(initialData || null);
+  const [loading, setLoading] = useState(!initialData);
+  const [heroSlides, setHeroSlides] = useState(initialData?.heroSlides || []);
+  const [categories, setCategories] = useState(initialData?.shopByCategory || []);
+  const [products, setProducts] = useState(initialData?.signatureProducts || []);
+  const [reviews, setReviews] = useState(initialData?.reviews || []);
+  const [trendingProducts, setTrendingProducts] = useState(initialData?.trendingProducts || []);
+  const [bestSellerProducts, setBestSellerProducts] = useState(initialData?.bestSellerProducts || []);
+  const [shopByColors, setShopByColors] = useState(initialData?.shopByColors || []);
 
   useEffect(() => {
+    if (initialData) {
+      setLoading(false);
+      return;
+    }
     (async () => {
       try {
         const { data } = await homePageFrontend.get();
-        console.log('home page data:>', data)
+        console.log('home page data:>', data);
         setHomeData(data);
         if (Array.isArray(data?.heroSlides)) {
-          setHeroSlides(data?.heroSlides)
+          setHeroSlides(data?.heroSlides);
         }
         if (Array.isArray(data?.shopByCategory)) {
-          setCategories(data?.shopByCategory)
+          setCategories(data?.shopByCategory);
         }
         if (Array.isArray(data?.signatureProducts)) {
-          setProducts(data?.signatureProducts)
+          setProducts(data?.signatureProducts);
         }
         if (Array.isArray(data?.reviews)) {
-          setReviews(data?.reviews)
+          setReviews(data?.reviews);
         }
         // NEW sections
         if (Array.isArray(data?.trendingProducts)) {
-          setTrendingProducts(data.trendingProducts)
+          setTrendingProducts(data.trendingProducts);
         }
         if (Array.isArray(data?.bestSellerProducts)) {
-          setBestSellerProducts(data.bestSellerProducts)
+          setBestSellerProducts(data.bestSellerProducts);
         }
         if (Array.isArray(data?.shopByColors)) {
-          setShopByColors(data.shopByColors)
+          setShopByColors(data.shopByColors);
         }
       } catch (err) {
         console.error("Homepage fetch error:", err);
@@ -72,7 +76,7 @@ export default function HomeContent() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [initialData]);
 
 
   useEffect(() => {
@@ -89,7 +93,7 @@ export default function HomeContent() {
     }
   }, [loading]);
 
-  if (loading || !homeData) return <Loader />;
+  if (loading && !homeData) return <Loader />;
 
   return (
     <>

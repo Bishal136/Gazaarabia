@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import HomeContent from "./HomeContent";
+import { fetchHomepageData } from "@/lib/server/homepage";
+
+export const revalidate = 60; // ISR cache revalidation every 60s
 
 export const metadata: Metadata = {
   title: "Gazaarabia | Modern Modest Fashion Inspired by Gaza",
@@ -16,6 +19,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() {
-  return <HomeContent />;
+export default async function Page() {
+  let initialData = null;
+  try {
+    initialData = await fetchHomepageData();
+  } catch (err) {
+    console.error("SSR fetchHomepageData error:", err);
+  }
+
+  return <HomeContent initialData={initialData} />;
 }
