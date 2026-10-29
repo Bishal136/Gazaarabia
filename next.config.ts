@@ -23,12 +23,20 @@ const nextConfig: NextConfig = {
   // Do not expose source maps in production
   productionBrowserSourceMaps: false,
 
+  turbopack: {},
+
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
       "@prisma/client": path.resolve(__dirname, "src/lib/prisma-mongo.ts"),
     };
     return config;
+  },
+
+  turbopack: {
+    resolveAlias: {
+      "@prisma/client": "./src/lib/prisma-mongo.ts",
+    },
   },
 
   // next/image remote-host allow-list. This is a multi-vendor marketplace: product
