@@ -83,7 +83,7 @@ export default function ProductCard({
           >
             {(Array.isArray(product.productimage) && product.productimage.length > 0
               ? product.productimage
-              : [{ url: "/images/home/coat1.jpg", alt: product.title }]
+              : [{ url: "/images/placeholder.png", alt: product.title }]
             ).map((img: any, index: number) => (
               <SwiperSlide key={index}>
                 <div className="relative w-full h-full">
@@ -263,7 +263,7 @@ export default function ProductCard({
         >
           {(Array.isArray(product.productimage) && product.productimage.length > 0
             ? product.productimage
-            : [{ url: "/images/home/coat1.jpg", alt: product.title }]
+            : [{ url: "/images/placeholder.png", alt: product.title }]
           ).map((img: any, index: number) => (
             <SwiperSlide key={index}>
               <div className="relative w-full h-full">
