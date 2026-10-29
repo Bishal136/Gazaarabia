@@ -162,9 +162,9 @@ export default function BlogsPage() {
                                 >
                                     <div className="absolute inset-0 bg-gradient-to-br from-[var(--brand-secondary)] to-[var(--brand-primary)] opacity-0 group-hover:opacity-15 transition-opacity duration-500"></div>
 
-                                    <div className="relative h-56 w-full overflow-hidden">
+                                    <div className="relative h-56 w-full overflow-hidden bg-gray-100">
                                         <img
-                                            src={blog.image}
+                                            src={blog.image || "/images/home/hero-desktop-1.jpg"}
                                             alt={blog.title}
                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                         />
@@ -187,12 +187,9 @@ export default function BlogsPage() {
                                             {blog.title}
                                         </h3>
 
-                                        <p className="text-[var(--text-secondary)] text-sm line-clamp-3">
-                                            {/* {blog.content} */}
-                                            <p className="text-[var(--text-secondary)] leading-relaxed">
-                                                <div dangerouslySetInnerHTML={{ __html: blog.content }} />
-                                            </p>
-                                        </p>
+                                        <div className="text-[var(--text-secondary)] text-sm line-clamp-3 leading-relaxed">
+                                            <div dangerouslySetInnerHTML={{ __html: blog.content }} />
+                                        </div>
 
                                         <a
                                             href={`/blogs/journal/${blog.slug}`}

@@ -8,7 +8,10 @@ import {
   ChevronRight,
   User,
   Heart,
-  ShoppingBag,
+  Package,
+  Star,
+  MessageSquare,
+  Gift,
   Settings,
 } from "lucide-react";
 import { Drawer, IconButton } from "@mui/material";
@@ -43,10 +46,12 @@ export default function ProfileDrawer({ isOpen, onClose }: Props) {
   };
 
   const menuItems = [
-    { label: "My Orders", href: "/account/orders", icon: <ShoppingBag size={18} /> },
     { label: "My Details", href: "/account/details", icon: <User size={18} /> },
-    { label: "Loyalty Dashboard", href: "/loyalty", icon: <Settings size={18} /> },
-    { label: "My Wishlist (1)", href: "/wishlist", icon: <Heart size={18} /> },
+    { label: "My Orders", href: "/account/orders", icon: <Package size={18} /> },
+    { label: "My Reviews", href: "/account/reviews", icon: <Star size={18} /> },
+    { label: "Messages", href: "/account/messages", icon: <MessageSquare size={18} /> },
+    { label: "Rewards", href: "/account/rewards", icon: <Gift size={18} /> },
+    { label: "My Wishlist", href: "/wishlist", icon: <Heart size={18} /> },
   ];
 
   return (

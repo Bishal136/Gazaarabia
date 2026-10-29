@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { checkAuth } from "@/lib/authToken";
-
-const prisma = new PrismaClient();
 type RouteContext = { params: Promise<{ id: string }> };
 
 // GET blog by ID or slug (Protected)
@@ -74,6 +72,10 @@ export async function PUT(req: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
     const body = await req.json();
+
+    if (body.categoryId) {
+      body.categoryId = Number(body.categoryId);
+    }
 
     const updated = await prisma.blogs.update({
       where: { id: Number(id) },

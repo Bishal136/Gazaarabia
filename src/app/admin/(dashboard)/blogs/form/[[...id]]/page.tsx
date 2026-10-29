@@ -28,8 +28,10 @@ export default function AddOrEditBlogPage() {
   const params = useParams();
   const { data: session, status } = useSession();
   const alowedRoles = ["admin", "content_manager"];
+  const userRole = session?.user?.role?.toLowerCase();
 
-  const blogId = params?.id; // undefined when creating, defined when editing
+  const rawId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+  const blogId = rawId ? Number(rawId) : undefined; // undefined when creating, defined when editing
 
   const [form, setForm] = useState({
     title: "",
@@ -68,17 +70,17 @@ export default function AddOrEditBlogPage() {
     if (status === "loading") return;
     if (status === "unauthenticated") {
       router.replace(ROUTES.ADMIN.LOGIN);
-    } else if (status === "authenticated" && !alowedRoles.includes(session?.user?.role)) {
+    } else if (status === "authenticated" && !alowedRoles.includes(userRole || "")) {
       router.replace(ROUTES.UNAUTHORIZED);
     }
-  }, [status, session, router]);
+  }, [status, session, userRole, router]);
 
   //  Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const data: any = await blogCategoryService.getAll(session?.user?.token as string);
-        setCategories(data?.data ?? null);
+        setCategories(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
       } catch (err: any) {
         setAlert({
           isOpen: true,

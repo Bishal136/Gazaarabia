@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { checkAuth } from "@/lib/authToken";
-
-const prisma = new PrismaClient();
 
 //  GET - Protected (List all blogs with optional filters)
 export async function GET(request: NextRequest) {
@@ -80,10 +78,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const finalSlug = slug || title.toLowerCase().replace(/\s+/g, "-");
+    const existing = await prisma.blogs.findUnique({ where: { slug: finalSlug } });
+    if (existing) {
+      return NextResponse.json({ error: "A blog with this slug already exists" }, { status: 400 });
+    }
+
     const blog = await prisma.blogs.create({
       data: {
         title,
-        slug: slug || title.toLowerCase().replace(/\s+/g, "-"),
+        slug: finalSlug,
         content,
         image: image || null,
         categoryId: Number(categoryId),

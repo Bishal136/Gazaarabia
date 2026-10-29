@@ -45,10 +45,10 @@ export default function BlogListPage() {
     if (status === "loading") return;
     if (status === "unauthenticated") {
       router.replace(ROUTES.ADMIN.LOGIN);
-    } else if (status === "authenticated" && !alowedRoles.includes(session?.user?.role)) {
+    } else if (status === "authenticated" && !alowedRoles.includes(userRole || "")) {
       router.replace(ROUTES.HOME);
     }
-  }, [status, session, router]);
+  }, [status, session, userRole, router]);
 
   useEffect(() => {
     if (session?.user?.token) fetchBlogs();
@@ -58,7 +58,7 @@ export default function BlogListPage() {
     try {
       setLoading(true);
       const data: any = await blogService.getAll(session?.user?.token as string);
-      setBlogs(data?.data ?? null);
+      setBlogs(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
     } catch {
       showAlert("error", "Failed to fetch blogs.");
     } finally {
@@ -69,10 +69,14 @@ export default function BlogListPage() {
   //  Filter + Paginate
   const filteredBlogs = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    return blogs.filter(
+    const list = Array.isArray(blogs) ? blogs : [];
+    return list.filter(
       (blog) =>
-        blog.title.toLowerCase().includes(term) ||
-        blog.slug.toLowerCase().includes(term) ||
+        blog.title?.toLowerCase().includes(term) ||
+        blog.slug?.toLowerCase().includes(term) ||
+        blog.content?.toLowerCase().includes(term)
+    );
+  }, [blogs, searchTerm]);
         blog.content.toLowerCase().includes(term)
     );
   }, [blogs, searchTerm]);

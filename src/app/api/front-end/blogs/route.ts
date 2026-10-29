@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { checkAuth } from "@/lib/authToken";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 //  GET - Protected (List all blogs with optional filters)
 export async function GET(request: NextRequest) {

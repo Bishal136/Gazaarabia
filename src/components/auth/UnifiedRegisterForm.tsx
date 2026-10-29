@@ -46,12 +46,6 @@ const ROLE_OPTIONS = [
     tagline: "Sell your boutique fashion & access buyers",
     icon: Store,
   },
-  {
-    id: "affiliate" as PublicRole,
-    label: "Affiliate Partner",
-    tagline: "Earn commissions by sharing collections",
-    icon: Share2,
-  },
 ];
 
 const containerVariants: any = {
@@ -263,7 +257,7 @@ export default function UnifiedRegisterForm({
                 <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">
                   Select Account Type
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {ROLE_OPTIONS.map((opt) => {
                     const Icon = opt.icon;
                     const isSelected = selectedRole === opt.id;

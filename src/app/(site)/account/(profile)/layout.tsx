@@ -20,12 +20,12 @@ import { getRedirectUrlByRole } from "@/lib/authRedirect";
 import { logoutUser } from "@/lib/logout";
 
 const menuItems = [
-  { key: "orders", label: "Orders", path: "/account/orders", icon: <Package size={18} /> },
-  { key: "messages", label: "Messages", path: "/account/messages", icon: <MessageSquare size={18} /> },
-  { key: "reviews", label: "My Reviews", path: "/account/reviews", icon: <Star size={18} /> },
   { key: "details", label: "My Details", path: "/account/details", icon: <User size={18} /> },
+  { key: "orders", label: "My Orders", path: "/account/orders", icon: <Package size={18} /> },
+  { key: "reviews", label: "My Reviews", path: "/account/reviews", icon: <Star size={18} /> },
+  { key: "messages", label: "Messages", path: "/account/messages", icon: <MessageSquare size={18} /> },
   { key: "rewards", label: "Rewards", path: "/account/rewards", icon: <Gift size={18} /> },
-  { key: "wishlist", label: "Wishlist", path: "/wishlist", icon: <Heart size={18} /> },
+  { key: "wishlist", label: "My Wishlist", path: "/wishlist", icon: <Heart size={18} /> },
   { key: "signout", label: "Sign Out", path: "", icon: <LogOut size={18} /> },
 ];
 

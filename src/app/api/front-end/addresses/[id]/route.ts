@@ -4,11 +4,48 @@ import { checkAuth } from "@/lib/authToken";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+// GET Single Address
+export async function GET(req: NextRequest, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const addressId = Number(id);
+
+    if (isNaN(addressId) || addressId <= 0) {
+      return NextResponse.json({ message: "Invalid address ID" }, { status: 400 });
+    }
+
+    const userId = await checkAuth(req);
+    if (!userId) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const address = await prisma.address.findFirst({
+      where: { id: addressId, userId: Number(userId) },
+    });
+
+    if (!address) {
+      return NextResponse.json({ message: "Address not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, data: address });
+  } catch (error) {
+    console.error(" GET /address/[id] error:", error);
+    return NextResponse.json(
+      { message: "Failed to fetch address" },
+      { status: 500 }
+    );
+  }
+}
+
 // UPDATE Address
 export async function PUT(req: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
     const addressId = Number(id);
+
+    if (isNaN(addressId) || addressId <= 0) {
+      return NextResponse.json({ message: "Invalid address ID" }, { status: 400 });
+    }
 
     const userId = await checkAuth(req);
     if (!userId) {
@@ -73,6 +110,10 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
     const addressId = Number(id);
+
+    if (isNaN(addressId) || addressId <= 0) {
+      return NextResponse.json({ message: "Invalid address ID" }, { status: 400 });
+    }
 
     const userId = await checkAuth(req);
     if (!userId) {

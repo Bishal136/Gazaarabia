@@ -42,16 +42,17 @@ export default function BlogCategoriesPage() {
     message: "",
   });
   const alowedRoles = ["admin", "content_manager"];
+  const userRole = session?.user?.role?.toLowerCase();
 
   //  Redirect unauthorized users
   useEffect(() => {
     if (status === "loading") return;
     if (status === "unauthenticated") {
       router.replace(ROUTES.ADMIN.LOGIN);
-    } else if (status === "authenticated" && !alowedRoles.includes(session?.user?.role)) {
+    } else if (status === "authenticated" && !alowedRoles.includes(userRole || "")) {
       router.replace(ROUTES.UNAUTHORIZED);
     }
-  }, [status, session, router]);
+  }, [status, session, userRole, router]);
 
   //  Fetch categories with token
   useEffect(() => {
@@ -73,7 +74,7 @@ export default function BlogCategoriesPage() {
     try {
       setLoading(true);
       const data: any = await blogCategoryService.getAll(session?.user?.token as string);
-      setCategories(data?.data ?? null);
+      setCategories(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
     } catch (error) {
       setPopUpAlertData({
         isOpen: true,
@@ -88,8 +89,9 @@ export default function BlogCategoriesPage() {
 
   // Filter + Paginate
   const filteredCategories = useMemo(() => {
-    return categories.filter((cat) =>
-      cat.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const list = Array.isArray(categories) ? categories : [];
+    return list.filter((cat) =>
+      cat.name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [categories, searchTerm]);
 

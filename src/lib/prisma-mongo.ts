@@ -550,6 +550,42 @@ async function resolveIncludes(
           doc.affiliate = affiliates.find((a: any) => a.userId === doc.id) || null;
         });
       }
+    } else if (colName === "blogs") {
+      if (relKey === "category" || relKey === "blogCategory") {
+        const catIds = docs.map((d) => d.categoryId).filter(Boolean);
+        const cats = await db
+          .collection("blog_categories")
+          .find({ id: { $in: catIds }, ...subWhere })
+          .sort(subOrderBy)
+          .toArray();
+
+        docs.forEach((doc) => {
+          let cat = cats.find((c: any) => c.id === doc.categoryId) || null;
+          if (cat && subSelect) {
+            const selected: any = {};
+            for (const k of Object.keys(subSelect)) {
+              if (subSelect[k]) selected[k] = cat[k];
+            }
+            cat = selected;
+          }
+          doc[relKey] = cat;
+        });
+      }
+    } else if (colName === "blog_categories") {
+      if (relKey === "blogs") {
+        const catIds = docs.map((d) => d.id).filter(Boolean);
+        const blogsList = await db
+          .collection("blogs")
+          .find({ categoryId: { $in: catIds }, ...subWhere })
+          .sort(subOrderBy)
+          .toArray();
+
+        docs.forEach((doc) => {
+          let list = blogsList.filter((b: any) => b.categoryId === doc.id);
+          if (subTake) list = list.slice(0, subTake);
+          doc.blogs = list;
+        });
+      }
     } else if (colName === "categories") {
       if (relKey === "subcategories") {
         const catIds = docs.map((d) => d.id).filter(Boolean);

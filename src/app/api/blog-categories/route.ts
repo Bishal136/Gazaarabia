@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient, Prisma } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import slugify from "slugify";
 import { checkAuth } from "@/lib/authToken";
-
-const prisma: any = new PrismaClient();
 
 // GET - Protected
 export async function GET(req: NextRequest) {

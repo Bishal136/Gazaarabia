@@ -31,6 +31,26 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  async redirects() {
+    return [
+      {
+        source: "/blogs",
+        destination: "/blogs/journal",
+        permanent: true,
+      },
+      {
+        source: "/blog",
+        destination: "/blogs/journal",
+        permanent: true,
+      },
+      {
+        source: "/blog/:slug",
+        destination: "/blogs/journal/:slug",
+        permanent: true,
+      },
+    ];
+  },
+
   async headers() {
     return [
       {
