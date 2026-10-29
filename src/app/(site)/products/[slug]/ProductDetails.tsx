@@ -915,6 +915,7 @@ export default function ProductDetails() {
                                 alt="Video preview"
                                 className="absolute inset-0 w-full h-full object-cover opacity-90"
                                 onError={(e: any) => {
+                                  e.currentTarget.onerror = null;
                                   e.currentTarget.src = "/images/placeholder.png";
                                 }}
                               />
@@ -952,6 +953,7 @@ export default function ProductDetails() {
                               alt={media.alt}
                               className="w-full h-full object-cover bg-white"
                               onError={(e: any) => {
+                                e.currentTarget.onerror = null;
                                 e.currentTarget.src = "/images/placeholder.png";
                               }}
                             />
@@ -1042,6 +1044,7 @@ export default function ProductDetails() {
                         alt={currentMedia?.alt || product?.title || "Product image"}
                         className="w-full h-full object-contain object-center transition-transform duration-300 rounded-xl group-hover:scale-[1.02]"
                         onError={(e: any) => {
+                          e.currentTarget.onerror = null;
                           e.currentTarget.src = "/images/placeholder.png";
                         }}
                       />
@@ -1766,6 +1769,10 @@ export default function ProductDetails() {
                       src={currentMedia?.url || "/images/placeholder.png"}
                       alt={currentMedia?.alt || "Preview"}
                       className="max-h-[62vh] max-w-full rounded-xl object-contain"
+                      onError={(e: any) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = "/images/placeholder.png";
+                      }}
                     />
                   )}
 
@@ -1802,6 +1809,10 @@ export default function ProductDetails() {
                               src={m.thumbnailUrl || m.coverImage || "/images/placeholder.png"}
                               alt=""
                               className="absolute inset-0 w-full h-full object-cover opacity-85"
+                              onError={(e: any) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = "/images/placeholder.png";
+                              }}
                             />
                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                               <div className="w-6 h-6 rounded-full bg-black/70 text-white flex items-center justify-center shadow">
@@ -1810,7 +1821,15 @@ export default function ProductDetails() {
                             </div>
                           </div>
                         ) : (
-                          <img src={m.thumbnailUrl || m.url} alt="" className="w-full h-full object-cover" />
+                          <img
+                            src={m.thumbnailUrl || m.url}
+                            alt=""
+                            className="w-full h-full object-cover"
+                            onError={(e: any) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = "/images/placeholder.png";
+                            }}
+                          />
                         )}
                       </button>
                     ))}

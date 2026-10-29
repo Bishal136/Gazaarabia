@@ -96,8 +96,9 @@ export default function ProductCard({
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                     onError={(e: any) => {
                       if (e.target && e.target.src) {
+                        e.target.onerror = null;
                         e.target.srcset = "";
-                        e.target.src = "/images/home/coat1.jpg";
+                        e.target.src = "/images/placeholder.png";
                       }
                     }}
                   />
@@ -276,8 +277,9 @@ export default function ProductCard({
                   onError={(e: any) => {
                     // Fallback to placeholder on broken asset
                     if (e.target && e.target.src) {
+                      e.target.onerror = null;
                       e.target.srcset = "";
-                      e.target.src = "/images/home/coat1.jpg";
+                      e.target.src = "/images/placeholder.png";
                     }
                   }}
                 />
