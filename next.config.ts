@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -21,6 +22,14 @@ const nextConfig: NextConfig = {
 
   // Do not expose source maps in production
   productionBrowserSourceMaps: false,
+
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@prisma/client": path.resolve(__dirname, "src/lib/prisma-mongo.ts"),
+    };
+    return config;
+  },
 
   // next/image remote-host allow-list. This is a multi-vendor marketplace: product
   // images are served from each seller's storefront CDN — Shopify products come from
