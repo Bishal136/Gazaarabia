@@ -1,16 +1,38 @@
+export interface CreateReviewPayload {
+  orderItemId: number;
+  productId: number;
+  rating: number;
+  comment?: string;
+  variantId?: number | null;
+  images?: string[];
+  video?: string | null;
+}
+
+export interface UpdateReviewPayload {
+  rating?: number;
+  comment?: string;
+  images?: string[];
+  video?: string | null;
+}
+
 export const reviewService = {
-  getAll: async (token: string, productId?: number) => {
+  // Get reviews list (optionally for a specific product)
+  getAll: async (token?: string, productId?: number) => {
     let url = "/api/front-end/reviews";
     if (productId) url += `?productId=${productId}`;
 
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
     const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers,
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to fetch reviews");
     return res.json();
   },
 
+  // Get single review by ID
   getById: async (token: string, id: number) => {
     const res = await fetch(`/api/front-end/reviews/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -20,37 +42,65 @@ export const reviewService = {
     return res.json();
   },
 
-create: async (
-  token: string,
-  data: {orderItemId:number, productId: number; rating: number; comment?: string; variantId?: number }
-) => {
-  const res = await fetch("/api/front-end/reviews", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(data),
-  });
+  // Get customer's "To Be Reviewed" items and "Review History"
+  getMyReviews: async (token: string) => {
+    const res = await fetch("/api/front-end/reviews/my", {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.message || "Failed to fetch customer reviews");
+    }
+    return data;
+  },
 
-  const responseData = await res.json();
+  // Create a new review
+  create: async (token: string, data: CreateReviewPayload) => {
+    const res = await fetch("/api/front-end/reviews", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
 
-  //  If API returned an error, throw it with the actual message
-  if (!res.ok) {
-    throw new Error(responseData?.message || "Failed to create review");
-  }
+    const responseData = await res.json();
+    if (!res.ok) {
+      throw new Error(responseData?.message || "Failed to create review");
+    }
+    return responseData;
+  },
 
-  //  Return success response with message or data
-  return responseData;
-},
+  // Update an existing review
+  update: async (token: string, id: number, data: UpdateReviewPayload) => {
+    const res = await fetch(`/api/front-end/reviews/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
 
+    const responseData = await res.json();
+    if (!res.ok) {
+      throw new Error(responseData?.message || "Failed to update review");
+    }
+    return responseData;
+  },
 
+  // Delete a review
   remove: async (token: string, id: number) => {
     const res = await fetch(`/api/front-end/reviews/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) throw new Error("Failed to delete review");
-    return res.json();
+    const responseData = await res.json();
+    if (!res.ok) {
+      throw new Error(responseData?.message || "Failed to delete review");
+    }
+    return responseData;
   },
 };

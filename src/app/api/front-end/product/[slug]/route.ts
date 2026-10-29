@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getTokenFromHeader, getUserIdFromToken } from "@/lib/authToken";
-import { isProductInWishlist } from "@/lib/helpers/wishlist";
+import { isProductInWishlist, getWishlistProductIds } from "@/lib/helpers/wishlist";
 import { getProductAvailableQuantity, getVariantAvailableQuantity } from "@/lib/helpers/stockHelper";
+import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
 const prisma: any = new PrismaClient();
+
+export const dynamic = "force-dynamic";
 
 export async function GET(
   req: Request,
@@ -88,56 +91,168 @@ export async function GET(
     const averageRating = reviewStats._avg.rating || 0;
     const totalReviews = reviewStats._count.id;
 
-    //  Check if main product is in wishlist
+    //  Wishlist state resolution (O(1) batch lookup)
+    let wishlistProductIdsSet = new Set<number>();
     let isInWishlist = false;
     if (userId) {
-      isInWishlist = await isProductInWishlist(userId, product.id);
+      const ids = await getWishlistProductIds(userId);
+      wishlistProductIdsSet = new Set(ids);
+      isInWishlist = wishlistProductIdsSet.has(product.id);
     }
 
-    //  Flatten wear_with data
-    const wearWithRaw = product.asParentRelations.map((r: any) => r.child);
+    //  1. Extract explicit "wear_with" relations if configured
+    const wearWithRaw: any[] = Array.isArray(product.asParentRelations)
+      ? product.asParentRelations.map((r: any) => r.child).filter(Boolean)
+      : [];
     delete product.asParentRelations;
 
-    //  Add wishlist info to each wearWith product
-    let wearWith = wearWithRaw;
+    //  2. Recommendation Engine for "YOU MAY ALSO LIKE"
+    // Fetch up to 8 recommended products: same subcategory -> same category -> storewide popular
+    let youMayAlsoLike: any[] = [...wearWithRaw];
+    const targetCount = 8;
 
-    if (userId && wearWithRaw.length > 0) {
-      // Run all wishlist checks in parallel
-      const wearWithStatuses = await Promise.all(
-        wearWithRaw.map(async (p: any) => {
-          const inWishlist = await isProductInWishlist(userId, p.id);
-          return { ...p, isInWishlist: inWishlist };
-        })
-      );
-      wearWith = wearWithStatuses;
-    } else {
-      // If not logged in, just mark all false
-      wearWith = wearWithRaw.map((p: any) => ({
-        ...p,
-        isInWishlist: false,
-      }));
+    if (youMayAlsoLike.length < targetCount) {
+      const needed = targetCount - youMayAlsoLike.length;
+      const excludedIds = [product.id, ...youMayAlsoLike.map((p: any) => p.id)];
+
+      // Tier 1: Same Subcategory (highest contextual relevance)
+      let candidates: any[] = [];
+      if (product.subcategoryId) {
+        candidates = await prisma.products.findMany({
+          where: {
+            id: { notIn: excludedIds },
+            subcategoryId: product.subcategoryId,
+            active: true,
+            isDeleted: false,
+          },
+          take: needed,
+          include: {
+            productimage: true,
+            brand: true,
+            productvariant: {
+              include: {
+                color: true,
+                size: true,
+                variantImages: true,
+              },
+            },
+          },
+          orderBy: { soldCount: "desc" },
+        });
+      }
+
+      // Tier 2: Same Category fallback if subcategory matches were fewer than needed
+      if (candidates.length < needed && product.categoryId) {
+        const stillNeeded = needed - candidates.length;
+        const currentExcluded = [...excludedIds, ...candidates.map((c: any) => c.id)];
+
+        const categoryMatches = await prisma.products.findMany({
+          where: {
+            id: { notIn: currentExcluded },
+            categoryId: product.categoryId,
+            active: true,
+            isDeleted: false,
+          },
+          take: stillNeeded,
+          include: {
+            productimage: true,
+            brand: true,
+            productvariant: {
+              include: {
+                color: true,
+                size: true,
+                variantImages: true,
+              },
+            },
+          },
+          orderBy: { soldCount: "desc" },
+        });
+
+        candidates = [...candidates, ...categoryMatches];
+      }
+
+      // Tier 3: Storewide popular products fallback (if category catalog is small)
+      if (candidates.length < needed) {
+        const stillNeeded = needed - candidates.length;
+        const currentExcluded = [...excludedIds, ...candidates.map((c: any) => c.id)];
+
+        const storewideMatches = await prisma.products.findMany({
+          where: {
+            id: { notIn: currentExcluded },
+            active: true,
+            isDeleted: false,
+          },
+          take: stillNeeded,
+          include: {
+            productimage: true,
+            brand: true,
+            productvariant: {
+              include: {
+                color: true,
+                size: true,
+                variantImages: true,
+              },
+            },
+          },
+          orderBy: { soldCount: "desc" },
+        });
+
+        candidates = [...candidates, ...storewideMatches];
+      }
+
+      youMayAlsoLike = [...youMayAlsoLike, ...candidates];
     }
 
+    // Attach O(1) wishlist state to all recommendation cards
+    youMayAlsoLike = youMayAlsoLike.map((p: any) => ({
+      ...p,
+      isInWishlist: wishlistProductIdsSet.has(p.id),
+    }));
 
     // Fetch delivery settings (id = 1 always)
     const deliverySettings = await prisma.deliverySettings.findUnique({
       where: { id: 1 },
     });
 
+    // Resolve seller store profile if available
+    let sellerInfo: any = null;
+    if (product?.sellerId) {
+      try {
+        const m = await connectToDatabase();
+        const db = m.connection?.db;
+        if (db) {
+          const sellerDoc = await db.collection("sellers").findOne({ id: Number(product.sellerId) });
+          if (sellerDoc) {
+            sellerInfo = {
+              id: sellerDoc.id,
+              userId: sellerDoc.userId,
+              storeName: sellerDoc.shopName,
+              shopName: sellerDoc.shopName,
+              shopSlug: sellerDoc.shopSlug,
+              logo: sellerDoc.logo || null,
+            };
+          }
+        }
+      } catch (err) {
+        console.error("Failed to resolve seller profile:", err);
+      }
+    }
 
     //  Return clean, structured response
     return NextResponse.json({
       ...product,
-      productvariant: variantsWithStock,      //  include stock per variant
-      availableStock: productAvailableQty,    //  include total product-level stock
-      wearWith,
+      seller: sellerInfo || product.seller || null,
+      productvariant: variantsWithStock,      // include stock per variant
+      availableStock: productAvailableQty,    // include total product-level stock
+      wearWith: youMayAlsoLike,               // Backward compatibility with wearWith prop
+      youMayAlsoLike,                         // Dedicated "You May Also Like" recommendation field
       reviewsData: {
         averageRating: Number(averageRating.toFixed(1)),
         totalReviews,
         list: product.reviews,
       },
       isInWishlist,
-      deliverySettings
+      deliverySettings,
     });
   } catch (error: any) {
     console.error("Error fetching product by slug:", error);

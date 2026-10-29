@@ -14,11 +14,13 @@ import SingleImgMultiColorProductCard, { Product } from "./SingleImgMultiColorsP
 interface ProductSuggestionsProps {
   wearWith?: any[];
   recentlyViewed?: Product[];
+  hideHeader?: boolean;
 }
 
 export default function ProductSuggestions({
   wearWith = [],
   recentlyViewed = [],
+  hideHeader = false,
 }: ProductSuggestionsProps) {
   const [activeTab, setActiveTab] = useState<"wear" | "recent">("wear");
   const [recent, setRecent] = useState<Product[]>([]);
@@ -27,6 +29,10 @@ export default function ProductSuggestions({
   const router = useRouter();
 
   const token = session?.user?.token || null;
+
+  useEffect(() => {
+    setWearWithProducts(wearWith || []);
+  }, [wearWith]);
 
   //  Memoize prop to prevent re-renders
   const memoizedRecentlyViewed = useMemo(
@@ -101,31 +107,33 @@ export default function ProductSuggestions({
   };
 
   return (
-    <section className="mx-auto px-4 py-16 border-t relative overflow-hidden">
+    <section className={`mx-auto relative overflow-hidden ${hideHeader ? "px-0 py-2 border-0" : "px-4 py-16 border-t"}`}>
       {/*  Tabs */}
-      <div className="flex justify-center items-center gap-8 pb-2">
-        {tabs.map((t) => {
-          const isActive = activeTab === t.key;
-          return (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              className={`relative px-2 pb-3 text-lg font-semibold transition ${isActive
-                ? "text-[var(--brand-primary)]"
-                : "text-[var(--text-primary)] hover:text-[var(--brand-secondary)]"
-                }`}
-            >
-              {t.label}
-              <span
-                className={`absolute left-0 -bottom-[2px] h-[3px] rounded-full transition-all ${isActive
-                  ? "w-full bg-[var(--brand-primary)]"
-                  : "w-0 bg-[var(--brand-secondary)] group-hover:w-full"
+      {!hideHeader && (
+        <div className="flex justify-center items-center gap-8 pb-2">
+          {tabs.map((t) => {
+            const isActive = activeTab === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`relative px-2 pb-3 text-lg font-semibold transition ${isActive
+                  ? "text-[var(--brand-primary)]"
+                  : "text-[var(--text-primary)] hover:text-[var(--brand-secondary)]"
                   }`}
-              />
-            </button>
-          );
-        })}
-      </div>
+              >
+                {t.label}
+                <span
+                  className={`absolute left-0 -bottom-[2px] h-[3px] rounded-full transition-all ${isActive
+                    ? "w-full bg-[var(--brand-primary)]"
+                    : "w-0 bg-[var(--brand-secondary)] group-hover:w-full"
+                    }`}
+                />
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Product Carousel */}
       <div className="max-w-[1600px] mx-auto relative overflow-hidden">
@@ -139,7 +147,7 @@ export default function ProductSuggestions({
               1024: { slidesPerView: 4 },
               1440: { slidesPerView: 5 },
             }}
-            className="mt-12 overflow-visible"
+            className={`${hideHeader ? "mt-4" : "mt-12"} overflow-visible`}
           >
             {data.map((item, i) => {
               const firstImage =

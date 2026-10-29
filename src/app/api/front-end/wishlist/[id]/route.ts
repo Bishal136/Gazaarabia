@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { getTokenFromHeader, getUserIdFromToken } from "@/lib/authToken";
+import { prisma } from "@/lib/prisma";
+import { checkAuth } from "@/lib/authToken";
 
-const prisma = new PrismaClient();
 type RouteContext = { params: Promise<{ id: string }> };
 
 //  DELETE product from wishlist
@@ -11,8 +10,7 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     const productId = Number(id);
 
-    const token :any = getTokenFromHeader(req);
-    const userId = getUserIdFromToken(token);
+    const userId = await checkAuth(req);
 
     if (!userId) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
@@ -20,7 +18,7 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
 
     await prisma.wishlist.delete({
       where: {
-        userId_productId: { userId, productId },
+        userId_productId: { userId: Number(userId), productId: Number(productId) },
       },
     });
 

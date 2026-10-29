@@ -94,6 +94,7 @@ const links = [
 
   // { href: "/seller/customers", label: "Customers", icon: Users },
   { href: "/seller/reviews", label: "Customer Reviews", icon: Star },
+  { href: "/seller/messages", label: "Messages", icon: MessageSquare },
 
   // {
   //   label: "Settings",
@@ -181,27 +182,12 @@ export default function SellerSidebar({
           className={`p-6 border-b border-[var(--dark-gray)] flex items-center ${collapsed ? "justify-center" : "justify-between"
             } gap-2`}
         >
-          {/* {!collapsed && (
-            <h2 className="text-lg font-semibold tracking-wide text-white">
-              Gazaarabia{" "}
-              <span className="text-[var(--brand-primary)]">Admin</span>
-            </h2>
-          )} */}
-
           {!collapsed && (
-            <h2 className="text-lg font-semibold tracking-wide text-white">
+            <h2 className="text-lg font-semibold tracking-wide text-white" suppressHydrationWarning>
               Gazaarabia{" "}
-              <span className="text-[var(--brand-primary)]">
-                {session?.user?.role === "seller" ? "Seller" : ""
-                  // ? "Admin"
-                  // : session?.user?.role === "content_manager"
-                  //   ? "Content Manager"
-                  //   : ""
-                }
-              </span>
+              <span className="text-[var(--brand-primary)]" suppressHydrationWarning>Seller</span>
             </h2>
           )}
-
 
           <button
             onClick={() => setCollapsed(!collapsed)}
@@ -215,18 +201,7 @@ export default function SellerSidebar({
         {/* Navigation */}
         <div className="flex flex-col flex-1 overflow-hidden">
           <nav className="flex-1 overflow-y-auto px-3 mt-5 pb-10 relative z-30">
-
-
-
-            {links
-              .filter((item) => {
-
-                // seller sees everything
-                if (userRole === "seller") return true;
-
-                // Others see nothing
-                return false;
-              }).map((item) => {
+            {links.map((item) => {
                 const isGroup = !!item.children;
 
                 //  GROUP MENU
@@ -262,11 +237,7 @@ export default function SellerSidebar({
                           style={{ maxHeight: isOpen ? `${item.children.length * 40}px` : "0px" }}
                         >
                           <div className="ml-10 mt-1 flex flex-col gap-1">
-                            {item.children
-                              .filter((child) => {
-                                if (userRole === "seller") return true;
-                              })
-                              .map((child) => {
+                            {item.children.map((child) => {
                                 const ChildIcon = child.icon;
                                 const isActive = pathname === child.href;
 

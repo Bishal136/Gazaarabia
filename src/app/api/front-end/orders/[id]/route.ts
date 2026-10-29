@@ -90,10 +90,11 @@ export async function GET(
     }
 
     // Enrich orderItems with selected variant details
-    const enrichedOrderItems = order.orderItems.map((item: any) => {
-      const selectedVariant = item.product.productvariant.find(
-        (variant: any) => variant.id === item.variantId
-      );
+    const enrichedOrderItems = (order?.orderItems || []).map((item: any) => {
+      const variants = item?.product?.productvariant || [];
+      const selectedVariant = Array.isArray(variants)
+        ? variants.find((variant: any) => variant.id === item.variantId)
+        : null;
 
       const selectedVariantData = selectedVariant
         ? {
@@ -104,6 +105,8 @@ export async function GET(
           colorName: selectedVariant.color?.name || null,
           hexCode: selectedVariant.color?.hexCode || null,
           price: selectedVariant.price,
+          imageUrl: selectedVariant.imageUrl || null,
+          sku: selectedVariant.sku || null,
           variantImages: selectedVariant.variantImages || []
         }
         : null;
@@ -111,7 +114,7 @@ export async function GET(
       return {
         ...item,
         selectedVariantData,
-        reviewed: item.reviewed,
+        reviewed: item?.reviewed ?? false,
       };
     });
 

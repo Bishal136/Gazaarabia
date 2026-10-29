@@ -1,29 +1,44 @@
 import { localCartService } from "./localCartService";
 
+function getCartHeaders(token?: any): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token && token !== "undefined" && token !== "null") {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 export const cartService = {
   async getAll(token?: any) {
-    if (!token) {
-      // Guest mode
-      // return { items: localCartService.get() };
-      const result = await localCartService.get();
-      return result;
+    try {
+      const res = await fetch("/api/front-end/cart", {
+        method: "GET",
+        headers: getCartHeaders(token),
+        cache: "no-store",
+      });
+
+      if (res.ok) {
+        return await res.json();
+      }
+
+      // Guest mode fallback on 401
+      if (res.status === 401) {
+        return await localCartService.get();
+      }
+
+      throw new Error("Failed to fetch cart items");
+    } catch (err: any) {
+      if (!token) {
+        return await localCartService.get();
+      }
+      throw err;
     }
-
-    const res = await fetch("/api/front-end/cart", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      cache: "no-store",
-    });
-
-    if (!res.ok) throw new Error("Failed to fetch cart items");
-    return res.json();
   },
 
   async add(
-    token: string | undefined,
+    token: string | undefined | null,
     productId: number,
     quantity = 1,
     variantId?: number,
@@ -32,59 +47,81 @@ export const cartService = {
     product?: any,
     selectedVariantData?: any
   ) {
-    if (!token) {
-      const result = localCartService.add({
-        productId,
-        quantity,
-        variantId: variantId!, //  non-null assertion
-        colorId: colorId!,
-        sizeId: sizeId!,
-        product,
-        selectedVariantData,
+    try {
+      const res = await fetch("/api/front-end/cart", {
+        method: "POST",
+        headers: getCartHeaders(token),
+        body: JSON.stringify({ productId, quantity, variantId, colorId, sizeId }),
       });
-      if (result?.success === false) throw new Error(result.error);
-      return result;
-    }
 
+      if (res.ok) {
+        return await res.json();
+      }
 
-    // Logged-in user → API call
-    const res = await fetch("/api/front-end/cart", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ productId, quantity, variantId, colorId, sizeId }),
-    });
+      // Guest fallback if unauthorized
+      if (res.status === 401) {
+        const result = localCartService.add({
+          productId,
+          quantity,
+          variantId: variantId!,
+          colorId: colorId!,
+          sizeId: sizeId!,
+          product,
+          selectedVariantData,
+        });
+        if (result?.success === false) throw new Error(result.error);
+        return result;
+      }
 
-
-    if (!res.ok) {
-      // parse json
       const data = await res.json().catch(() => ({}));
       const msg = data?.error || data?.message || "Failed to add to cart.";
       throw new Error(msg);
+    } catch (err: any) {
+      // If network error and guest mode, fallback locally
+      if (!token && err?.message && !err.message.includes("available")) {
+        const result = localCartService.add({
+          productId,
+          quantity,
+          variantId: variantId!,
+          colorId: colorId!,
+          sizeId: sizeId!,
+          product,
+          selectedVariantData,
+        });
+        if (result?.success === false) throw new Error(result.error);
+        return result;
+      }
+      throw err;
     }
-
-    return res.json();
   },
 
   async remove(token: any, productId: number, variantId: number) {
-    if (!token) {
-      const result = localCartService.remove(productId, variantId);
-      if (!result?.success) throw new Error(result?.message || "Failed to remove item");
-      return result
-    }
+    try {
+      const res = await fetch("/api/front-end/cart", {
+        method: "DELETE",
+        headers: getCartHeaders(token),
+        body: JSON.stringify({ productId, variantId }),
+      });
 
-    const res = await fetch("/api/front-end/cart", {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ productId, variantId }),
-    });
-    if (!res.ok) throw new Error("Failed to remove from cart");
-    return res.json();
+      if (res.ok) {
+        return await res.json();
+      }
+
+      if (res.status === 401) {
+        const result = localCartService.remove(productId, variantId);
+        if (!result?.success) throw new Error(result?.message || "Failed to remove item");
+        return result;
+      }
+
+      throw new Error("Failed to remove from cart");
+    } catch (err: any) {
+      if (!token) {
+        const result = localCartService.remove(productId, variantId);
+        if (!result?.success) throw new Error(result?.message || "Failed to remove item");
+        return result;
+      }
+      throw err;
+    }
   },
 
   async updateQuantity(
@@ -93,54 +130,57 @@ export const cartService = {
     variantId: number,
     quantity: number
   ) {
-    if (!token) {
-      const result = localCartService.updateQuantity(productId, variantId, quantity);
-      if (result?.success === false) {
-        throw new Error(result.error);
+    try {
+      const res = await fetch("/api/front-end/cart", {
+        method: "PUT",
+        headers: getCartHeaders(token),
+        body: JSON.stringify({ productId, variantId, quantity }),
+      });
+
+      if (res.ok) {
+        return await res.json();
       }
-      return result;
-    }
 
+      if (res.status === 401) {
+        const result = localCartService.updateQuantity(productId, variantId, quantity);
+        if (result?.success === false) {
+          throw new Error(result.error);
+        }
+        return result;
+      }
 
-    const res = await fetch("/api/front-end/cart", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ productId, variantId, quantity }),
-    });
-
-    if (!res.ok) {
-      // parse json
       const data = await res.json().catch(() => ({}));
       const msg = data?.error || data?.message || "Failed to update quantity";
       throw new Error(msg);
+    } catch (err: any) {
+      if (!token) {
+        const result = localCartService.updateQuantity(productId, variantId, quantity);
+        if (result?.success === false) {
+          throw new Error(result.error);
+        }
+        return result;
+      }
+      throw err;
     }
-
-
-    return res.json();
   },
 
   async clear(token?: string) {
-    if (!token) {
+    try {
+      const res = await fetch("/api/front-end/cart/clear", {
+        method: "DELETE",
+        headers: getCartHeaders(token),
+      });
+
+      if (res.ok) {
+        return await res.json();
+      }
+
+      localCartService.clear();
+      return { success: true, local: true };
+    } catch {
       localCartService.clear();
       return { success: true, local: true };
     }
-
-    const res = await fetch(`/api/front-end/cart/clear`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`Failed to clear cart: ${errorText}`);
-    }
-
-    return res.json();
   },
 
 

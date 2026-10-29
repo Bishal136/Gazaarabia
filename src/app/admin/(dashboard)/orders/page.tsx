@@ -187,7 +187,9 @@ export default function OrdersPage() {
                   <tr key={idx} className="border-b last:border-0 hover:bg-gray-50 transition">
                     <td className="py-3 px-5 font-medium">{order.id}</td>
                     <td className="py-3 px-5">{order.transactionId ?? "N/A"}</td>
-                    <td className="py-3 px-5 text-gray-600">{order.user.name ?? "N/A"}</td>
+                    <td className="py-3 px-5 text-gray-600">
+                      {order.user?.name ?? ([order.firstName, order.lastName].filter(Boolean).join(" ").trim() || "N/A")}
+                    </td>
                     <td className="py-3 px-5 font-medium text-gray-900">{formatGBP(order.itemsTotal)}</td>
                     <td className="py-3 px-5 font-medium text-gray-900">{formatGBP(order.charityAmount)}</td>
                     <td className="py-3 px-5 font-medium text-gray-900">{formatGBP(order.discountTotal)}</td>
@@ -370,8 +372,10 @@ function OrderModal({ order, onClose, onViewReview, formatGBP, getStatusClass }:
                 {order.coupon?.affiliateId && order.affiliate && (
                   <p>
                     <span className="font-medium text-gray-800">Referred By:</span>{" "}
-                    {order.affiliate.user.name}{" "}
-                    <span className="text-gray-500 text-xs">({order.affiliate.user.email})</span>
+                    {order.affiliate.user?.name || "Affiliate"}{" "}
+                    {order.affiliate.user?.email && (
+                      <span className="text-gray-500 text-xs">({order.affiliate.user.email})</span>
+                    )}
                     <span className="ml-2 text-[11px] text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
                       Affiliate Coupon
                     </span>

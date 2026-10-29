@@ -44,9 +44,10 @@ export async function GET(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ success: false, message: "Product not found" }, { status: 404 });
     }
 
-    const [images, variants, brand, category, subcategory, materialCare, colors, sizes] = await Promise.all([
+    const [images, variants, variantImagesList, brand, category, subcategory, materialCare, colors, sizes] = await Promise.all([
       db.collection("productimage").find({ productId }).toArray(),
       db.collection("productvariant").find({ productId }).toArray(),
+      db.collection("variant_images").find({ productId }).toArray(),
       product.brandId ? db.collection("brand").findOne({ id: product.brandId }) : null,
       product.categoryId ? db.collection("categories").findOne({ id: product.categoryId }) : null,
       product.subcategoryId ? db.collection("subcategories").findOne({ id: product.subcategoryId }) : null,
@@ -58,11 +59,18 @@ export async function GET(req: NextRequest, context: RouteContext) {
     const colorMap = new Map(colors.map((c: any) => [c.id, c]));
     const sizeMap = new Map(sizes.map((s: any) => [s.id, s]));
 
+    const variantImgMap = new Map<number, any[]>();
+    for (const img of variantImagesList) {
+      if (!variantImgMap.has(img.variantId)) variantImgMap.set(img.variantId, []);
+      variantImgMap.get(img.variantId)?.push(img);
+    }
+
     const enrichedVariants = variants.map((v: any) => ({
       ...v,
       color: v.colorId ? colorMap.get(v.colorId) || null : null,
       size: v.sizeId ? sizeMap.get(v.sizeId) || null : null,
-      variantImages: [],
+      variantImages: variantImgMap.get(v.id) || (v.imageUrl ? [{ url: v.imageUrl }] : []),
+      images: variantImgMap.get(v.id) || (v.imageUrl ? [{ url: v.imageUrl }] : []),
     }));
 
     return NextResponse.json({
@@ -150,6 +158,8 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     if (body.soldHighlightDuration !== undefined) updateData.soldHighlightDuration = body.soldHighlightDuration ? parseInt(body.soldHighlightDuration) : null;
     if (body.soldCount !== undefined) updateData.soldCount = body.soldCount ? parseInt(body.soldCount) : 0;
     if (body.ambassadorId !== undefined) updateData.ambassadorId = body.ambassadorId ? parseInt(body.ambassadorId) : null;
+    if (body.videoUrl !== undefined) updateData.videoUrl = body.videoUrl || null;
+    if (body.videoThumbnail !== undefined) updateData.videoThumbnail = body.videoThumbnail || null;
 
     await db.collection("products").updateOne({ id: productId }, { $set: updateData });
 
@@ -176,24 +186,114 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     // Update variants if provided
     if (Array.isArray(body.variants)) {
       await db.collection("productvariant").deleteMany({ productId });
+      await db.collection("variant_images").deleteMany({ productId });
+
       if (body.variants.length > 0) {
         const lastVariant = await db.collection("productvariant").find().sort({ id: -1 }).limit(1).toArray();
         let varId = (lastVariant[0]?.id || 0) + 1;
-        const variantDocs = body.variants.map((v: any) => ({
-          id: varId++,
-          productId,
-          sku: v.sku || "",
-          price: parseFloat(v.price || "0"),
-          stock: parseInt(v.stock || "0"),
-          isActive: v.isActive ?? true,
-          colorId: v.colorId ? parseInt(v.colorId) : null,
-          sizeId: v.sizeId ? parseInt(v.sizeId) : null,
-          videoUrl: v.videoUrl || null,
-          videoThumbnail: v.videoThumbnail || null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }));
+
+        const lastVarImg = await db.collection("variant_images").find().sort({ id: -1 }).limit(1).toArray();
+        let varImgId = (lastVarImg[0]?.id || 0) + 1;
+
+        const variantDocs = [];
+        const variantImageDocs = [];
+
+        for (const v of body.variants) {
+          const currentVarId = varId++;
+          const variantImages = Array.isArray(v.images)
+            ? v.images
+            : Array.isArray(v.variantImages)
+            ? v.variantImages
+            : [];
+
+          const primaryImgUrl =
+            (variantImages[0]?.url || (typeof variantImages[0] === "string" ? variantImages[0] : null)) ||
+            v.imageUrl ||
+            null;
+
+          // Resolve or create custom color
+          let resolvedColorId = v.colorId && !isNaN(Number(v.colorId)) ? parseInt(String(v.colorId)) : null;
+          if (!resolvedColorId && (v.colorName || (typeof v.colorId === "string" && isNaN(Number(v.colorId))))) {
+            const cName = String(v.colorName || v.colorId).trim();
+            if (cName) {
+              const existingColor = await db.collection("colors").findOne({
+                name: { $regex: new RegExp(`^${cName}$`, "i") },
+              });
+              if (existingColor) {
+                resolvedColorId = existingColor.id;
+              } else {
+                const lastColor = await db.collection("colors").find().sort({ id: -1 }).limit(1).toArray();
+                resolvedColorId = (lastColor[0]?.id || 0) + 1;
+                await db.collection("colors").insertOne({
+                  id: resolvedColorId,
+                  name: cName,
+                  hexCode: v.hexCode || "#000000",
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                });
+              }
+            }
+          }
+
+          // Resolve or create custom size
+          let resolvedSizeId = v.sizeId && !isNaN(Number(v.sizeId)) ? parseInt(String(v.sizeId)) : null;
+          if (!resolvedSizeId && (v.sizeName || (typeof v.sizeId === "string" && isNaN(Number(v.sizeId))))) {
+            const sName = String(v.sizeName || v.sizeId).trim();
+            if (sName) {
+              const existingSize = await db.collection("sizes").findOne({
+                name: { $regex: new RegExp(`^${sName}$`, "i") },
+              });
+              if (existingSize) {
+                resolvedSizeId = existingSize.id;
+              } else {
+                const lastSize = await db.collection("sizes").find().sort({ id: -1 }).limit(1).toArray();
+                resolvedSizeId = (lastSize[0]?.id || 0) + 1;
+                await db.collection("sizes").insertOne({
+                  id: resolvedSizeId,
+                  name: sName,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                });
+              }
+            }
+          }
+
+          variantDocs.push({
+            id: currentVarId,
+            productId,
+            sku: v.sku || "",
+            price: parseFloat(v.price || "0"),
+            stock: parseInt(v.stock || "0"),
+            isActive: v.isActive ?? true,
+            colorId: resolvedColorId,
+            sizeId: resolvedSizeId,
+            imageUrl: primaryImgUrl,
+            videoUrl: v.videoUrl || null,
+            videoThumbnail: v.videoThumbnail || null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+
+          for (const img of variantImages) {
+            const imgUrl = typeof img === "string" ? img : img?.url;
+            if (imgUrl) {
+              variantImageDocs.push({
+                id: varImgId++,
+                productId,
+                variantId: currentVarId,
+                url: imgUrl,
+                alt: img?.alt || body.title || "",
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              });
+            }
+          }
+        }
+
         await db.collection("productvariant").insertMany(variantDocs);
+        if (variantImageDocs.length > 0) {
+          await db.collection("variant_images").insertMany(variantImageDocs);
+        }
       }
     }
 
@@ -266,6 +366,7 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
       await Promise.all([
         db.collection("products").deleteOne({ id: productId }),
         db.collection("productvariant").deleteMany({ productId }),
+        db.collection("variant_images").deleteMany({ productId }),
         db.collection("productimage").deleteMany({ productId }),
       ]);
       return NextResponse.json({

@@ -8,7 +8,9 @@ import {
   LogOut,
   Package,
   Heart,
-  Gift
+  Gift,
+  Star,
+  MessageSquare
 } from "lucide-react";
 import PopupAlert from "@/components/PopupAlert";
 import AlertMessage from "@/components/AlertMessage";
@@ -19,9 +21,11 @@ import { logoutUser } from "@/lib/logout";
 
 const menuItems = [
   { key: "orders", label: "Orders", path: "/account/orders", icon: <Package size={18} /> },
+  { key: "messages", label: "Messages", path: "/account/messages", icon: <MessageSquare size={18} /> },
+  { key: "reviews", label: "My Reviews", path: "/account/reviews", icon: <Star size={18} /> },
   { key: "details", label: "My Details", path: "/account/details", icon: <User size={18} /> },
   { key: "rewards", label: "Rewards", path: "/account/rewards", icon: <Gift size={18} /> },
-  // { key: "wishlist", label: "Wishlist", path: "/account/wishlist", icon: <Heart size={18} /> },
+  { key: "wishlist", label: "Wishlist", path: "/wishlist", icon: <Heart size={18} /> },
   { key: "signout", label: "Sign Out", path: "", icon: <LogOut size={18} /> },
 ];
 
@@ -43,8 +47,12 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
     if (status === "loading") return;
     if (status === "unauthenticated") {
       router.replace(ROUTES.USER.LOGIN);
-    } else if (status === "authenticated" && session?.user?.role !== "customer") {
-      const destination = getRedirectUrlByRole(session?.user?.role);
+      return;
+    }
+
+    const role = (session?.user?.role || "customer").toLowerCase().trim();
+    if (status === "authenticated" && role !== "customer") {
+      const destination = getRedirectUrlByRole(role);
       router.replace(destination);
     }
   }, [status, session, router]);
@@ -55,25 +63,36 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
     await logoutUser();
   };
 
+  const isMessagesPage = pathname?.startsWith("/account/messages");
+
   return (
     <>
-      <div className="min-h-screen bg-[var(--background)] text-[var(--text-primary)] pt-24 pb-10 px-4 md:px-16 lg:px-24">
-
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-10">
-
+      <div
+        suppressHydrationWarning
+        className={`bg-[var(--background)] text-[var(--text-primary)] ${
+          isMessagesPage
+            ? "h-dvh overflow-hidden pt-[96px] lg:pt-[106px] pb-2 sm:pb-3 px-2 sm:px-4 lg:px-6 flex flex-col"
+            : "min-h-screen pt-24 pb-12 px-4 sm:px-6 lg:px-8"
+        }`}
+      >
+        <div
+          suppressHydrationWarning
+          className={`mx-auto w-full flex flex-col md:flex-row gap-3 lg:gap-4 ${
+            isMessagesPage
+              ? "max-w-[1600px] flex-1 min-h-0 overflow-hidden items-stretch"
+              : "max-w-7xl items-start gap-6 lg:gap-8"
+          }`}
+        >
           {/* SIDEBAR */}
           <aside
-            className="
-        w-full md:w-64 
-        border-r md:border-[var(--soft-gray)] 
-        bg-white 
-        md:sticky md:top-24 
-        md:h-[calc(100vh-96px)] 
-        md:overflow-y-auto 
-        p-4 rounded-lg md:rounded-none
-      "
+            suppressHydrationWarning
+            className={`shrink-0 bg-white rounded-2xl border border-stone-200/80 shadow-xs ${
+              isMessagesPage
+                ? "w-full md:w-16 lg:w-56 p-2 md:p-2.5 lg:p-3 h-fit md:h-full md:overflow-y-auto"
+                : "w-full md:w-56 lg:w-60 p-3.5 h-fit md:sticky md:top-24"
+            }`}
           >
-            <nav className="space-y-1">
+            <nav className={`flex ${isMessagesPage ? "flex-row md:flex-col overflow-x-auto no-scrollbar" : "flex-col"} gap-1`}>
               {menuItems.map((item) => (
                 <button
                   key={item.key}
@@ -81,13 +100,17 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                     if (item.key === "signout") setConfirmLogout(true);
                     else router.push(item.path);
                   }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-md font-medium transition text-left ${pathname === item.path
-                    ? "bg-[var(--brand-primary)] text-white shadow-sm"
-                    : "text-[var(--text-secondary)] hover:bg-[var(--soft-gray)]"
-                    }`}
+                  title={item.label}
+                  className={`shrink-0 md:shrink flex items-center md:justify-center lg:justify-start gap-2.5 px-3 lg:px-3.5 py-1.5 md:py-2.5 rounded-xl font-medium text-xs md:text-sm transition text-left whitespace-nowrap ${
+                    pathname === item.path
+                      ? "bg-[#b08a78] text-white shadow-xs font-semibold"
+                      : "text-stone-700 hover:bg-[#e8d5c8]/25 hover:text-[#0a0808]"
+                  }`}
                 >
-                  {item.icon}
-                  {item.label}
+                  <span className="shrink-0">{item.icon}</span>
+                  <span className={`${isMessagesPage ? "inline md:hidden lg:inline" : "inline"} truncate`}>
+                    {item.label}
+                  </span>
                 </button>
               ))}
             </nav>
@@ -95,21 +118,12 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
 
           {/* MAIN CONTENT */}
           <main
-            className="
-        flex-1 
-        md:h-[calc(100vh-96px)] 
-        md:overflow-y-auto 
-        space-y-8 pr-1
-      "
+            className={`min-w-0 w-full ${
+              isMessagesPage
+                ? "flex-1 h-full flex flex-col overflow-hidden"
+                : "flex-1"
+            }`}
           >
-            {/* Page heading */}
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold tracking-wide">My Account</h1>
-              <p className="text-[var(--text-muted)] text-base">
-                Manage your personal information, orders, and addresses
-              </p>
-            </div>
-
             {children}
           </main>
         </div>

@@ -42,15 +42,24 @@ export const uploadService = {
 
   //  NEW — VIDEO UPLOAD
   async uploadVideo(file: File, folder: string): Promise<string> {
-    const allowedTypes = ["video/mp4", "video/webm"];
-    const maxSize = 15 * 1024 * 1024;
+    const allowedTypes = [
+      "video/mp4",
+      "video/webm",
+      "video/quicktime",
+      "video/ogg",
+      "video/x-matroska",
+      "video/x-msvideo",
+    ];
+    const allowedExtensions = ["mp4", "webm", "mov", "ogg", "mkv", "avi"];
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    const maxSize = 1024 * 1024 * 1024; // 1GB
 
-    if (!allowedTypes.includes(file.type)) {
-      throw new Error("Only MP4 or WEBM videos are allowed");
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(ext)) {
+      throw new Error("Only MP4, WEBM, MOV, or OGG videos are allowed");
     }
 
     if (file.size > maxSize) {
-      throw new Error("Video size must be under 15MB");
+      throw new Error("Video size must be under 1GB");
     }
 
     const formData = new FormData();

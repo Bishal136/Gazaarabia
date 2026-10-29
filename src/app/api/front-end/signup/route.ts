@@ -155,7 +155,7 @@ export async function POST(req: Request) {
     await db.collection("users").insertOne(newUserDoc);
 
     // Save in dedicated Otp schema in MongoDB
-    await otpService.createOtp({
+    const { otp: registrationOtp } = await otpService.createOtp({
       email: normalizedEmail,
       purpose: "registration",
       validityMinutes: 10,
@@ -217,7 +217,7 @@ export async function POST(req: Request) {
     const emailResult = await sendOtpEmail({
       to: normalizedEmail,
       name: normalizedName,
-      otp: otpCode,
+      otp: registrationOtp,
     });
 
     logSignupAttempt(req, normalizedEmail, true, "New user registered, OTP dispatched");

@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
-import { PrismaClient } from "@prisma/client";
-import { getTokenFromHeader, getUserIdFromToken } from "@/lib/authToken";
-
-const prisma:any = new PrismaClient();
+import { prisma } from "@/lib/prisma";
+import { checkAuth } from "@/lib/authToken";
 
 export async function GET(req: Request) {
-  const token:any = getTokenFromHeader(req)
-  const userId = getUserIdFromToken(token);
-
+  const userId = await checkAuth(req);
   if (!userId) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
   const addresses = await prisma.address.findMany({
-    where: { userId },
+    where: { userId: Number(userId) },
     orderBy: { createdAt: "desc" },
   });
 
@@ -20,9 +15,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const token:any = getTokenFromHeader(req)
-  const userId = getUserIdFromToken(token);
-
+  const userId = await checkAuth(req);
   if (!userId) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
@@ -30,7 +23,7 @@ export async function POST(req: Request) {
   const address = await prisma.address.create({
     data: {
       ...body,
-      userId,
+      userId: Number(userId),
     },
   });
 

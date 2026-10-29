@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import SessionProviderWrapper from "./SessionProviderWrapper";
-import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 import PayPalProviderWrapper from "@/components/PayPalProviderWrapper";
 import { CartProvider } from "./context/CartContext";
 import CookieConsentModal from "@/components/CookieConsentModal";

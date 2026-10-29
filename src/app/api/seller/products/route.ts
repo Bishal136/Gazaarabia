@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
       db.collection("subcategories").find({}).toArray(),
       db.collection("orders_item").find({ sellerId: seller.id }).toArray(),
       productIds.length > 0
-        ? db.collection("reviews").find({ productId: { $in: productIds } }).toArray()
+        ? db.collection("review").find({ productId: { $in: productIds } }).toArray()
         : [],
     ]);
 
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
         ? db.collection("productvariant").find({ productId: { $in: allSellerProductIds } }).toArray()
         : [],
       allSellerProductIds.length > 0
-        ? db.collection("reviews").find({ productId: { $in: allSellerProductIds } }).toArray()
+        ? db.collection("review").find({ productId: { $in: allSellerProductIds } }).toArray()
         : [],
     ]);
 
@@ -209,20 +209,50 @@ export async function POST(request: NextRequest) {
 
     const slug = `${body.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "")}-${crypto.randomUUID().split("-")[0]}`;
 
-    // Validate video url if present
+    // Helper for validating video URLs (direct files or video service links)
+    const isValidVideoUrl = (url: string) => {
+      if (!url) return false;
+      const lower = url.toLowerCase();
+      return (
+        lower.endsWith(".mp4") ||
+        lower.endsWith(".webm") ||
+        lower.endsWith(".mov") ||
+        lower.endsWith(".ogg") ||
+        lower.endsWith(".mkv") ||
+        lower.includes(".mp4?") ||
+        lower.includes(".webm?") ||
+        lower.includes("/uploads/videos/") ||
+        lower.includes("/uploads/variant-videos/") ||
+        lower.includes("/videos/") ||
+        lower.includes("/variant-videos/") ||
+        lower.includes("youtube.com") ||
+        lower.includes("youtu.be") ||
+        lower.includes("vimeo.com") ||
+        lower.startsWith("http://") ||
+        lower.startsWith("https://")
+      );
+    };
+
+    if (body.videoUrl && !isValidVideoUrl(body.videoUrl)) {
+      return NextResponse.json(
+        { success: false, message: "Please provide a valid video file or video link (YouTube, Vimeo, MP4, WebM)" },
+        { status: 400 }
+      );
+    }
+
+    // Validate video url if present in variants
     if (Array.isArray(body.variants)) {
       for (const v of body.variants) {
         if (v.videoUrl) {
-          const lower = v.videoUrl.toLowerCase();
-          if (!lower.endsWith(".mp4") && !lower.endsWith(".webm")) {
+          if (!isValidVideoUrl(v.videoUrl)) {
             return NextResponse.json(
-              { success: false, message: "Only MP4 or WEBM videos are allowed for variants" },
+              { success: false, message: "Only valid video files or video links are allowed for variants" },
               { status: 400 }
             );
           }
-          if (v.videoSize && v.videoSize > 15 * 1024 * 1024) {
+          if (v.videoSize && v.videoSize > 1024 * 1024 * 1024) {
             return NextResponse.json(
-              { success: false, message: "Variant video must be under 15MB" },
+              { success: false, message: "Variant video must be under 1GB" },
               { status: 400 }
             );
           }
@@ -255,6 +285,8 @@ export async function POST(request: NextRequest) {
       soldHighlightDuration: body.soldHighlightDuration ? parseInt(body.soldHighlightDuration) : null,
       soldCount: body.soldCount ? parseInt(body.soldCount) : 0,
       ambassadorId: body.ambassadorId ? parseInt(body.ambassadorId) : null,
+      videoUrl: body.videoUrl || null,
+      videoThumbnail: body.videoThumbnail || null,
       isDeleted: false,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -279,25 +311,114 @@ export async function POST(request: NextRequest) {
       await db.collection("productimage").insertMany(imageDocs);
     }
 
-    // Save variants
+    // Save variants and their specific variant images
     if (Array.isArray(body.variants) && body.variants.length > 0) {
       const lastVariant = await db.collection("productvariant").find().sort({ id: -1 }).limit(1).toArray();
       let varId = (lastVariant[0]?.id || 0) + 1;
-      const variantDocs = body.variants.map((v: any) => ({
-        id: varId++,
-        productId: nextProductId,
-        sku: v.sku || "",
-        price: parseFloat(v.price || "0"),
-        stock: parseInt(v.stock || "0"),
-        isActive: v.isActive ?? true,
-        colorId: v.colorId ? parseInt(v.colorId) : null,
-        sizeId: v.sizeId ? parseInt(v.sizeId) : null,
-        videoUrl: v.videoUrl || null,
-        videoThumbnail: v.videoThumbnail || null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }));
+
+      const lastVarImg = await db.collection("variant_images").find().sort({ id: -1 }).limit(1).toArray();
+      let varImgId = (lastVarImg[0]?.id || 0) + 1;
+
+      const variantDocs = [];
+      const variantImageDocs = [];
+
+      for (const v of body.variants) {
+        const currentVarId = varId++;
+        const variantImages = Array.isArray(v.images)
+          ? v.images
+          : Array.isArray(v.variantImages)
+          ? v.variantImages
+          : [];
+
+        const primaryImgUrl =
+          (variantImages[0]?.url || (typeof variantImages[0] === "string" ? variantImages[0] : null)) ||
+          v.imageUrl ||
+          null;
+
+        // Resolve or create custom color
+        let resolvedColorId = v.colorId && !isNaN(Number(v.colorId)) ? parseInt(String(v.colorId)) : null;
+        if (!resolvedColorId && (v.colorName || (typeof v.colorId === "string" && isNaN(Number(v.colorId))))) {
+          const cName = String(v.colorName || v.colorId).trim();
+          if (cName) {
+            const existingColor = await db.collection("colors").findOne({
+              name: { $regex: new RegExp(`^${cName}$`, "i") },
+            });
+            if (existingColor) {
+              resolvedColorId = existingColor.id;
+            } else {
+              const lastColor = await db.collection("colors").find().sort({ id: -1 }).limit(1).toArray();
+              resolvedColorId = (lastColor[0]?.id || 0) + 1;
+              await db.collection("colors").insertOne({
+                id: resolvedColorId,
+                name: cName,
+                hexCode: v.hexCode || "#000000",
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              });
+            }
+          }
+        }
+
+        // Resolve or create custom size
+        let resolvedSizeId = v.sizeId && !isNaN(Number(v.sizeId)) ? parseInt(String(v.sizeId)) : null;
+        if (!resolvedSizeId && (v.sizeName || (typeof v.sizeId === "string" && isNaN(Number(v.sizeId))))) {
+          const sName = String(v.sizeName || v.sizeId).trim();
+          if (sName) {
+            const existingSize = await db.collection("sizes").findOne({
+              name: { $regex: new RegExp(`^${sName}$`, "i") },
+            });
+            if (existingSize) {
+              resolvedSizeId = existingSize.id;
+            } else {
+              const lastSize = await db.collection("sizes").find().sort({ id: -1 }).limit(1).toArray();
+              resolvedSizeId = (lastSize[0]?.id || 0) + 1;
+              await db.collection("sizes").insertOne({
+                id: resolvedSizeId,
+                name: sName,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              });
+            }
+          }
+        }
+
+        variantDocs.push({
+          id: currentVarId,
+          productId: nextProductId,
+          sku: v.sku || "",
+          price: parseFloat(v.price || "0"),
+          stock: parseInt(v.stock || "0"),
+          isActive: v.isActive ?? true,
+          colorId: resolvedColorId,
+          sizeId: resolvedSizeId,
+          imageUrl: primaryImgUrl,
+          videoUrl: v.videoUrl || null,
+          videoThumbnail: v.videoThumbnail || null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+
+        // Insert variant images
+        for (const img of variantImages) {
+          const imgUrl = typeof img === "string" ? img : img?.url;
+          if (imgUrl) {
+            variantImageDocs.push({
+              id: varImgId++,
+              productId: nextProductId,
+              variantId: currentVarId,
+              url: imgUrl,
+              alt: img?.alt || body.title || "",
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+          }
+        }
+      }
+
       await db.collection("productvariant").insertMany(variantDocs);
+      if (variantImageDocs.length > 0) {
+        await db.collection("variant_images").insertMany(variantImageDocs);
+      }
     }
 
     return NextResponse.json(

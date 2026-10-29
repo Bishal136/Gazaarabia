@@ -33,28 +33,45 @@ export async function PATCH(
       return NextResponse.json({ message: "Seller profile not found" }, { status: 404 });
     }
 
-    const review = await db.collection("reviews").findOne({ id: reviewId });
+    // NOTE: collection is "review" (singular)
+    const review = await db.collection("review").findOne({ id: reviewId });
     if (!review) {
       return NextResponse.json({ message: "Review not found" }, { status: 404 });
     }
 
     const product = await db.collection("products").findOne({ id: review.productId });
     if (!product || product.sellerId !== seller.id) {
-      return NextResponse.json({ message: "Unauthorized to pin this review" }, { status: 403 });
+      return NextResponse.json(
+        { message: "Unauthorized: this product does not belong to your store" },
+        { status: 403 }
+      );
     }
 
     const body = await req.json();
-    const isPinned = body.isPinned ?? !review.isPinned;
+    const updateData: Record<string, any> = { updatedAt: new Date() };
 
-    await db.collection("reviews").updateOne(
+    // Toggle pin if provided
+    if (body.isPinned !== undefined) {
+      updateData.isPinned = Boolean(body.isPinned);
+    }
+
+    // Save or update seller reply if provided
+    if (body.sellerReply !== undefined) {
+      const replyText = typeof body.sellerReply === "string" ? body.sellerReply.trim() : "";
+      updateData.sellerReply = replyText || null;
+      updateData.sellerRepliedAt = replyText ? new Date() : null;
+      updateData.sellerReplyShopName = seller.shopName || "Seller";
+    }
+
+    await db.collection("review").updateOne(
       { id: reviewId },
-      { $set: { isPinned, updatedAt: new Date() } }
+      { $set: updateData }
     );
 
-    const updated = await db.collection("reviews").findOne({ id: reviewId });
-    return NextResponse.json(updated);
+    const updated = await db.collection("review").findOne({ id: reviewId });
+    return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {
-    console.error("PIN REVIEW ERROR:", error);
+    console.error("SELLER REVIEW PATCH ERROR:", error);
     return NextResponse.json(
       { message: "Internal Server Error", error: error.message },
       { status: 500 }

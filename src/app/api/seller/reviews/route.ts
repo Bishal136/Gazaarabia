@@ -32,17 +32,31 @@ export async function GET(req: NextRequest) {
     const sellerProducts = await db
       .collection("products")
       .find({ sellerId: seller.id })
-      .project({ id: 1, title: 1, slug: 1 })
+      .project({ id: 1, title: 1, slug: 1, image: 1 })
       .toArray();
 
     const productIds = sellerProducts.map((p: any) => p.id);
     const productMap = new Map(sellerProducts.map((p: any) => [p.id, p]));
 
+    // Query product images to provide primary product photo
+    const productImages = productIds.length > 0
+      ? await db.collection("productimage").find({ productId: { $in: productIds } }).toArray()
+      : [];
+    const imageMap = new Map<number, string>();
+    productImages.forEach((img: any) => {
+      if (!imageMap.has(img.productId) || img.primary) {
+        imageMap.set(img.productId, img.url);
+      }
+    });
+
+    // NOTE: MongoDB review collection name is "review" (singular)
     const [total, reviewsRaw] = await Promise.all([
-      productIds.length > 0 ? db.collection("reviews").countDocuments({ productId: { $in: productIds } }) : 0,
+      productIds.length > 0
+        ? db.collection("review").countDocuments({ productId: { $in: productIds } })
+        : 0,
       productIds.length > 0
         ? db
-            .collection("reviews")
+            .collection("review")
             .find({ productId: { $in: productIds } })
             .sort({ isPinned: -1, createdAt: -1 })
             .skip(skip)
@@ -53,39 +67,67 @@ export async function GET(req: NextRequest) {
 
     const userIds = Array.from(new Set(reviewsRaw.map((r: any) => r.userId).filter(Boolean)));
     const users = userIds.length > 0
-      ? await db.collection("users").find({ id: { $in: userIds } }).project({ id: 1, name: 1, email: 1 }).toArray()
+      ? await db
+          .collection("users")
+          .find({ id: { $in: userIds } })
+          .project({ id: 1, name: 1, email: 1 })
+          .toArray()
       : [];
     const userMap = new Map(users.map((u: any) => [u.id, u]));
 
     const formattedReviews = reviewsRaw.map((review: any) => {
       const prod = productMap.get(review.productId);
       const usr = userMap.get(review.userId);
+      const displayName = usr?.name || "Customer";
+      const nameParts = displayName.trim().split(" ");
+      const firstName = nameParts[0] || "Customer";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      const images = Array.isArray(review.images)
+        ? review.images
+        : review.image
+        ? [review.image]
+        : [];
+
       return {
         id: review.id,
-        rating: review.rating,
-        comment: review.comment,
-        image: review.image || "",
+        rating: Number(review.rating) || 5,
+        comment: review.comment || "",
+        image: review.image || images[0] || "",
+        images,
         video: review.video || "",
         isPinned: Boolean(review.isPinned),
+        sellerReply: review.sellerReply || null,
+        sellerRepliedAt: review.sellerRepliedAt || null,
+        sellerReplyShopName: review.sellerReplyShopName || seller.shopName || "Seller",
         createdAt: review.createdAt,
         updatedAt: review.updatedAt,
         userId: review.userId,
         productId: review.productId,
+        orderItemId: review.orderItemId || null,
         product: {
           id: prod?.id,
           title: prod?.title || "Product",
           slug: prod?.slug || "",
-          primaryImage: "",
+          primaryImage: imageMap.get(review.productId) || prod?.image || "/placeholder.png",
         },
         user: {
           id: usr?.id,
-          name: usr?.name || "Customer",
+          name: displayName,
+          firstName,
+          lastName,
           email: usr?.email || "",
         },
       };
     });
 
-    return NextResponse.json(formattedReviews);
+    return NextResponse.json({
+      success: true,
+      data: formattedReviews,
+      total,
+      page,
+      limit,
+    });
   } catch (error: any) {
     console.error("SELLER REVIEWS GET ERROR:", error);
     return NextResponse.json(

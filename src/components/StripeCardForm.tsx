@@ -63,7 +63,8 @@ export default function StripeCardForm({
             )}
 
             <button
-                className="w-full bg-black text-white py-3 rounded-lg mt-4 font-semibold hover:bg-gray-900 transition-colors disabled:opacity-50"
+                type="button"
+                className="w-full bg-[#b08a78] hover:bg-[#9d7765] text-white py-3.5 rounded-full mt-4 font-semibold text-sm uppercase tracking-wider transition active:scale-[0.99] shadow-sm disabled:opacity-50 cursor-pointer"
                 disabled={processing || !stripe || !elements}
                 onClick={handlePayment}
             >

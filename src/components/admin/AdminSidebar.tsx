@@ -217,22 +217,12 @@ export default function AdminSidebar({
           className={`p-6 border-b border-[var(--dark-gray)] flex items-center ${collapsed ? "justify-center" : "justify-between"
             } gap-2`}
         >
-          {/* {!collapsed && (
-            <h2 className="text-lg font-semibold tracking-wide text-white">
-              Gazaarabia{" "}
-              <span className="text-[var(--brand-primary)]">Admin</span>
-            </h2>
-          )} */}
-
           {!collapsed && (
-            <h2 className="text-lg font-semibold tracking-wide text-white">
+            <h2 className="text-lg font-semibold tracking-wide text-white" suppressHydrationWarning>
               Gazaarabia{" "}
-              <span className="text-[var(--brand-primary)]">
-                {mounted && session?.user?.role === "admin" ? "Admin" : ""}
-              </span>
+              <span className="text-[var(--brand-primary)]" suppressHydrationWarning>Admin</span>
             </h2>
           )}
-
 
           <button
             onClick={() => setCollapsed(!collapsed)}
@@ -311,10 +301,6 @@ export default function AdminSidebar({
 
             {links
               .filter((item) => {
-
-                // Admin sees everything
-                if (userRole === "admin") return true;
-
                 // Content Manager only allowed specific pages
                 if (userRole === "content_manager") {
                   if (!item.children) return allowedForContentManager.includes(item.href);
@@ -325,8 +311,8 @@ export default function AdminSidebar({
                   );
                 }
 
-                // Others see nothing
-                return false;
+                // Admin or initial SSR render sees all links
+                return true;
               }).map((item) => {
                 const isGroup = !!item.children;
 
@@ -365,10 +351,9 @@ export default function AdminSidebar({
                           <div className="ml-10 mt-1 flex flex-col gap-1">
                             {item.children
                               .filter((child) => {
-                                if (userRole === "admin") return true;
                                 if (userRole === "content_manager")
                                   return allowedForContentManager.includes(child.href);
-                                return false;
+                                return true;
                               })
                               .map((child) => {
                                 const ChildIcon = child.icon;

@@ -506,11 +506,11 @@ function ProductFormContent() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 15 * 1024 * 1024) {
+    if (file.size > 1024 * 1024 * 1024) {
       setAlertMessage({
         isOpen: true,
         type: "error",
-        message: "Video must be under 15MB",
+        message: "Video must be under 1GB",
       });
       return;
     }
@@ -866,13 +866,20 @@ function ProductFormContent() {
                       />
                       <button
                         type="button"
-                        onClick={() =>
-                          handleVariantChange(
-                            idx,
-                            "images",
-                            v.images.filter((_: any, j: any) => j !== i)
-                          )
-                        }
+                        onClick={() => {
+                          const updated = v.images.filter((_: any, j: any) => j !== i);
+                          if (v.colorId) {
+                            setVariants((prev) =>
+                              prev.map((variant) =>
+                                variant.colorId === v.colorId
+                                  ? { ...variant, images: updated }
+                                  : variant
+                              )
+                            );
+                          } else {
+                            handleVariantChange(idx, "images", updated);
+                          }
+                        }}
                         className="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"
                       >
                         <Trash2 size={14} />
@@ -899,10 +906,21 @@ function ProductFormContent() {
                       if (!files.length) return;
                       try {
                         const urls = await uploadService.uploadMultiple(files, "variants");
-                        handleVariantChange(idx, "images", [
+                        const updatedImages = [
                           ...(v.images || []),
                           ...urls.map((url: any) => ({ url, alt: "" })),
-                        ]);
+                        ];
+                        if (v.colorId) {
+                          setVariants((prev) =>
+                            prev.map((variant, i) =>
+                              i === idx || variant.colorId === v.colorId
+                                ? { ...variant, images: updatedImages }
+                                : variant
+                            )
+                          );
+                        } else {
+                          handleVariantChange(idx, "images", updatedImages);
+                        }
                       } catch {
                         setAlertMessage({
                           isOpen: true,

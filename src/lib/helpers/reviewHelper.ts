@@ -6,20 +6,32 @@ import { prisma } from "@/lib/prisma";
 export async function getBulkProductRatingStats(productIds: number[]) {
     if (productIds.length === 0) return new Map();
 
-    const stats = await prisma.review.groupBy({
-        by: ['productId'],
-        where: { productId: { in: productIds } },
-        _avg: { rating: true },
-        _count: { rating: true },
-    });
-
     const statsMap = new Map();
-    stats.forEach(s => {
-        statsMap.set(s.productId, {
-            averageRating: s._avg.rating ? Number(s._avg.rating.toFixed(1)) : 0,
-            totalReviews: s._count.rating || 0
+
+    try {
+        const stats = await prisma.review.groupBy({
+            by: ['productId'],
+            where: { productId: { in: productIds } },
+            _avg: { rating: true },
+            _count: { rating: true },
         });
-    });
+
+        if (Array.isArray(stats)) {
+            stats.forEach((s: any) => {
+                const avg = s?._avg?.rating ?? s?.rating ?? 0;
+                const count = typeof s?._count === "object"
+                    ? (s._count.rating ?? s._count.id ?? s._count._all ?? 0)
+                    : (Number(s?._count) || 0);
+
+                statsMap.set(s.productId, {
+                    averageRating: avg ? Number(Number(avg).toFixed(1)) : 0,
+                    totalReviews: count
+                });
+            });
+        }
+    } catch (err) {
+        console.error("Error in getBulkProductRatingStats:", err);
+    }
 
     return statsMap;
 }
@@ -28,14 +40,24 @@ export async function getBulkProductRatingStats(productIds: number[]) {
  * Get average rating + total reviews for a product
  */
 export async function getProductRatingStats(productId: number) {
-    const reviewStats = await prisma.review.aggregate({
-        where: { productId },
-        _avg: { rating: true },
-        _count: { rating: true },
-    });
+    try {
+        const reviewStats = await prisma.review.aggregate({
+            where: { productId },
+            _avg: { rating: true },
+            _count: { rating: true },
+        });
 
-    return {
-        averageRating: reviewStats._avg.rating ? Number(reviewStats._avg.rating.toFixed(1)) : 0,
-        totalReviews: reviewStats._count.rating || 0,
-    };
+        const avg = reviewStats?._avg?.rating ?? 0;
+        const count = typeof reviewStats?._count === "object"
+            ? (reviewStats._count.rating ?? reviewStats._count.id ?? reviewStats._count._all ?? 0)
+            : (Number(reviewStats?._count) || 0);
+
+        return {
+            averageRating: avg ? Number(Number(avg).toFixed(1)) : 0,
+            totalReviews: count,
+        };
+    } catch (err) {
+        console.error("Error in getProductRatingStats:", err);
+        return { averageRating: 0, totalReviews: 0 };
+    }
 }

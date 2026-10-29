@@ -50,6 +50,7 @@ const cliPassword = args.find((a) => !a.includes("@") && !a.startsWith("--"));
 
 const ADMIN_EMAIL = (
   cliEmail ||
+  process.env.SEED_ADMIN_EMAIL ||
   process.env.ADMIN_EMAIL ||
   "admin@gazaarabia.com"
 ).trim().toLowerCase();
@@ -60,7 +61,11 @@ const ADMIN_PASSWORD = (
   "Admin123!"
 ).trim();
 
-const ADMIN_NAME = "Super Admin";
+const ADMIN_NAME = (
+  process.env.SEED_ADMIN_NAME ||
+  process.env.ADMIN_NAME ||
+  "Super Admin"
+).trim();
 
 async function seedAdmin() {
   console.log("====================================================");

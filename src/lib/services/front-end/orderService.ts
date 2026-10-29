@@ -2,9 +2,13 @@ export const orderService = {
   /**
    * Get all orders for the logged-in user
    */
-  getAll: async (token: string) => {
+  getAll: async (token?: string | null) => {
+    const headers: Record<string, string> = {};
+    if (token && token !== "undefined" && token !== "null") {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
     const res = await fetch(`/api/front-end/orders`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers,
       cache: "no-store",
     });
     if (!res.ok) throw new Error(`Failed to fetch orders (${res.status})`);
@@ -14,20 +18,18 @@ export const orderService = {
   /**
    * Get order details by ID
    */
-
   getById: async (
-    token: string | null,
+    token: string | null | undefined,
     id: number,
     guestUserId?: string | null
   ) => {
     let url = `/api/front-end/orders/${id}`;
     const headers: Record<string, string> = {};
 
-    if (token) {
+    if (token && token !== "undefined" && token !== "null") {
       headers["Authorization"] = `Bearer ${token}`;
-    } else {
+    } else if (guestUserId) {
       // Guest user → use guest ID
-      if (!guestUserId) throw new Error("Missing guest user ID for guest order");
       url += `?userId=${guestUserId}`;
     }
 
@@ -76,12 +78,16 @@ export const orderService = {
       }[];
     }
   ) => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token && token !== "undefined" && token !== "null") {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
     const res = await fetch(`/api/front-end/orders`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers,
       body: JSON.stringify(data), // ✅ send full structured object
     });
 

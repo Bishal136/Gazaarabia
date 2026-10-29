@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
 
     // 7. Reviews
     const reviews = sellerProductIds.length > 0
-      ? await db.collection("reviews").find({
+      ? await db.collection("review").find({
           productId: { $in: sellerProductIds },
         }).toArray()
       : [];

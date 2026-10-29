@@ -218,30 +218,50 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         where: { productId, id: { notIn: receivedVariantIds } },
       });
 
+      // Helper for validating video URLs (direct files or video service links)
+      const isValidVideoUrl = (url: string) => {
+        if (!url) return false;
+        const lower = url.toLowerCase();
+        return (
+          lower.endsWith(".mp4") ||
+          lower.endsWith(".webm") ||
+          lower.endsWith(".mov") ||
+          lower.endsWith(".ogg") ||
+          lower.endsWith(".mkv") ||
+          lower.includes(".mp4?") ||
+          lower.includes(".webm?") ||
+          lower.includes("/uploads/videos/") ||
+          lower.includes("/uploads/variant-videos/") ||
+          lower.includes("/videos/") ||
+          lower.includes("/variant-videos/") ||
+          lower.includes("youtube.com") ||
+          lower.includes("youtu.be") ||
+          lower.includes("vimeo.com") ||
+          lower.startsWith("http://") ||
+          lower.startsWith("https://")
+        );
+      };
+
       for (const v of body.variants) {
 
         // ---- VARIANT VIDEO VALIDATION ----
         if (v.videoUrl) {
-          const lower = v.videoUrl.toLowerCase();
-
-          if (!lower.endsWith(".mp4") && !lower.endsWith(".webm")) {
+          if (!isValidVideoUrl(v.videoUrl)) {
             return NextResponse.json(
               {
                 success: false,
-                message: "Only MP4 or WEBM videos are allowed for variants",
+                message: "Only valid video files or video links are allowed for variants",
               },
               { status: 400 }
             );
           }
 
-          if (v.videoSize && v.videoSize > 15 * 1024 * 1024) {
+          if (v.videoSize && v.videoSize > 1024 * 1024 * 1024) {
             return NextResponse.json(
-              { success: false, message: "Variant video must be under 15MB" },
+              { success: false, message: "Variant video must be under 1GB" },
               { status: 400 }
             );
           }
-
-
         }
 
 
@@ -269,6 +289,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 
               videoUrl: v.videoUrl || null,
               videoThumbnail: v.videoThumbnail || null,
+              imageUrl: v.images?.[0]?.url || (typeof v.images?.[0] === "string" ? v.images[0] : null) || null,
             },
           });
 
@@ -310,6 +331,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 
               videoUrl: v.videoUrl || null,
               videoThumbnail: v.videoThumbnail || null,
+              imageUrl: v.images?.[0]?.url || (typeof v.images?.[0] === "string" ? v.images[0] : null) || null,
 
               // productId,
             },

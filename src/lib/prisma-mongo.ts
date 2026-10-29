@@ -436,6 +436,37 @@ async function resolveIncludes(
           .sort(subOrderBy)
           .toArray();
 
+        // Self-healing: if an order document has embedded items but none in orders_item, migrate them
+        for (const doc of docs) {
+          const docItems = items.filter((item: any) => item.orderId === doc.id);
+          if (docItems.length === 0 && doc.orderItems) {
+            let embeddedList: any[] = [];
+            if (Array.isArray(doc.orderItems)) {
+              embeddedList = doc.orderItems;
+            } else if (Array.isArray(doc.orderItems.create)) {
+              embeddedList = doc.orderItems.create;
+            } else if (doc.orderItems.create && typeof doc.orderItems.create === "object") {
+              embeddedList = [doc.orderItems.create];
+            }
+
+            if (embeddedList.length > 0) {
+              const itemsCol = db.collection("orders_item");
+              const lastItem = await itemsCol.find().sort({ id: -1 }).limit(1).toArray();
+              let nextItemId = lastItem.length > 0 && typeof lastItem[0].id === "number" ? lastItem[0].id + 1 : 1;
+              const prepared = embeddedList.map((item) => ({
+                ...item,
+                id: item.id || nextItemId++,
+                orderId: doc.id,
+                createdAt: item.createdAt || new Date(),
+                updatedAt: item.updatedAt || new Date(),
+              }));
+              await itemsCol.insertMany(prepared);
+              await db.collection("orders").updateOne({ id: doc.id }, { $unset: { orderItems: "" } });
+              items.push(...prepared);
+            }
+          }
+        }
+
         if (subInclude) {
           items = await resolveIncludes(db, "orders_item", items, subInclude);
         }
@@ -548,6 +579,49 @@ async function resolveIncludes(
             u = selected;
           }
           doc.user = u;
+        });
+      } else if (relKey === "product") {
+        const productIds = docs.map((d) => d.productId).filter(Boolean);
+        const products = await db
+          .collection("products")
+          .find({ id: { $in: productIds } })
+          .toArray();
+        docs.forEach((doc) => {
+          let p = products.find((x: any) => x.id === doc.productId) || null;
+          if (p && subSelect) {
+            const selected: any = {};
+            for (const k of Object.keys(subSelect)) {
+              if (subSelect[k]) selected[k] = p[k];
+            }
+            p = selected;
+          }
+          doc.product = p;
+        });
+      } else if (relKey === "variant") {
+        const variantIds = docs.map((d) => d.variantId).filter(Boolean);
+        const variants = await db
+          .collection("productvariant")
+          .find({ id: { $in: variantIds } })
+          .toArray();
+        const colorIds = variants.map((v: any) => v.colorId).filter(Boolean);
+        const sizeIds = variants.map((v: any) => v.sizeId).filter(Boolean);
+        const colors = colorIds.length > 0 ? await db.collection("colors").find({ id: { $in: colorIds } }).toArray() : [];
+        const sizes = sizeIds.length > 0 ? await db.collection("sizes").find({ id: { $in: sizeIds } }).toArray() : [];
+        variants.forEach((v: any) => {
+          v.color = colors.find((c: any) => c.id === v.colorId) || null;
+          v.size = sizes.find((s: any) => s.id === v.sizeId) || null;
+        });
+        docs.forEach((doc) => {
+          doc.variant = variants.find((x: any) => x.id === doc.variantId) || null;
+        });
+      } else if (relKey === "orderItem") {
+        const orderItemIds = docs.map((d) => d.orderItemId).filter(Boolean);
+        const orderItems = await db
+          .collection("orders_item")
+          .find({ id: { $in: orderItemIds } })
+          .toArray();
+        docs.forEach((doc) => {
+          doc.orderItem = orderItems.find((x: any) => x.id === doc.orderItemId) || null;
         });
       }
     }
@@ -724,11 +798,42 @@ function createModelDelegate(modelName: string) {
         data.id = last.length > 0 && typeof last[0].id === "number" ? last[0].id + 1 : 1;
       }
 
+      // If creating an order with nested orderItems, extract them before saving the order doc
+      let nestedOrderItems: any[] = [];
+      if (colName === "orders" && data.orderItems) {
+        if (Array.isArray(data.orderItems.create)) {
+          nestedOrderItems = data.orderItems.create;
+        } else if (data.orderItems.create && typeof data.orderItems.create === "object") {
+          nestedOrderItems = [data.orderItems.create];
+        } else if (Array.isArray(data.orderItems.createMany?.data)) {
+          nestedOrderItems = data.orderItems.createMany.data;
+        } else if (Array.isArray(data.orderItems)) {
+          nestedOrderItems = data.orderItems;
+        }
+        delete data.orderItems;
+      }
+
       const now = new Date();
       if (!data.createdAt) data.createdAt = now;
       if (!data.updatedAt) data.updatedAt = now;
 
       await col.insertOne(data);
+
+      // Insert nested order items into orders_item collection with the order's id
+      if (colName === "orders" && nestedOrderItems.length > 0) {
+        const itemsCol = db.collection("orders_item");
+        const lastItem = await itemsCol.find().sort({ id: -1 }).limit(1).toArray();
+        let nextItemId = lastItem.length > 0 && typeof lastItem[0].id === "number" ? lastItem[0].id + 1 : 1;
+
+        const docsToInsert = nestedOrderItems.map((item) => ({
+          ...item,
+          id: item.id || nextItemId++,
+          orderId: data.id,
+          createdAt: item.createdAt || now,
+          updatedAt: item.updatedAt || now,
+        }));
+        await itemsCol.insertMany(docsToInsert);
+      }
 
       let result = data;
       if (args.include) {
@@ -772,6 +877,8 @@ function createModelDelegate(modelName: string) {
 
       const filter = convertPrismaWhereToMongo(args.where);
       const updateData = { ...(args.data || {}) };
+      delete updateData._id;
+      delete updateData.id;
       updateData.updatedAt = new Date();
 
       // Separate operators if any
@@ -813,10 +920,12 @@ function createModelDelegate(modelName: string) {
 
       const filter = convertPrismaWhereToMongo(args.where);
       const updateData = { ...(args.data || {}) };
+      delete updateData._id;
+      delete updateData.id;
       updateData.updatedAt = new Date();
 
       const res = await col.updateMany(filter, { $set: updateData });
-      return { count: res.modifiedCount };
+      return { count: res.matchedCount !== undefined ? res.matchedCount : res.modifiedCount };
     },
 
     async upsert(args: any = {}) {
@@ -862,7 +971,14 @@ function createModelDelegate(modelName: string) {
       const result: any = {};
 
       if (args._count) {
-        result._count = typeof args._count === "object" ? { id: docs.length } : docs.length;
+        if (typeof args._count === "object") {
+          result._count = { id: docs.length, _all: docs.length };
+          for (const [field] of Object.entries(args._count)) {
+            result._count[field] = docs.length;
+          }
+        } else {
+          result._count = docs.length;
+        }
       }
       if (args._avg) {
         result._avg = {};
@@ -901,21 +1017,48 @@ function createModelDelegate(modelName: string) {
 
       const groupStage: any = { _id: groupId };
       if (args._count) {
-        groupStage._count = { $sum: 1 };
+        groupStage.__count = { $sum: 1 };
+      }
+      if (args._avg) {
+        for (const [f] of Object.entries(args._avg)) {
+          groupStage[`__avg_${f}`] = { $avg: `$${f}` };
+        }
       }
       if (args._sum) {
         for (const [f] of Object.entries(args._sum)) {
-          groupStage[f] = { $sum: `$${f}` };
+          groupStage[`__sum_${f}`] = { $sum: `$${f}` };
         }
       }
       pipeline.push({ $group: groupStage });
 
       const results = await col.aggregate(pipeline).toArray();
-      return results.map((r: any) => ({
-        ...r._id,
-        _count: r._count,
-        ...(args._sum ? r : {}),
-      }));
+      return results.map((r: any) => {
+        const item: any = { ...r._id };
+        if (args._count) {
+          const countVal = r.__count !== undefined ? r.__count : (r._count || 0);
+          if (typeof args._count === "object") {
+            item._count = { id: countVal, _all: countVal };
+            for (const [f] of Object.entries(args._count)) {
+              item._count[f] = countVal;
+            }
+          } else {
+            item._count = countVal;
+          }
+        }
+        if (args._avg) {
+          item._avg = {};
+          for (const [f] of Object.entries(args._avg)) {
+            item._avg[f] = r[`__avg_${f}`] !== undefined && r[`__avg_${f}`] !== null ? r[`__avg_${f}`] : 0;
+          }
+        }
+        if (args._sum) {
+          item._sum = {};
+          for (const [f] of Object.entries(args._sum)) {
+            item._sum[f] = r[`__sum_${f}`] !== undefined && r[`__sum_${f}`] !== null ? r[`__sum_${f}`] : 0;
+          }
+        }
+        return item;
+      });
     },
   };
 }

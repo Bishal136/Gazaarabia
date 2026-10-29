@@ -8,6 +8,7 @@ export const ROUTES = {
     LOGIN: "/account/login",
     REGISTER: "/account/register",
     PROFILE: "/account/details",
+    MESSAGES: "/account/messages",
   },
 
   //  Admin routes
@@ -41,6 +42,7 @@ export const ROUTES = {
     LOGIN: "/seller/login",
     DASHBOARD: "/seller",
     REGISTER: "/seller/register",
+    MESSAGES: "/seller/messages",
   },
   // Other common pages
   //   BLOG: "/blog",

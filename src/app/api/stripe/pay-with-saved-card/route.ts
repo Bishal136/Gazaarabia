@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
-import { getTokenFromHeader, getUserIdFromToken } from "@/lib/authToken";
+import { checkAuth } from "@/lib/authToken";
 
 export async function POST(req: Request) {
     try {
         // 1. Auth
-        const token: any = getTokenFromHeader(req);
-        const userId = getUserIdFromToken(token);
+        const userId = await checkAuth(req);
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -22,7 +21,7 @@ export async function POST(req: Request) {
 
         // 2. Fetch user & customerId
         const user = await prisma.users.findUnique({
-            where: { id: userId },
+            where: { id: Number(userId) },
             select: { stripeCustomerId: true }
         });
 

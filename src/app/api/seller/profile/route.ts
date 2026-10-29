@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 
     const sellerProductIds = sellerProducts.map((p: any) => p.id);
     const reviews = sellerProductIds.length > 0
-      ? await db.collection("reviews").find({ productId: { $in: sellerProductIds } }).toArray()
+      ? await db.collection("review").find({ productId: { $in: sellerProductIds } }).toArray()
       : [];
 
     const totalOrders = new Set(sellerItems.map((i: any) => i.orderId)).size;

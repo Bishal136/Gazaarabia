@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import AlertMessage from "@/components/AlertMessage";
 import { TextField } from "@mui/material";
+import { X } from "lucide-react";
 
 interface AddressFormProps {
   onCancel: () => void;
@@ -36,7 +37,31 @@ export default function AddressForm({ onCancel, onSave, initialData }: AddressFo
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (initialData) setForm(initialData);
+    if (initialData) {
+      setForm({
+        firstName: initialData.firstName || "",
+        lastName: initialData.lastName || "",
+        company: initialData.company || "",
+        address1: initialData.address1 || "",
+        address2: initialData.address2 || "",
+        city: initialData.city || "",
+        country: initialData.country || "",
+        postalCode: initialData.postalCode || "",
+        phone: initialData.phone || "",
+      });
+    } else {
+      setForm({
+        firstName: "",
+        lastName: "",
+        company: "",
+        address1: "",
+        address2: "",
+        city: "",
+        country: "",
+        postalCode: "",
+        phone: "",
+      });
+    }
   }, [initialData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,7 +83,18 @@ export default function AddressForm({ onCancel, onSave, initialData }: AddressFo
 
     try {
       setLoading(true);
-      await onSave(form);
+      const payload = {
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        company: form.company.trim(),
+        address1: form.address1.trim(),
+        address2: form.address2.trim(),
+        city: form.city.trim(),
+        country: form.country.trim(),
+        postalCode: form.postalCode.trim(),
+        phone: form.phone.trim(),
+      };
+      await onSave(payload);
       setAlert({
         isOpen: true,
         type: "success",
@@ -90,9 +126,17 @@ export default function AddressForm({ onCancel, onSave, initialData }: AddressFo
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 overflow-auto py-8">
-      <div className="bg-white rounded-xl max-w-2xl w-full p-8 shadow-lg relative flex flex-col max-h-[90vh]">
-        <h2 className="text-xl font-semibold mb-6 text-center">
+    <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-[200] overflow-auto py-8">
+      <div className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative flex flex-col max-h-[90vh] mx-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="absolute top-4 right-4 p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+          aria-label="Close modal"
+        >
+          <X size={20} />
+        </button>
+        <h2 className="text-xl font-bold mb-6 text-center text-[#0a0808]">
           {initialData ? "Edit Address" : "Add Address"}
         </h2>
 

@@ -97,7 +97,7 @@ export default function GuestAddressModal({ onCancel, onSave, initialData }: Gue
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 overflow-auto py-8">
+    <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-[200] overflow-auto py-8">
       <div className="bg-white rounded-xl max-w-2xl w-full p-8 shadow-lg relative flex flex-col max-h-[90vh]">
         <h2 className="text-xl font-semibold mb-6 text-center">
           Delivery Details

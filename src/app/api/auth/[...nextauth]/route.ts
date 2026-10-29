@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
+import jwt from "jsonwebtoken";
 import { authService } from "@/lib/services/authService";
 import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
@@ -131,7 +132,19 @@ export const authOptions: any = {
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
-        token.token = user.token;
+        token.token =
+          user.token ||
+          (process.env.JWT_SECRET
+            ? jwt.sign(
+                {
+                  id: Number(user.id || user.user_id),
+                  email: user.email,
+                  roleName: user.role || "customer",
+                },
+                process.env.JWT_SECRET,
+                { expiresIn: "7d" }
+              )
+            : undefined);
         token.role = user.role;
         token.user_id = user.user_id;
         token.affiliateId = user.affiliateId;

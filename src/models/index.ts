@@ -251,6 +251,52 @@ export const HomePageSettingSchema = new Schema(
 export const HomePageSetting = getOrCreateModel("HomePageSetting", HomePageSettingSchema);
 
 // ------------------------------------------------------------------------------
+// 8. Customer-to-Seller Conversations & Real-Time Messages
+// ------------------------------------------------------------------------------
+export const ConversationSchema = new Schema(
+  {
+    id: { type: Number, unique: true, index: true },
+    customerId: { type: Number, required: true, index: true },
+    sellerId: { type: Number, required: true, index: true },
+    sellerUserId: { type: Number, index: true },
+    productId: { type: Number, index: true },
+    lastMessageText: { type: String, default: "" },
+    lastMessageAt: { type: Date, default: Date.now, index: true },
+    lastMessageSenderId: { type: Number },
+    unreadCountCustomer: { type: Number, default: 0 },
+    unreadCountSeller: { type: Number, default: 0 },
+    isArchived: { type: Boolean, default: false },
+  },
+  { collection: "conversations", timestamps: true, strict: false }
+);
+export const Conversation = getOrCreateModel("Conversation", ConversationSchema);
+
+export const MessageSchema = new Schema(
+  {
+    id: { type: Number, unique: true, index: true },
+    conversationId: { type: Number, required: true, index: true },
+    senderId: { type: Number, required: true, index: true },
+    receiverId: { type: Number, required: true, index: true },
+    senderRole: { type: String, enum: ["customer", "seller", "admin"], required: true },
+    text: { type: String, default: "" },
+    mediaUrls: { type: [String], default: [] },
+    mediaType: { type: String, enum: ["text", "image", "video", "mixed"], default: "text" },
+    videoUrl: { type: String },
+    productContext: {
+      id: { type: Number },
+      title: { type: String },
+      slug: { type: String },
+      image: { type: String },
+      price: { type: Number },
+    },
+    isRead: { type: Boolean, default: false, index: true },
+    readAt: { type: Date },
+  },
+  { collection: "messages", timestamps: true, strict: false }
+);
+export const Message = getOrCreateModel("Message", MessageSchema);
+
+// ------------------------------------------------------------------------------
 // 7. Generic Dynamic Collection Handler for All 51 Tables
 // ------------------------------------------------------------------------------
 export function getDynamicCollection(collectionName: string): Model<any> {

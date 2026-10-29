@@ -12,6 +12,7 @@ import { computeCouponDiscount } from "@/lib/helpers/couponDiscount";
 import { pushExternalItemsForOrder } from "@/lib/orderPush";
 import { deriveVerifiedOrderStatus } from "@/lib/payments/verifyPaymentStatus";
 import { getAuthenticatedUser } from "@/lib/authToken";
+import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -668,6 +669,20 @@ export async function POST(req: NextRequest) {
       void pushExternalItemsForOrder(newOrder.id).catch((e) =>
         console.error("External store push failed (cron will retry):", (e as Error).message)
       );
+    }
+
+    if (user?.id) {
+      try {
+        await connectToDatabase();
+        const db = mongoose.connection.db;
+        if (db) {
+          await db.collection("carts").deleteMany({
+            userId: { $in: [Number(user.id), String(user.id)] },
+          });
+        }
+      } catch (e) {
+        console.error("Cart clear error in guest checkout:", e);
+      }
     }
 
     return NextResponse.json({

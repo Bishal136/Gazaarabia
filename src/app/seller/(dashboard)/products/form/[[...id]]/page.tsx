@@ -282,11 +282,25 @@ function ProductFormContent() {
       const v = variants[i];
       const errors: string[] = [];
 
-      if (!v.colorId) errors.push("Color");
-      if (!v.sizeId) errors.push("Size");
+      const hasColor = Boolean(v.colorId || v.colorName);
+      const hasSize = Boolean(v.sizeId || v.sizeName);
+      if (!hasColor && !hasSize) {
+        errors.push("Color or Size option");
+      }
       if (!v.price) errors.push("Price");
       if (v.stock === "" || v.stock === undefined) errors.push("Stock");
-      if (!v.images || v.images.length === 0) errors.push("Images");
+      if (!v.images || v.images.length === 0) {
+        if (images && images.length > 0) {
+          // Auto-fallback to product-level photos
+          v.images = images.map((img: any) => ({
+            url: typeof img === "string" ? img : img.url,
+            alt: form.title || "",
+          }));
+          v.imageUrl = v.images[0]?.url || null;
+        } else {
+          errors.push("Images");
+        }
+      }
 
       if (errors.length > 0) {
         setPopup({
@@ -452,7 +466,10 @@ function ProductFormContent() {
 
                 {/* Video Section */}
                 <div className="mb-8 pb-8 border-b border-gray-200">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">Product Video (Optional)</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-1">Product Video & Video Link (Optional)</h3>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Upload a high-resolution product showcase video (up to 1GB) or paste a video link (YouTube, Vimeo, CDN).
+                  </p>
                   <VariantVideoUploader
                     videoUrl={productVideo?.url || ""}
                     videoThumbnail={productVideo?.thumbnail}
@@ -473,7 +490,7 @@ function ProductFormContent() {
                       <li>First image will be the product cover.</li>
                       <li>Use clear, well-lit photos with a clean background.</li>
                       <li>Recommended resolution: 1080x1080px (1:1 ratio).</li>
-                      <li>Video must be under 15MB and in MP4 format.</li>
+                      <li>Video must be under 1GB (MP4, WebM, MOV) or a valid video link (YouTube, Vimeo, direct URL).</li>
                     </ul>
                   </div>
                 </div>
@@ -680,6 +697,7 @@ function ProductFormContent() {
                   colors={colors}
                   sizes={sizes}
                   basePrice={form.sellingPrice}
+                  productTitle={form.title}
                   onError={(msg) =>
                     setAlertMessage({
                       isOpen: true,

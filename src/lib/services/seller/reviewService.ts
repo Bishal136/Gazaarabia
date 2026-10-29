@@ -6,6 +6,11 @@ export const reviewService = {
     togglePin: (id: number, isPinned: boolean, token: string): Promise<any> =>
         apiFetch(`/api/seller/reviews/${id}`, {
             method: "PATCH",
-            body: JSON.stringify({ isPinned })
+            body: JSON.stringify({ isPinned }),
+        }, token),
+    replyReview: (id: number, sellerReply: string, token: string): Promise<any> =>
+        apiFetch(`/api/seller/reviews/${id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ sellerReply }),
         }, token),
 };

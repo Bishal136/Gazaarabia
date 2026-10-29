@@ -76,15 +76,21 @@ export const authService = {
     return res.json();
   },
 
-  getProfile: async (token: string) => {
+  getProfile: async (token?: string | null) => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token && token !== "undefined" && token !== "null") {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
     const res = await fetch("/api/front-end/profile", {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers,
     });
-    if (!res.ok) throw new Error((await res.json()).message);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: "Failed to load profile" }));
+      throw new Error(err.message || "Failed to load profile");
+    }
     return res.json();
   },
 

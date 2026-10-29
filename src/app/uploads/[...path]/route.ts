@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
+import fsSync from "fs";
 import path from "path";
+import { Readable } from "stream";
 
 const MIME_MAP: Record<string, string> = {
   png: "image/png",
@@ -10,6 +12,11 @@ const MIME_MAP: Record<string, string> = {
   gif: "image/gif",
   svg: "image/svg+xml",
   jfif: "image/jpeg",
+  mp4: "video/mp4",
+  webm: "video/webm",
+  mov: "video/quicktime",
+  ogg: "video/ogg",
+  mkv: "video/x-matroska",
 };
 
 // 1x1 transparent GIF fallback so Next.js image optimizer never crashes on missing assets
@@ -34,15 +41,44 @@ export async function GET(
   const joinedPath = decodedParts.join("/");
   const filePath = path.join(process.cwd(), "uploads", ...decodedParts);
 
-  // 1. Try serving from local uploads directory
+  // 1. Try serving from local uploads directory with streaming & Range support for videos
   try {
-    const file = await fs.readFile(filePath);
+    const stat = await fs.stat(filePath);
     const ext = path.extname(filePath).slice(1).toLowerCase();
     const mime = MIME_MAP[ext] || "application/octet-stream";
+    const fileSize = stat.size;
+    const range = req.headers.get("range");
 
-    return new Response(file, {
+    // HTTP 206 Partial Content (Supports fast video seeking and streaming large files)
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = end - start + 1;
+
+      const fileStream = fsSync.createReadStream(filePath, { start, end });
+      const webStream = Readable.toWeb(fileStream);
+
+      return new Response(webStream as any, {
+        status: 206,
+        headers: {
+          "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+          "Accept-Ranges": "bytes",
+          "Content-Length": chunksize.toString(),
+          "Content-Type": mime,
+        },
+      });
+    }
+
+    const fileStream = fsSync.createReadStream(filePath);
+    const webStream = Readable.toWeb(fileStream);
+
+    return new Response(webStream as any, {
+      status: 200,
       headers: {
         "Content-Type": mime,
+        "Content-Length": fileSize.toString(),
+        "Accept-Ranges": "bytes",
         "Cache-Control": "public, max-age=604800, immutable",
       },
     });

@@ -1,15 +1,11 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { getTokenFromHeader, getUserIdFromToken } from "@/lib/authToken";
-
-const prisma:any = new PrismaClient();
+import { prisma } from "@/lib/prisma";
+import { checkAuth } from "@/lib/authToken";
 
 //  GET - Fetch user's wishlist
-
 export async function GET(req: Request) {
   try {
-    const token = getTokenFromHeader(req);
-    const userId = token ? getUserIdFromToken(token) : null;
+    const userId = await checkAuth(req as any);
 
     if (!userId) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
@@ -24,7 +20,7 @@ export async function GET(req: Request) {
     //  Get wishlist items with pagination
     const [wishlist, total] = await Promise.all([
       prisma.wishlist.findMany({
-        where: { userId },
+        where: { userId: Number(userId) },
         include: {
           product: {
             include: {
@@ -39,7 +35,7 @@ export async function GET(req: Request) {
         take: limit,
       }),
       prisma.wishlist.count({
-        where: { userId },
+        where: { userId: Number(userId) },
       }),
     ]);
 
@@ -61,35 +57,9 @@ export async function GET(req: Request) {
   }
 }
 
-// export async function GET(req: Request) {
-//   const token:any = getTokenFromHeader(req);
-//   const userId = getUserIdFromToken(token);
-
-//   if (!userId) {
-//     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-//   }
-
-//   const wishlist = await prisma.wishlist.findMany({
-//     where: { userId },
-//     include: {
-//       product: {
-//         include: {
-//           productimage: true,
-//           brand: true,
-//           categories: true,
-//         },
-//       },
-//     },
-//     orderBy: { createdAt: "desc" },
-//   });
-
-//   return NextResponse.json(wishlist);
-// }
-
 // POST - Add product to wishlist
 export async function POST(req: Request) {
-  const token:any = getTokenFromHeader(req);
-  const userId = getUserIdFromToken(token);
+  const userId = await checkAuth(req as any);
 
   if (!userId) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
@@ -104,10 +74,10 @@ export async function POST(req: Request) {
 
   const wishlistItem = await prisma.wishlist.upsert({
     where: {
-      userId_productId: { userId, productId },
+      userId_productId: { userId: Number(userId), productId: Number(productId) },
     },
     update: {},
-    create: { userId, productId },
+    create: { userId: Number(userId), productId: Number(productId) },
   });
 
   return NextResponse.json(wishlistItem);

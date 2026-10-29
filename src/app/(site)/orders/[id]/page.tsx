@@ -128,12 +128,14 @@ export default function OrderDetailsPage() {
         message: "Please login to view your order details.",
         type: "warning",
       });
+      setLoading(false);
       return;
     }
 
-    const token = session?.user?.token;
-    if (id && token) {
-      getOrderDetails()
+    if (id) {
+      getOrderDetails();
+    } else {
+      setLoading(false);
     }
   }, [id, session, status]);
 
@@ -154,7 +156,7 @@ export default function OrderDetailsPage() {
         setLoading(false);
       }
     })();
-  }
+  };
 
   const handleSuccessReviewed = () => {
     // 1. Close the modal
@@ -319,7 +321,7 @@ export default function OrderDetailsPage() {
                     </div>
 
                     {/* Right Section */}
-                    {order.status === "completed" && (
+                    {["completed", "delivered"].includes((order.status || "").toLowerCase().trim()) && (
                       <div className="flex flex-wrap items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
 
                         {item.reviewed ? (
@@ -463,11 +465,11 @@ export default function OrderDetailsPage() {
             Payment Information
           </h3>
           <p className="text-[var(--text-secondary)]">
-            Method: <span className="font-medium">{order.paymentMethod}</span>
+            Method: <span className="font-medium">{order.paymentMethod?.toLowerCase() === 'cod' ? 'Cash on Delivery (COD)' : order.paymentMethod}</span>
           </p>
           <p className="text-[var(--text-secondary)] capitalize">
-            Status:{" "}
-            <span className="font-medium text-[var(--brand-secondary)]">
+            Payment Status:{" "}
+            <span className={`font-medium ${order.status?.toLowerCase() === 'paid' ? 'text-green-600' : 'text-amber-600'}`}>
               {order.status}
             </span>
           </p>
@@ -520,17 +522,33 @@ export default function OrderDetailsPage() {
       </div>
 
       {/* Review Modal */}
-      {reviewModal && (
-        <ReviewModal
-          orderItemId={selectedOrderItemId}
-          productId={selectedProductId}
-          variantId={selectedVariantId}
-          token={session?.user?.token as string}
-          onClose={() => setReviewModal(false)}
-          onSuccess={() => {
-            handleSuccessReviewed()
-          }}
-        />
+      {reviewModal && selectedOrderItemId && (
+        (() => {
+          const selectedItem = (order.orderItems || []).find((i: any) => i.id === selectedOrderItemId);
+          return (
+            <ReviewModal
+              orderItemId={selectedOrderItemId}
+              productId={selectedProductId}
+              variantId={selectedVariantId}
+              productTitle={selectedItem?.product?.title || "Product"}
+              productImage={
+                selectedItem?.selectedVariantData?.imageUrl ||
+                selectedItem?.product?.productimage?.[0]?.url ||
+                "/placeholder.png"
+              }
+              variantDetails={{
+                colorName: selectedItem?.selectedVariantData?.colorName,
+                sizeName: selectedItem?.selectedVariantData?.sizeName,
+                sku: selectedItem?.selectedVariantData?.sku,
+              }}
+              token={session?.user?.token as string}
+              onClose={() => setReviewModal(false)}
+              onSuccess={() => {
+                handleSuccessReviewed();
+              }}
+            />
+          );
+        })()
       )}
 
       {/*  RETURN STATUS MODAL */}

@@ -124,9 +124,9 @@ export default function AffiliateSidebar({
                         } gap-2`}
                 >
                     {!collapsed && (
-                        <h2 className="text-lg font-semibold tracking-wide text-white">
+                        <h2 className="text-lg font-semibold tracking-wide text-white" suppressHydrationWarning>
                             Gazaarabia{" "}
-                            {/* <span className="text-[var(--brand-primary)]">Affiliate</span> */}
+                            <span className="text-[var(--brand-primary)]" suppressHydrationWarning>Affiliate</span>
                         </h2>
                     )}
                     <button

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { orderService } from "@/lib/services/front-end/orderService";
-import { CheckCircle, CheckCircle2, Package, ShoppingBag, Tag } from "lucide-react";
+import { CheckCircle, CheckCircle2, Package, ShoppingBag, Tag, MapPin, Phone } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import Loader from "@/components/Loader";
@@ -21,6 +21,8 @@ interface SelectedVariantData {
   colorName?: string | null;
   hexCode?: string | null;
   price: number;
+  imageUrl?: string | null;
+  sku?: string | null;
   variantImages: any | [];
 }
 
@@ -69,6 +71,16 @@ interface Order {
   // Relations
   orderItems: OrderItem[];
 
+  // Delivery Address Snapshot
+  firstName?: string;
+  lastName?: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  country?: string;
+  postalCode?: string;
+  phone?: string;
+
   // Optional affiliate or coupon relation
   affiliateId?: number | null;
   couponId?: number | null;
@@ -101,26 +113,36 @@ export default function OrderSuccessPage() {
       try {
         const token = session?.user?.token || null;
 
-        //  Only get guest ID if user is NOT logged in
+        // Retrieve guest ID from URL searchParams or localStorage if user is not logged in
         let guestUserId: string | null = null;
         if (!token) {
-          guestUserId = localStorage.getItem("gaza_arabia_guest_user_id");
+          const queryUser = searchParams?.get("userId");
+          const localUser =
+            typeof window !== "undefined"
+              ? localStorage.getItem("gaza_arabia_guest_user_id")
+              : null;
+          guestUserId = queryUser || localUser;
+          if (queryUser && typeof window !== "undefined") {
+            try {
+              localStorage.setItem("gaza_arabia_guest_user_id", queryUser);
+            } catch {}
+          }
         }
 
         const response = await orderService.getById(token, Number(id), guestUserId);
 
-        if (response?.success) {
+        if (response?.success && response.data) {
           setOrder(response.data);
           
           // Track Purchase
           if (!hasTracked) {
             fbEvent("Purchase", {
-              value: response.data.totalAmount,
+              value: Number(response.data.totalAmount || 0),
               currency: "GBP",
-              content_ids: response.data.orderItems.map((item: any) => item.productId),
+              content_ids: (response.data.orderItems || []).map((item: any) => item.productId || item.product?.id),
               content_type: "product",
             });
-            gaEvent("purchase", "Ecommerce", `Order #${response.data.id}`, response.data.totalAmount);
+            gaEvent("purchase", "Ecommerce", `Order #${response.data.id}`, Number(response.data.totalAmount || 0));
             setHasTracked(true);
           }
         } else {
@@ -143,7 +165,7 @@ export default function OrderSuccessPage() {
     };
 
     fetchOrder();
-  }, [id, status, session?.user?.token]);
+  }, [id, status, session?.user?.token, searchParams]);
 
 
   //   // start -clear the storage when user leave the page
@@ -222,14 +244,22 @@ export default function OrderSuccessPage() {
           </span>{" "}
           has been successfully placed.
         </p>
+
+        {order?.paymentMethod?.toLowerCase() === "cod" && (
+          <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium shadow-2xs">
+            <CheckCircle size={16} className="text-emerald-600 shrink-0" />
+            <span>
+              Cash on Delivery (COD) — Please keep <b>£{Number(order.totalAmount || 0).toFixed(2)}</b> ready in cash upon delivery.
+            </span>
+          </div>
+        )}
         {order?.couponCode && (order.couponDiscount ?? 0) > 0 && (
           <p className="mt-3 text-sm text-green-600 flex items-center justify-center gap-2">
             <CheckCircle size={16} className="text-green-500" />
-            You saved <b>£{(order.couponDiscount ?? 0).toFixed(2)}</b> using coupon{" "}
+            You saved <b>£{Number(order.couponDiscount || 0).toFixed(2)}</b> using coupon{" "}
             <b>{order.couponCode}</b>!
           </p>
         )}
-
 
         {(order.referralDiscount ?? 0) > 0 && (
           <p className="mt-3 text-sm text-green-600 flex items-center justify-center gap-2">
@@ -250,73 +280,112 @@ export default function OrderSuccessPage() {
           </h2>
 
           <ul className="divide-y divide-[var(--soft-gray)]">
-            {order.orderItems.map((item, index) => (
-              <li
-                key={index}
-                className="flex justify-between items-start gap-4 py-5"
-              >
-                <div className="flex gap-4">
-                  <div className="relative w-28 aspect-square rounded-xl overflow-hidden border border-[var(--soft-gray)] bg-white flex-shrink-0">
-                    {item.product?.productimage?.[0]?.url ? (
-                      <Image
-                        src={
-                          item?.selectedVariantData?.variantImages[0]?.url ||
-                          item.product.productimage[0].url
-                        }
-                        alt={item.product.title}
-                        fill
-                        className="object-contain p-2"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center">
-                        <Package
-                          size={36}
-                          className="text-[var(--mid-gray)]"
-                          strokeWidth={1.5}
+            {(order.orderItems || []).map((item, index) => {
+              const itemImage =
+                item?.selectedVariantData?.variantImages?.[0]?.url ||
+                item?.selectedVariantData?.imageUrl ||
+                item?.product?.productimage?.[0]?.url;
+
+              return (
+                <li
+                  key={item.id || index}
+                  className="flex justify-between items-start gap-4 py-5"
+                >
+                  <div className="flex gap-4">
+                    <div className="relative w-28 aspect-square rounded-xl overflow-hidden border border-[var(--soft-gray)] bg-white flex-shrink-0">
+                      {itemImage ? (
+                        <Image
+                          src={itemImage}
+                          alt={item.product?.title || "Product"}
+                          fill
+                          sizes="112px"
+                          className="object-contain p-2"
                         />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Package
+                            size={36}
+                            className="text-[var(--mid-gray)]"
+                            strokeWidth={1.5}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col justify-center">
+                      <p className="font-medium text-[var(--text-primary)] text-base line-clamp-2">
+                        {item.product?.title || "Product"}
+                      </p>
+
+                      {(item.selectedVariantData?.colorName ||
+                        item.selectedVariantData?.sizeName) && (
+                          <div className="text-xs text-[var(--text-secondary)] mt-1.5 flex flex-wrap items-center gap-2">
+                            {item.selectedVariantData?.colorName && (
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-50 border border-gray-200 font-medium text-gray-700">
+                                Color: {item.selectedVariantData.colorName}
+                                {item.selectedVariantData.hexCode && (
+                                  <span
+                                    className="inline-block w-3 h-3 rounded-full border border-gray-300 shadow-2xs"
+                                    style={{
+                                      backgroundColor:
+                                        item.selectedVariantData.hexCode,
+                                    }}
+                                  />
+                                )}
+                              </span>
+                            )}
+                            {item.selectedVariantData?.sizeName && (
+                              <span className="px-2 py-0.5 rounded-md bg-gray-50 border border-gray-200 font-medium text-gray-700">
+                                Size: {item.selectedVariantData.sizeName}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      <p className="text-[var(--text-muted)] text-sm mt-1.5">
+                        Qty: <span className="font-semibold text-[var(--text-primary)]">{item.quantity}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="font-semibold text-base text-[var(--brand-primary)] whitespace-nowrap">
+                      £{Number(item.price || 0).toFixed(2)}
+                    </div>
+                    {item.quantity > 1 && (
+                      <div className="text-xs text-[var(--text-muted)]">
+                        £{(Number(item.price || 0) * item.quantity).toFixed(2)} total
                       </div>
                     )}
                   </div>
-
-                  <div className="flex flex-col justify-center">
-                    <p className="font-medium text-[var(--text-primary)] text-base line-clamp-2">
-                      {item.product?.title}
-                    </p>
-
-                    {(item.selectedVariantData?.colorName ||
-                      item.selectedVariantData?.sizeName) && (
-                        <div className="text-xs text-[var(--text-secondary)] mt-1 flex flex-wrap items-center gap-2">
-                          {item.selectedVariantData?.colorName && (
-                            <span className="flex items-center gap-1">
-                              Color: {item.selectedVariantData.colorName}
-                              {item.selectedVariantData.hexCode && (
-                                <span
-                                  className="inline-block w-3 h-3 rounded-full border"
-                                  style={{
-                                    backgroundColor:
-                                      item.selectedVariantData.hexCode,
-                                  }}
-                                />
-                              )}
-                            </span>
-                          )}
-                          {item.selectedVariantData?.sizeName && (
-                            <span>Size: {item.selectedVariantData.sizeName}</span>
-                          )}
-                        </div>
-                      )}
-                    <p className="text-[var(--text-muted)] text-sm mt-1">
-                      Qty: {item.quantity}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="font-semibold text-[var(--brand-primary)] whitespace-nowrap">
-                  £{item.price.toFixed(2)}
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
+
+          {/* Delivery Address Card */}
+          {order.address1 && (
+            <div className="mt-8 pt-6 border-t border-[var(--soft-gray)]">
+              <h3 className="text-base font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
+                <MapPin size={18} className="text-[var(--brand-primary)]" />
+                Delivery Address
+              </h3>
+              <div className="text-sm text-[var(--text-secondary)] space-y-1 bg-[var(--soft-gray)]/20 p-4 rounded-xl border border-[var(--soft-gray)]">
+                <p className="font-medium text-[var(--text-primary)]">
+                  {order.firstName} {order.lastName}
+                </p>
+                <p>{order.address1}</p>
+                {order.address2 && <p>{order.address2}</p>}
+                <p>
+                  {order.city}, {order.country} {order.postalCode}
+                </p>
+                {order.phone && (
+                  <p className="flex items-center gap-1.5 pt-1 text-xs text-[var(--text-muted)]">
+                    <Phone size={13} /> {order.phone}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Summary */}
@@ -326,21 +395,16 @@ export default function OrderSuccessPage() {
           </h2>
 
           <div className="space-y-4 text-[var(--text-primary)]">
-            {/* <div className="flex justify-between text-sm">
-              <span>Subtotal</span>
-              <span>£{order.totalAmount.toFixed(2)}</span>
-            </div> */}
-
             <div className="flex justify-between">
               <span>Subtotal</span>
-              <span>£{order.subtotal.toFixed(2)}</span>
+              <span>£{Number(order.subtotal ?? order.totalAmount ?? 0).toFixed(2)}</span>
             </div>
             {order.couponCode && (order.couponDiscount ?? 0) > 0 && (
               <div className="flex justify-between text-[var(--brand-secondary)]">
                 <span className="flex items-center gap-1">
                   <Tag size={14} /> Coupon ({order.couponCode})
                 </span>
-                <span>-£{(order.couponDiscount ?? 0).toFixed(2)}</span>
+                <span>-£{Number(order.couponDiscount || 0).toFixed(2)}</span>
               </div>
             )}
 
@@ -356,7 +420,13 @@ export default function OrderSuccessPage() {
 
             <div className="flex justify-between text-sm">
               <span>Shipping</span>
-              <span className="text-[var(--text-muted)]">Free</span>
+              <span>
+                {Number(order.shippingCost || 0) > 0 ? (
+                  `£${Number(order.shippingCost).toFixed(2)}`
+                ) : (
+                  <span className="text-[var(--text-muted)]">Free</span>
+                )}
+              </span>
             </div>
             {/* <div className="flex justify-between font-semibold text-lg border-t border-[var(--soft-gray)] pt-4">
               <span>Total</span>
@@ -365,18 +435,18 @@ export default function OrderSuccessPage() {
               </span>
             </div> */}
 
-            {(Number(order?.charityAmount) > 0) && (
+            {Number(order?.charityAmount || 0) > 0 && (
               <div className="flex justify-between text-sm text-[var(--text-primary)]">
                 <span>Charity Donation</span>
-                <span className="text-green-700 font-medium">+£{order?.charityAmount?.toFixed(2)}</span>
+                <span className="text-green-700 font-medium">+£{Number(order?.charityAmount).toFixed(2)}</span>
               </div>
             )}
 
 
 
             <div className="border-t border-[var(--soft-gray)] pt-3 flex justify-between font-semibold text-lg text-[var(--brand-primary)]">
-              <span>Total Paid</span>
-              <span>£{order.totalAmount.toFixed(2)}</span>
+              <span>{order?.paymentMethod?.toLowerCase() === "cod" ? "Total Due on Delivery" : "Total Paid"}</span>
+              <span>£{Number(order.totalAmount || 0).toFixed(2)}</span>
             </div>
 
 

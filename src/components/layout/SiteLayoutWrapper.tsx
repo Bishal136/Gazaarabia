@@ -23,11 +23,18 @@ export default function SiteLayoutWrapper({
     return <main className="min-h-dvh">{children}</main>;
   }
 
+  const isMessagesPage = pathname?.startsWith("/account/messages");
+
   return (
     <>
       <Header />
-      <main className={pathname === "/" ? "" : "pt-20"}>{children}</main>
-      <Footer />
+      <main
+        suppressHydrationWarning
+        className={pathname === "/" || isMessagesPage ? "" : "pt-20"}
+      >
+        {children}
+      </main>
+      {!isMessagesPage && <Footer />}
     </>
   );
 }

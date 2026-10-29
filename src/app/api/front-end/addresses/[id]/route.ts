@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { getTokenFromHeader, getUserIdFromToken } from "@/lib/authToken";
+import { prisma } from "@/lib/prisma";
+import { checkAuth } from "@/lib/authToken";
 
-const prisma = new PrismaClient();
 type RouteContext = { params: Promise<{ id: string }> };
 
 // UPDATE Address
@@ -11,17 +10,48 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     const addressId = Number(id);
 
-    const token :any= getTokenFromHeader(req);
-    const userId = getUserIdFromToken(token);
+    const userId = await checkAuth(req);
     if (!userId) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
 
+    const {
+      firstName,
+      lastName,
+      company,
+      address1,
+      address2,
+      city,
+      country,
+      postalCode,
+      phone,
+      isDefault,
+    } = body;
+
+    const dataToUpdate: any = {};
+    if (firstName !== undefined) dataToUpdate.firstName = String(firstName).trim();
+    if (lastName !== undefined) dataToUpdate.lastName = String(lastName).trim();
+    if (company !== undefined) dataToUpdate.company = String(company).trim();
+    if (address1 !== undefined) dataToUpdate.address1 = String(address1).trim();
+    if (address2 !== undefined) dataToUpdate.address2 = String(address2).trim();
+    if (city !== undefined) dataToUpdate.city = String(city).trim();
+    if (country !== undefined) dataToUpdate.country = String(country).trim();
+    if (postalCode !== undefined) dataToUpdate.postalCode = String(postalCode).trim();
+    if (phone !== undefined) dataToUpdate.phone = String(phone).trim();
+    if (isDefault !== undefined) dataToUpdate.isDefault = Boolean(isDefault);
+
+    if (dataToUpdate.isDefault) {
+      await prisma.address.updateMany({
+        where: { userId: Number(userId), NOT: { id: addressId } },
+        data: { isDefault: false },
+      });
+    }
+
     const updated = await prisma.address.updateMany({
-      where: { id: addressId, userId },
-      data: body,
+      where: { id: addressId, userId: Number(userId) },
+      data: dataToUpdate,
     });
 
     if (!updated.count) {
@@ -44,14 +74,13 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     const addressId = Number(id);
 
-    const token :any = getTokenFromHeader(req);
-    const userId = getUserIdFromToken(token);
+    const userId = await checkAuth(req);
     if (!userId) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     const deleted = await prisma.address.deleteMany({
-      where: { id: addressId, userId },
+      where: { id: addressId, userId: Number(userId) },
     });
 
     if (!deleted.count) {

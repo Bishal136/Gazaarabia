@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { loadStripe, PaymentIntent } from "@stripe/stripe-js";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { loadStripe, PaymentIntent, Stripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
-
 import { useSession } from "next-auth/react";
-import { X, CreditCard } from "lucide-react";
+import { X, CreditCard, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
 
-import Loader from "./Loader";
 import StripeCardForm from "./StripeCardForm";
 import { stripeService } from "@/lib/services/front-end/stripeService";
 
@@ -29,11 +27,28 @@ interface SavedCard {
     };
 }
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+let stripePromiseCache: Promise<Stripe | null> | null = null;
+
+function getStripePromise(): Promise<Stripe | null> {
+    if (!stripePromiseCache) {
+        const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
+        if (publishableKey) {
+            stripePromiseCache = loadStripe(publishableKey);
+        }
+    }
+    return stripePromiseCache || Promise.resolve(null);
+}
+
+function resetStripePromise(): Promise<Stripe | null> {
+    const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
+    if (publishableKey) {
+        stripePromiseCache = loadStripe(publishableKey);
+    }
+    return stripePromiseCache || Promise.resolve(null);
+}
 
 export default function StripePaymentModal(props: StripePaymentModalProps) {
     if (!props.open) return null;
-
     return <StripeWrapper {...props} />;
 }
 
@@ -44,10 +59,8 @@ function StripeWrapper({
     customerId,
     onSuccess,
 }: StripePaymentModalProps) {
-    const { data: session } = useSession();
-    const userId = session?.user?.id ?? null;
+    const { data: session, update } = useSession();
     const token = session?.user?.token ?? null;
-    const { update } = useSession();
 
     const [finalCustomerId, setFinalCustomerId] = useState(customerId);
     const [clientSecret, setClientSecret] = useState("");
@@ -56,113 +69,121 @@ function StripeWrapper({
 
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
-    const [error, setError] = useState("");
+    const [error, setError] = useState<string | null>(null);
+    const [stripeInstance, setStripeInstance] = useState<Promise<Stripe | null>>(getStripePromise);
 
     const elementsOptions = useMemo(() => ({ clientSecret }), [clientSecret]);
-
     const isGuest = !session?.user;
 
-
-    // Prevent background scroll
+    // Prevent background scrolling when modal is open
     useEffect(() => {
         if (open) {
             document.body.style.overflow = "hidden";
+            const handleKeyDown = (e: KeyboardEvent) => {
+                if (e.key === "Escape") onClose();
+            };
+            window.addEventListener("keydown", handleKeyDown);
+            return () => {
+                document.body.style.overflow = "";
+                window.removeEventListener("keydown", handleKeyDown);
+            };
         } else {
             document.body.style.overflow = "";
         }
+    }, [open, onClose]);
 
-        return () => {
-            document.body.style.overflow = "";
-        };
-    }, [open]);
-
-
-    // ------------------------------------
-    // 1) Create customer if missing
-    // ------------------------------------
+    // 1) Ensure customer exists if logged in (non-blocking)
     useEffect(() => {
-        const createCustomerIfMissing = async () => {
+        let isMounted = true;
+        const ensureCustomer = async () => {
+            if (!token || finalCustomerId) return;
             try {
-                if (!token) return;
-                if (finalCustomerId) return;
-
                 const res = await stripeService.createCustomer(token);
-
-                if (res.error) {
-                    setError(res.error || "Failed to create customer");
-                    return;
-                }
-
-                if (res.customerId) {
+                if (isMounted && res.customerId) {
                     setFinalCustomerId(res.customerId);
-                    //  Update the user's session with new Stripe customer ID
                     await update({
                         user: {
                             ...session?.user,
-                            stripeCustomerId: res.customerId
-                        }
+                            stripeCustomerId: res.customerId,
+                        },
                     });
                 }
             } catch (err) {
-                console.error(err);
-                setError("Unexpected error while creating customer.");
+                // Non-critical: payments can proceed as guest or without saved cards
+                console.warn("Could not create Stripe customer:", err);
             }
         };
 
-        createCustomerIfMissing();
-    }, [userId, finalCustomerId]);
+        ensureCustomer();
+        return () => {
+            isMounted = false;
+        };
+    }, [token, finalCustomerId]);
 
-    // ------------------------------------
-    // 2) Load saved cards + PaymentIntent
-    // ------------------------------------
-    useEffect(() => {
-        // if (!open || !finalCustomerId) return;
-        if (!open) return;
+    // 2) Initialize PaymentIntent & Saved Cards
+    const initPayment = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
 
-
-        const init = async () => {
-            try {
-                setLoading(true);
-                setError("");
-
-                // Saved payment methods
-                const pmRes = await stripeService.getSavedMethods(token);
-
-                if (pmRes.error && pmRes.error != "Missing customerId") {
-                    setError(pmRes.error);
-                } else {
-                    setSavedCards(pmRes.paymentMethods || []);
-                }
-
-                // PaymentIntent
-                const piRes = await stripeService.createPaymentIntent(token, amount);
-
-                if (piRes.error) {
-                    setError(piRes.error);
-                } else {
-                    setClientSecret(piRes.clientSecret);
-                }
-            } catch (err) {
-                console.error(err);
-                setError("Unable to prepare payment.");
-            } finally {
+            // Check browser offline status
+            if (typeof navigator !== "undefined" && !navigator.onLine) {
+                setError("You appear to be offline. Please reconnect to the internet and click Retry.");
                 setLoading(false);
+                return;
             }
-        };
 
-        init();
-    }, [open, finalCustomerId]);
+            // Load saved payment methods (non-blocking)
+            if (token) {
+                stripeService.getSavedMethods(token)
+                    .then((pmRes) => {
+                        if (pmRes?.paymentMethods?.length) {
+                            setSavedCards(pmRes.paymentMethods);
+                        }
+                    })
+                    .catch(() => {
+                        // ignore saved methods failure
+                    });
+            }
 
-    // ------------------------------------
-    // 3) Pay with saved card
-    // ------------------------------------
+            // Create PaymentIntent
+            const piRes = await stripeService.createPaymentIntent(token, amount);
+
+            if (piRes.error) {
+                setError(piRes.error);
+            } else if (piRes.clientSecret) {
+                setClientSecret(piRes.clientSecret);
+                setError(null);
+            } else {
+                setError("Unable to obtain payment authorization. Please try again.");
+            }
+        } catch (err: any) {
+            console.error("Stripe init error:", err);
+            setError(err.message || "Failed to connect to payment server. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    }, [token, amount]);
+
+    useEffect(() => {
+        if (!open) return;
+        initPayment();
+    }, [open, initPayment]);
+
+    // Retry action for connection or Stripe loading issues
+    const handleRetry = () => {
+        setStripeInstance(resetStripePromise());
+        initPayment();
+    };
+
+    // 3) Pay with a saved card
     const handleSavedCardPayment = async () => {
         try {
             setProcessing(true);
-            setError("");
+            setError(null);
 
             const res = await stripeService.payWithSavedCard(
-                token!,
+                token,
                 selectedCard,
                 amount
             );
@@ -175,139 +196,161 @@ function StripeWrapper({
 
             onSuccess(res.intent);
             onClose();
-        } catch (err) {
-            console.error(err);
-            setError("Payment failed. Try again.");
+        } catch (err: any) {
+            console.error("Saved card payment error:", err);
+            setError("Payment failed. Please try again or use a different card.");
         } finally {
             setProcessing(false);
         }
     };
 
-    { if (loading) return <Loader message="Preparing payment..." /> }
-
-
-
     return (
         <div
-            className="
-        fixed inset-0 bg-black/60 z-50 
-        flex items-center justify-center px-4
-        overflow-y-auto
-        pointer-events-auto
-    "
-            style={{
-                position: "fixed",
-                zIndex: 50,
-                backdropFilter: "blur(2px)"
-            }}
+            className="fixed inset-0 bg-black/60 z-[250] flex items-center justify-center p-4 overflow-y-auto backdrop-blur-[2px]"
+            role="dialog"
+            aria-modal="true"
         >
-            <div
-                className="
-            bg-white 
-            w-full 
-            max-w-lg 
-            rounded-2xl 
-            p-6 
-            shadow-2xl 
-            relative
-            my-10
-            max-h-[90vh]
-            overflow-y-auto
-            z-50
-        "
-                style={{
-                    position: "relative",
-                    zIndex: 51
-                }}
-            >
-
+            <div className="bg-white w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-2xl relative my-8 max-h-[90vh] overflow-y-auto border border-gray-100">
                 {/* Close button */}
                 <button
+                    type="button"
                     onClick={onClose}
-                    className="absolute right-3 top-3 text-gray-500 hover:text-black"
+                    className="absolute right-4 top-4 p-2 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+                    aria-label="Close modal"
                 >
                     <X size={20} />
                 </button>
 
-                <h2 className="text-xl font-semibold text-center my-2">
-                    Secure Card Payment
-                </h2>
+                {/* Header */}
+                <div className="text-center mb-6">
+                    <h2 className="text-xl sm:text-2xl font-bold text-[#0a0808]">
+                        Secure Card Payment
+                    </h2>
+                    <p className="text-sm text-gray-500 mt-1 font-medium">
+                        Amount to pay: <span className="font-bold text-[#0a0808]">£{amount.toFixed(2)}</span>
+                    </p>
+                </div>
 
-                {/* Global error */}
+                {/* Error Banner with Retry */}
                 {error && (
-                    <p className="text-red-600 text-center text-sm mb-3">{error}</p>
+                    <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-sm space-y-3">
+                        <div className="flex items-start gap-3">
+                            <AlertCircle size={20} className="text-red-600 shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                                <p className="font-semibold text-red-900">Payment Connection Error</p>
+                                <p className="text-xs text-red-700 mt-0.5 leading-relaxed">{error}</p>
+                            </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-red-100 flex items-center justify-end">
+                            <button
+                                type="button"
+                                onClick={handleRetry}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+                            >
+                                <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+                                <span>Try Again</span>
+                            </button>
+                        </div>
+                    </div>
                 )}
 
+                {/* Loading state inside modal */}
+                {loading && !clientSecret && (
+                    <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
+                        <Loader2 size={36} className="text-[#b08a78] animate-spin" />
+                        <p className="text-sm font-medium text-gray-600">
+                            Connecting to secure payment gateway...
+                        </p>
+                    </div>
+                )}
 
-
+                {/* Main Content when ready */}
                 {!loading && (
-                    <div className="space-y-4 mt-4">
-
+                    <div className="space-y-5">
                         {/* Saved cards list */}
-                        {/* {savedCards.length > 0 && ( */}
-
                         {!isGuest && savedCards.length > 0 && (
-
-                            <>
-                                <p className="text-sm font-semibold">Saved Cards</p>
-
-                                {savedCards.map((pm) => (
-                                    <label
-                                        key={pm.id}
-                                        className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer
-                                            ${selectedCard === pm.id
-                                                ? "border-blue-600 bg-blue-50"
-                                                : "border-gray-300"
+                            <div className="space-y-2">
+                                <p className="text-xs uppercase tracking-wider text-gray-500 font-bold">
+                                    Saved Cards
+                                </p>
+                                <div className="space-y-2">
+                                    {savedCards.map((pm) => (
+                                        <label
+                                            key={pm.id}
+                                            className={`flex items-center gap-3 p-3.5 border-2 rounded-xl cursor-pointer transition ${
+                                                selectedCard === pm.id
+                                                    ? "border-[#b08a78] bg-[#fdfbf9] shadow-xs"
+                                                    : "border-gray-200 hover:border-gray-300 bg-white"
                                             }`}
-                                    >
-                                        <input
-                                            type="radio"
-                                            name="card"
-                                            checked={selectedCard === pm.id}
-                                            onChange={() => setSelectedCard(pm.id)}
-                                        />
-
-                                        <CreditCard size={18} />
-
-                                        <span>
-                                            {pm.card.brand.toUpperCase()} •••• {pm.card.last4}
-                                        </span>
-                                    </label>
-                                ))}
-                            </>
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="stripeCardOption"
+                                                checked={selectedCard === pm.id}
+                                                onChange={() => setSelectedCard(pm.id)}
+                                                className="accent-[#b08a78] w-4 h-4 cursor-pointer"
+                                            />
+                                            <CreditCard size={18} className="text-gray-600 shrink-0" />
+                                            <span className="text-sm font-semibold text-[#0a0808]">
+                                                {pm.card.brand.toUpperCase()} •••• {pm.card.last4}
+                                            </span>
+                                            <span className="text-xs text-gray-400 ml-auto">
+                                                Exp {pm.card.exp_month}/{pm.card.exp_year}
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
                         )}
 
-                        {/* Add new card */}
-                        <label
-                            className={`flex items-center gap-3 border p-3 rounded-lg cursor-pointer
-                                ${selectedCard === "new" ? "border-blue-600 bg-blue-50" : "border-gray-300"}
-                            `}
-                        >
-                            <input
-                                type="radio"
-                                name="card"
-                                checked={selectedCard === "new"}
-                                onChange={() => setSelectedCard("new")}
-                            />
-                            <CreditCard size={18} />
-                            <span>Add a new card</span>
-                        </label>
+                        {/* Add new card option */}
+                        <div className="space-y-2">
+                            {!isGuest && savedCards.length > 0 && (
+                                <p className="text-xs uppercase tracking-wider text-gray-500 font-bold">
+                                    Or Pay With New Card
+                                </p>
+                            )}
 
-                        {/* Stripe Card Input */}
+                            <label
+                                className={`flex items-center gap-3 p-3.5 border-2 rounded-xl cursor-pointer transition ${
+                                    selectedCard === "new"
+                                        ? "border-[#b08a78] bg-[#fdfbf9] shadow-xs"
+                                        : "border-gray-200 hover:border-gray-300 bg-white"
+                                }`}
+                            >
+                                <input
+                                    type="radio"
+                                    name="stripeCardOption"
+                                    checked={selectedCard === "new"}
+                                    onChange={() => setSelectedCard("new")}
+                                    className="accent-[#b08a78] w-4 h-4 cursor-pointer"
+                                />
+                                <CreditCard size={18} className="text-gray-600 shrink-0" />
+                                <span className="text-sm font-semibold text-[#0a0808]">
+                                    Credit or Debit Card
+                                </span>
+                            </label>
+                        </div>
+
+                        {/* Stripe Card Input Form */}
                         {selectedCard === "new" && clientSecret && (
-                            <Elements key={clientSecret} stripe={stripePromise} options={elementsOptions}>
-                                <StripeCardForm amount={amount} onSuccess={onSuccess} />
-                            </Elements>
+                            <div className="pt-2 animate-in fade-in duration-200">
+                                <Elements key={clientSecret} stripe={stripeInstance} options={elementsOptions}>
+                                    <StripeCardForm amount={amount} onSuccess={onSuccess} />
+                                </Elements>
+                            </div>
                         )}
 
                         {/* Pay button for saved card */}
                         {selectedCard !== "new" && (
                             <button
-                                className="w-full bg-black text-white py-3 rounded-lg font-semibold"
+                                type="button"
+                                className="w-full bg-[#b08a78] hover:bg-[#9d7765] text-white py-3.5 rounded-full font-semibold transition active:scale-[0.99] shadow-sm disabled:opacity-60 cursor-pointer text-sm uppercase tracking-wider"
                                 disabled={processing}
                                 onClick={handleSavedCardPayment}
                             >
-                                {processing ? "Processing..." : `Pay £${amount}`}
+                                {processing ? "Processing..." : `Pay £${amount.toFixed(2)}`}
                             </button>
                         )}
                     </div>

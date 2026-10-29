@@ -68,6 +68,11 @@ export async function deriveVerifiedOrderStatus(payment: {
     }
   }
 
+  if (method === "cod" || method === "cash on delivery") {
+    // Cash on Delivery: Payment is collected upon delivery, status remains pending
+    return "pending";
+  }
+
   // Unknown / manual methods: never auto-mark paid from the browser.
   return "pending";
 }

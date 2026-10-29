@@ -9,6 +9,7 @@ import { validateStockInTransaction } from "@/lib/helpers/stockHelper";
 import { computeCouponDiscount } from "@/lib/helpers/couponDiscount";
 import { pushExternalItemsForOrder } from "@/lib/orderPush";
 import { deriveVerifiedOrderStatus } from "@/lib/payments/verifyPaymentStatus";
+import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
 
 
@@ -602,6 +603,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Atomically clear user's cart in DB upon successful order creation
+    try {
+      await connectToDatabase();
+      const db = mongoose.connection.db;
+      if (db) {
+        await db.collection("carts").deleteMany({
+          userId: { $in: [Number(userId), String(userId)] },
+        });
+      }
+    } catch (cartErr) {
+      console.error("Failed to clear cart in DB after order creation:", cartErr);
+    }
 
     return NextResponse.json({
       success: true,
@@ -651,12 +664,13 @@ export async function GET(req: NextRequest) {
     });
 
     //  Enrich orderItems like single order API
-    const enrichedOrders = orders.map((order: any) => ({
+    const enrichedOrders = (orders || []).map((order: any) => ({
       ...order,
-      orderItems: order.orderItems.map((item: any) => {
-        const selectedVariant = item.product.productvariant.find(
-          (variant: any) => variant.id === item.variantId
-        );
+      orderItems: (order?.orderItems || []).map((item: any) => {
+        const variants = item?.product?.productvariant || [];
+        const selectedVariant = Array.isArray(variants)
+          ? variants.find((variant: any) => variant.id === item.variantId)
+          : null;
 
         const selectedVariantData = selectedVariant
           ? {
@@ -674,7 +688,7 @@ export async function GET(req: NextRequest) {
         return {
           ...item,
           selectedVariantData,
-          reviewed: item.reviewed,
+          reviewed: item?.reviewed ?? false,
         };
       }),
     }));

@@ -1,9 +1,23 @@
 import { NextResponse } from "next/server";
 import path from "path";
 import fs from "fs/promises";
+import fsSync from "fs";
+import { pipeline } from "stream/promises";
+import { Readable } from "stream";
 
-const MAX_VIDEO_SIZE = 15 * 1024 * 1024; // 15MB
-const ALLOWED_TYPES = ["video/mp4", "video/webm"];
+export const dynamic = "force-dynamic";
+export const maxDuration = 300; // 5-minute timeout for large video uploads (up to 1GB)
+
+const MAX_VIDEO_SIZE = 1024 * 1024 * 1024; // 1GB
+const ALLOWED_TYPES = [
+    "video/mp4",
+    "video/webm",
+    "video/quicktime",
+    "video/ogg",
+    "video/x-matroska",
+    "video/x-msvideo",
+];
+const ALLOWED_EXTENSIONS = ["mp4", "webm", "mov", "ogg", "mkv", "avi"];
 
 export async function POST(req: Request) {
     try {
@@ -20,44 +34,46 @@ export async function POST(req: Request) {
         const urls: string[] = [];
 
         for (const file of files) {
+            const ext = (file.name.split(".").pop() || "").toLowerCase();
+
             // TYPE CHECK
-            if (!ALLOWED_TYPES.includes(file.type)) {
+            if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.includes(ext)) {
                 return NextResponse.json(
-                    { error: "Only MP4 or WEBM videos allowed" },
+                    { error: "Only MP4, WEBM, MOV, or OGG videos allowed" },
                     { status: 400 }
                 );
             }
 
-            //  SIZE CHECK
+            //  SIZE CHECK (1GB)
             if (file.size > MAX_VIDEO_SIZE) {
                 return NextResponse.json(
-                    { error: "Video must be under 15MB" },
+                    { error: "Video must be under 1GB" },
                     { status: 400 }
                 );
             }
 
-            const bytes = await file.arrayBuffer();
-            const buffer = Buffer.from(bytes);
-
-            const ext = file.name.split(".").pop();
             const fileName = `${Date.now()}-${Math.random()
                 .toString(36)
-                .slice(2)}.${ext}`;
+                .slice(2)}.${ext || "mp4"}`;
 
             const uploadDir = path.join(process.cwd(), "uploads", folder);
             await fs.mkdir(uploadDir, { recursive: true });
 
             const filePath = path.join(uploadDir, fileName);
-            await fs.writeFile(filePath, buffer);
+
+            // Stream to disk to prevent Node process memory spikes on large files
+            const writeStream = fsSync.createWriteStream(filePath);
+            const readable = Readable.fromWeb(file.stream() as any);
+            await pipeline(readable, writeStream);
 
             urls.push(`/uploads/${folder}/${fileName}`);
         }
 
         return NextResponse.json({ urls });
-    } catch (error) {
+    } catch (error: any) {
         console.error("VIDEO UPLOAD ERROR:", error);
         return NextResponse.json(
-            { error: "Video upload failed" },
+            { error: error?.message || "Video upload failed" },
             { status: 500 }
         );
     }

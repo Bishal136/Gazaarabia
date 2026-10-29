@@ -10,6 +10,12 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false, // Remove X-Powered-By header
 
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "1024mb",
+    },
+  },
+
   // Do not expose source maps in production
   productionBrowserSourceMaps: false,
 
@@ -54,19 +60,19 @@ const nextConfig: NextConfig = {
               "gyroscope=()",
               "magnetometer=()",
               "microphone=()",
-              "payment=()",
+              "payment=*",
               "usb=()",
             ].join(", "),
           },
 
-          // --- Cross-site isolation (safe default) ---
+          // --- Cross-site isolation (safe default, allows popups for PayPal) ---
           {
             key: "Cross-Origin-Opener-Policy",
-            value: "same-origin",
+            value: "same-origin-allow-popups",
           },
           {
             key: "Cross-Origin-Resource-Policy",
-            value: "same-origin",
+            value: "cross-origin",
           },
 
           // --- XSS mitigation ---
@@ -85,21 +91,22 @@ const nextConfig: NextConfig = {
               "frame-ancestors 'none'",
 
               // Scripts
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paypal.com https://js.stripe.com https://apple-pay-gateway.apple.com https://pay.google.com https://www.googletagmanager.com https://*.googletagmanager.com https://*.google-analytics.com https://connect.facebook.net",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://*.paypal.com https://*.paypalobjects.com https://*.hcaptcha.com https://newassets.hcaptcha.com https://js.stripe.com https://*.stripe.com https://apple-pay-gateway.apple.com https://pay.google.com https://www.googletagmanager.com https://*.googletagmanager.com https://*.google-analytics.com https://connect.facebook.net",
 
               // Styles (unsafe-inline allowed for Next.js/React styles)
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.hcaptcha.com",
 
               // Images
-              "img-src 'self' data: https: https://www.paypalobjects.com https://www.paypal.com https://www.facebook.com https://*.google-analytics.com https://*.googletagmanager.com",
+              "img-src 'self' data: blob: https: https://*.paypalobjects.com https://*.paypal.com https://*.stripe.com https://*.hcaptcha.com https://www.facebook.com https://*.google-analytics.com https://*.googletagmanager.com",
 
               // Fonts
               "font-src 'self' data: https://fonts.gstatic.com",
 
-              "frame-src https://www.paypal.com https://js.stripe.com https://apple-pay-gateway.apple.com https://pay.google.com https://www.googletagmanager.com",
+              // Frames
+              "frame-src 'self' blob: data: https://*.youtube.com https://www.youtube.com https://player.vimeo.com https://*.paypal.com https://*.paypalobjects.com https://*.hcaptcha.com https://newassets.hcaptcha.com https://js.stripe.com https://*.stripe.com https://apple-pay-gateway.apple.com https://pay.google.com https://www.googletagmanager.com",
 
               // API / backend calls
-              "connect-src 'self' https: https://www.paypal.com https://www.paypalobjects.com https://api.stripe.com https://apple-pay-gateway.apple.com https://pay.google.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://connect.facebook.net",
+              "connect-src 'self' https: http: blob: data: https://*.paypal.com https://*.paypalobjects.com https://*.hcaptcha.com https://newassets.hcaptcha.com https://api.stripe.com https://*.stripe.com https://apple-pay-gateway.apple.com https://pay.google.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://connect.facebook.net ws: wss:",
 
               // Forms
               "form-action 'self'",
@@ -108,7 +115,10 @@ const nextConfig: NextConfig = {
               "media-src 'self'",
 
               // Workers
-              "worker-src 'self'",
+              "worker-src 'self' blob: https://*.paypal.com https://*.hcaptcha.com",
+
+              // Child
+              "child-src 'self' blob: https://*.paypal.com https://*.paypalobjects.com https://*.hcaptcha.com",
 
               // Prevent mixed content
               "upgrade-insecure-requests",
