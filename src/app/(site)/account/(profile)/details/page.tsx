@@ -9,7 +9,6 @@ import { addressService } from "@/lib/services/front-end/addressService";
 import AddressForm from "@/components/AddressForm";
 import AlertMessage from "@/components/AlertMessage";
 import PopupAlert from "@/components/PopupAlert";
-import Loader from "@/components/Loader";
 
 export default function AccountDetailsPage() {
   const { data: session, status } = useSession();
@@ -114,8 +113,16 @@ export default function AccountDetailsPage() {
 
   if (loading && !profile) {
     return (
-      <div className="py-16 flex items-center justify-center">
-        <Loader />
+      <div className="space-y-6 animate-pulse">
+        <div>
+          <div className="h-8 w-44 bg-stone-200 rounded mb-2"></div>
+          <div className="h-4 w-64 bg-stone-100 rounded"></div>
+        </div>
+        <div className="bg-white rounded-2xl border border-stone-200/80 p-6 space-y-4">
+          <div className="h-5 w-32 bg-stone-200 rounded"></div>
+          <div className="h-10 w-full bg-stone-100 rounded-xl"></div>
+          <div className="h-10 w-full bg-stone-100 rounded-xl"></div>
+        </div>
       </div>
     );
   }

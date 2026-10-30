@@ -33,6 +33,8 @@ async function run() {
   await db.collection("orders").createIndex({ userId: 1, createdAt: -1 }, { background: true });
   await db.collection("orders").createIndex({ sellerId: 1, createdAt: -1 }, { background: true });
   await db.collection("orders").createIndex({ status: 1, createdAt: -1 }, { background: true });
+  await db.collection("orders_item").createIndex({ orderId: 1 }, { background: true });
+  await db.collection("orders_item").createIndex({ productId: 1 }, { background: true });
   await db.collection("users").createIndex({ roleId: 1 }, { background: true });
   await db.collection("menus").createIndex({ position: 1 }, { background: true });
   await db.collection("submenus").createIndex({ menuId: 1, position: 1 }, { background: true });

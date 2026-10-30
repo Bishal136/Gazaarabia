@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import PopupAlert from "@/components/PopupAlert";
 import AlertMessage from "@/components/AlertMessage";
-import Loader from "@/components/Loader";
 import { ROUTES } from "@/constants/routes";
 import { getRedirectUrlByRole } from "@/lib/authRedirect";
 import { logoutUser } from "@/lib/logout";

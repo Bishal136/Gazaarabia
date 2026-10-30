@@ -28,7 +28,6 @@ import { uploadService } from "@/lib/services/uploadService";
 import ProductContextCard from "@/components/chat/ProductContextCard";
 import MediaLightbox from "@/components/chat/MediaLightbox";
 import { ChatImage, ChatVideoPlayer } from "@/components/chat/ChatMedia";
-import Loader from "@/components/Loader";
 
 export default function CustomerMessagesPage() {
   const router = useRouter();
@@ -312,9 +311,9 @@ export default function CustomerMessagesPage() {
 
   if (loading && conversations.length === 0) {
     return (
-      <div className="py-20 flex flex-col items-center justify-center min-h-[350px]">
-        <Loader />
-        <p className="text-xs text-gray-400 mt-3 font-medium">Loading your messages...</p>
+      <div className="w-full min-h-[450px] bg-white rounded-2xl sm:rounded-3xl border border-stone-200/90 shadow-sm p-8 flex flex-col items-center justify-center">
+        <Loader2 className="animate-spin text-stone-700 mb-3" size={32} />
+        <p className="text-sm text-stone-500 font-medium">Loading your conversations...</p>
       </div>
     );
   }

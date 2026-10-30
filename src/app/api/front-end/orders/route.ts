@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { checkAuth, getAuthenticatedUser } from "@/lib/authToken";
 import { sendOrderConfirmationEmail } from "@/lib/helpers/emailHelper";
 import { generateCustomerInvoice } from "@/lib/utils/generateCustomerInvoice";
@@ -10,10 +10,6 @@ import { computeCouponDiscount } from "@/lib/helpers/couponDiscount";
 import { pushExternalItemsForOrder } from "@/lib/orderPush";
 import { deriveVerifiedOrderStatus } from "@/lib/payments/verifyPaymentStatus";
 import { connectToDatabase, mongoose } from "@/lib/mongoose";
-
-
-
-const prisma: any = new PrismaClient();
 
 //  CREATE NEW ORDER
 export async function POST(req: NextRequest) {

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { orderService } from "@/lib/services/front-end/orderService";
-import Loader from "@/components/Loader";
 import Link from "next/link";
 import Image from "next/image";
 import { Package, ShoppingBag, ChevronRight, AlertCircle } from "lucide-react";
@@ -85,8 +84,37 @@ export default function OrdersPage() {
 
   if (loading) {
     return (
-      <div className="py-16 flex flex-col items-center justify-center min-h-[300px]">
-        <Loader />
+      <div className="max-w-6xl mx-auto px-1 sm:px-4 pt-1 pb-10">
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold text-[#0a0808] tracking-tight">
+            My Orders
+          </h1>
+          <p className="text-[var(--text-secondary)] text-sm mt-1">
+            Review your recent purchases and order history
+          </p>
+        </div>
+
+        {/* Inline Skeleton Order Cards */}
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded-2xl border border-stone-200/80 p-5 animate-pulse">
+              <div className="flex flex-col sm:flex-row justify-between gap-4 pb-4 border-b border-stone-100">
+                <div className="space-y-2">
+                  <div className="h-4 w-32 bg-stone-200 rounded"></div>
+                  <div className="h-3 w-24 bg-stone-100 rounded"></div>
+                </div>
+                <div className="h-6 w-20 bg-stone-200 rounded-full"></div>
+              </div>
+              <div className="py-4 flex gap-4 items-center">
+                <div className="w-16 h-20 bg-stone-100 rounded-lg shrink-0"></div>
+                <div className="space-y-2 flex-1">
+                  <div className="h-4 w-3/4 bg-stone-200 rounded"></div>
+                  <div className="h-3 w-1/3 bg-stone-100 rounded"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

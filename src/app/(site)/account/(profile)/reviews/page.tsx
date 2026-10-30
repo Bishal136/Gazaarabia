@@ -21,7 +21,6 @@ import {
   ChevronRight,
   ShoppingBag,
 } from "lucide-react";
-import Loader from "@/components/Loader";
 import AlertMessage from "@/components/AlertMessage";
 import ReviewModal from "@/components/ReviewModal";
 import { reviewService } from "@/lib/services/front-end/reviewService";
@@ -207,9 +206,19 @@ export default function CustomerReviewsPage() {
 
   if (loading && toBeReviewed.length === 0 && reviewHistory.length === 0) {
     return (
-      <div className="py-20 flex flex-col items-center justify-center min-h-[350px]">
-        <Loader />
-        <p className="text-xs text-gray-400 mt-3 font-medium">Loading your reviews...</p>
+      <div className="max-w-6xl mx-auto px-1 sm:px-4 pt-1 pb-12 space-y-6 animate-pulse">
+        <div>
+          <div className="h-8 w-44 bg-stone-200 rounded mb-2"></div>
+          <div className="h-4 w-64 bg-stone-100 rounded"></div>
+        </div>
+        <div className="space-y-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="bg-white rounded-2xl border border-stone-200/80 p-5 space-y-3">
+              <div className="h-4 w-48 bg-stone-200 rounded"></div>
+              <div className="h-3 w-32 bg-stone-100 rounded"></div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
