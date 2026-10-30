@@ -3,12 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Pagination } from "swiper/modules";
 import { Heart, Plus, Star } from "lucide-react";
-
-import "swiper/css";
-import "swiper/css/pagination";
 
 import { formatSoldDuration } from "@/lib/utils";
 interface ProductCardProps {
@@ -42,6 +37,12 @@ export default function ProductCard({
   };
 
   const soldDurationLabel = formatSoldDuration(product.soldHighlightDuration);
+
+  const images = Array.isArray(product.productimage) && product.productimage.length > 0
+    ? product.productimage
+    : [{ url: "/images/placeholder.png", alt: product.title }];
+  const primaryImg = images[0]?.url || "/images/placeholder.png";
+  const secondaryImg = images[1]?.url || null;
 
   // =========================================================================
   // LIST VIEW LAYOUT
@@ -77,38 +78,44 @@ export default function ProductCard({
             </div>
           )}
 
-          {/* Images Swiper */}
-          <Swiper
-            modules={[Pagination]}
-            pagination={{ clickable: true }}
-            className="w-full h-full overflow-hidden"
-          >
-            {(Array.isArray(product.productimage) && product.productimage.length > 0
-              ? product.productimage
-              : [{ url: "/images/placeholder.png", alt: product.title }]
-            ).map((img: any, index: number) => (
-              <SwiperSlide key={index}>
-                <div className="relative w-full h-full">
-                  <Image
-                    src={img.url}
-                    alt={product.title}
-                    fill
-                    sizes="(max-width: 640px) 100vw, 224px"
-                    priority={Boolean(priority && index === 0)}
-                    loading={priority && index === 0 ? "eager" : "lazy"}
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    onError={(e: any) => {
-                      if (e.target && e.target.src) {
-                        e.target.onerror = null;
-                        e.target.srcset = "";
-                        e.target.src = "/images/placeholder.png";
-                      }
-                    }}
-                  />
-                </div>
-              </SwiperSlide>
-            ))}
-          </Swiper>
+          {/* Static Primary + Hover Secondary Image */}
+          <div className="relative w-full h-full overflow-hidden">
+            <Image
+              src={primaryImg}
+              alt={product.title}
+              fill
+              sizes="(max-width: 640px) 100vw, 224px"
+              priority={Boolean(priority)}
+              loading={priority ? "eager" : "lazy"}
+              className={`object-cover transition-all duration-500 ${
+                secondaryImg ? "group-hover:opacity-0 group-hover:scale-105" : "group-hover:scale-105"
+              }`}
+              onError={(e: any) => {
+                if (e.target && e.target.src) {
+                  e.target.onerror = null;
+                  e.target.srcset = "";
+                  e.target.src = "/images/placeholder.png";
+                }
+              }}
+            />
+            {secondaryImg && (
+              <Image
+                src={secondaryImg}
+                alt={product.title}
+                fill
+                sizes="(max-width: 640px) 100vw, 224px"
+                loading="lazy"
+                className="object-cover absolute inset-0 opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+                onError={(e: any) => {
+                  if (e.target && e.target.src) {
+                    e.target.onerror = null;
+                    e.target.srcset = "";
+                    e.target.src = "/images/placeholder.png";
+                  }
+                }}
+              />
+            )}
+          </div>
         </div>
 
         {/* --- Content Section --- */}
@@ -258,39 +265,44 @@ export default function ProductCard({
           </div>
         )}
 
-        {/* Images */}
-        <Swiper
-          modules={[Pagination]}
-          pagination={{ clickable: true }}
-          className="w-full h-full overflow-hidden"
-        >
-          {(Array.isArray(product.productimage) && product.productimage.length > 0
-            ? product.productimage
-            : [{ url: "/images/placeholder.png", alt: product.title }]
-          ).map((img: any, index: number) => (
-            <SwiperSlide key={index}>
-              <div className="relative w-full h-full">
-                <Image
-                  src={img.url}
-                  alt={product.title}
-                  fill
-                  sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
-                  priority={Boolean(priority && index === 0)}
-                  loading={priority && index === 0 ? "eager" : "lazy"}
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  onError={(e: any) => {
-                    // Fallback to placeholder on broken asset
-                    if (e.target && e.target.src) {
-                      e.target.onerror = null;
-                      e.target.srcset = "";
-                      e.target.src = "/images/placeholder.png";
-                    }
-                  }}
-                />
-              </div>
-            </SwiperSlide>
-          ))}
-        </Swiper>
+        {/* Static Primary + Hover Secondary Image */}
+        <div className="relative w-full h-full overflow-hidden">
+          <Image
+            src={primaryImg}
+            alt={product.title}
+            fill
+            sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+            priority={Boolean(priority)}
+            loading={priority ? "eager" : "lazy"}
+            className={`object-cover transition-all duration-500 ${
+              secondaryImg ? "group-hover:opacity-0 group-hover:scale-105" : "group-hover:scale-105"
+            }`}
+            onError={(e: any) => {
+              if (e.target && e.target.src) {
+                e.target.onerror = null;
+                e.target.srcset = "";
+                e.target.src = "/images/placeholder.png";
+              }
+            }}
+          />
+          {secondaryImg && (
+            <Image
+              src={secondaryImg}
+              alt={product.title}
+              fill
+              sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+              loading="lazy"
+              className="object-cover absolute inset-0 opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+              onError={(e: any) => {
+                if (e.target && e.target.src) {
+                  e.target.onerror = null;
+                  e.target.srcset = "";
+                  e.target.src = "/images/placeholder.png";
+                }
+              }}
+            />
+          )}
+        </div>
       </div>
 
       {/* --- Content Section --- */}

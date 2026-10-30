@@ -50,14 +50,14 @@ import { fbEvent } from "@/components/analytics/FacebookPixel";
 import { gaEvent } from "@/components/analytics/GoogleAnalytics";
 import { formatGBP } from "@/lib/utils/shipping";
 
-export default function ProductDetails() {
+export default function ProductDetails({ initialProduct }: { initialProduct?: any }) {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
   const { data: session, status } = useSession();
   const token: any = session?.user?.token || null;
 
-  const [product, setProduct] = useState<any>(null);
-  const [wishlist, setWishlist] = useState<boolean>(false);
+  const [product, setProduct] = useState<any>(initialProduct || null);
+  const [wishlist, setWishlist] = useState<boolean>(initialProduct?.isInWishlist || false);
   const [addingToCart, setAddingToCart] = useState<boolean>(false);
   const [activeThumb, setActiveThumb] = useState<number>(0);
   const [selectedColor, setSelectedColor] = useState<any>(null);
@@ -66,7 +66,7 @@ export default function ProductDetails() {
   const [zoomVisible, setZoomVisible] = useState<boolean>(false);
   const [backgroundPosition, setBackgroundPosition] = useState<string>("0% 0%");
   const imgRef = useRef<HTMLDivElement>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(!initialProduct);
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [showVariantWarning, setShowVariantWarning] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -104,12 +104,19 @@ export default function ProductDetails() {
   //  Fetch product
   useEffect(() => {
     if (!slug || status === "loading") return;
+    // Fast-path: if we already have initialProduct and guest user, zero network refetch needed
+    if (initialProduct && !token) {
+      setLoading(false);
+      return;
+    }
     (async () => {
       try {
-        setLoading(true);
+        if (!product) setLoading(true);
         const data: any = await getProductBySlug(token, slug);
-        setProduct(data);
-        setWishlist(data?.isInWishlist || false);
+        if (data) {
+          setProduct(data);
+          setWishlist(data?.isInWishlist || false);
+        }
       } catch (err) {
         console.error("Failed to fetch product details:", err);
       } finally {

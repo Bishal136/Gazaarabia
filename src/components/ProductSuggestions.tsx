@@ -34,23 +34,13 @@ export default function ProductSuggestions({
     setWearWithProducts(wearWith || []);
   }, [wearWith]);
 
-  //  Memoize prop to prevent re-renders
-  const memoizedRecentlyViewed = useMemo(
-    () => recentlyViewed || [],
-    [JSON.stringify(recentlyViewed)]
-  );
-
-  //  Load recently viewed safely (client only)
+  // Load recently viewed safely (client only)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     try {
-      if (memoizedRecentlyViewed.length > 0) {
-        setRecent((prev) => {
-          const prevIds = prev.map((p) => p.id).join(",");
-          const newIds = memoizedRecentlyViewed.map((p) => p.id).join(",");
-          return prevIds === newIds ? prev : memoizedRecentlyViewed;
-        });
+      if (recentlyViewed && recentlyViewed.length > 0) {
+        setRecent(recentlyViewed);
       } else {
         const raw = localStorage.getItem("recentlyViewed");
         const list: Product[] = raw ? JSON.parse(raw) : [];
@@ -60,7 +50,7 @@ export default function ProductSuggestions({
       console.error("Failed to load recently viewed:", error);
       setRecent([]);
     }
-  }, [memoizedRecentlyViewed]);
+  }, [recentlyViewed]);
 
   const tabs = [
     { key: "wear", label: "Wear With" },

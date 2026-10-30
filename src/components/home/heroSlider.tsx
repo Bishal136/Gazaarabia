@@ -1,12 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination, EffectFade } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/pagination";
 import "swiper/css/effect-fade";
-import { useEffect, useState } from "react";
 
 interface HeroSlide {
     desktop: string;
@@ -18,16 +16,6 @@ interface HeroSliderProps {
 }
 
 export default function HeroSlider({ heroSlides }: HeroSliderProps) {
-    const [isMobile, setIsMobile] = useState(false);
-
-    // Detect screen width (client-side)
-    useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 1024);
-        handleResize(); // run once
-        window.addEventListener("resize", handleResize);
-        return () => window.removeEventListener("resize", handleResize);
-    }, []);
-
     const slides = Array.isArray(heroSlides) ? heroSlides : [];
     if (slides.length === 0) return null;
 
@@ -47,14 +35,17 @@ export default function HeroSlider({ heroSlides }: HeroSliderProps) {
                 {slides.map((slide, index) => (
                     <SwiperSlide key={index}>
                         <div className="relative w-full h-[100vh]">
-                            <Image
-                                src={isMobile ? slide.mobile : slide.desktop}
-                                alt={`Hero Slide ${index + 1}`}
-                                fill
-                                priority={index === 0}
-                                sizes="100vw"
-                                className="object-cover object-center w-full h-full"
-                            />
+                            <picture className="w-full h-full">
+                                <source media="(max-width: 1023px)" srcSet={slide.mobile} />
+                                <source media="(min-width: 1024px)" srcSet={slide.desktop} />
+                                <img
+                                    src={slide.desktop}
+                                    alt={`Hero Slide ${index + 1}`}
+                                    className="object-cover object-center w-full h-full"
+                                    fetchPriority={index === 0 ? "high" : "low"}
+                                    loading={index === 0 ? "eager" : "lazy"}
+                                />
+                            </picture>
                         </div>
                     </SwiperSlide>
                 ))}

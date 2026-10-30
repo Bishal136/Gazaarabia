@@ -2,6 +2,7 @@ import type { Metadata, ResolvingMetadata } from "next";
 import { prisma } from "@/lib/prisma";
 import ProductDetails from "./ProductDetails";
 import { BreadcrumbSchema } from "@/components/BreadcrumbSchema";
+import { fetchProductBySlug } from "@/lib/server/productDetails";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -62,31 +63,21 @@ export async function generateMetadata(
 export default async function Page({ params }: Props) {
   const { slug } = await params;
 
-  const product = await prisma.products.findUnique({
-    where: { slug },
-    include: {
-      productimage: true,
-      productvariant: true,
-      reviews: {
-        select: { rating: true },
-      },
-      categories: {
-        select: { name: true, slug: true },
-      },
-    },
-  });
+  // Pre-fetch complete product details on the server to eliminate client waterfall
+  const product = await fetchProductBySlug(slug);
 
   if (!product) return <ProductDetails />;
 
   const price = product.sellingPrice;
-  const productImage = product.productimage[0]?.url || "https://gazaarabia.com/images/logo.png";
-  const inStock = product.productvariant.some((v) => v.stock > 0);
+  const productImage = product.productimage?.[0]?.url || "https://gazaarabia.com/images/logo.png";
+  const inStock = Array.isArray(product.productvariant)
+    ? product.productvariant.some((v: any) => (v.availableStock ?? v.stock ?? 0) > 0)
+    : false;
   const categorySlug = product.categories?.slug || "all";
   const categoryName = product.categories?.name || "Products";
 
-  const averageRating = product.reviews.length > 0
-    ? product.reviews.reduce((acc, r) => acc + r.rating, 0) / product.reviews.length
-    : 0;
+  const reviewsList = product.reviewsData?.list || product.reviews || [];
+  const averageRating = product.reviewsData?.averageRating || 0;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -111,11 +102,11 @@ export default async function Page({ params }: Props) {
         name: "Gazaarabia",
       },
     },
-    ...(product.reviews.length > 0 && {
+    ...(reviewsList.length > 0 && {
       aggregateRating: {
         "@type": "AggregateRating",
         ratingValue: averageRating.toFixed(1),
-        reviewCount: product.reviews.length,
+        reviewCount: reviewsList.length,
       },
     }),
   };
@@ -134,7 +125,7 @@ export default async function Page({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <ProductDetails />
+      <ProductDetails initialProduct={product} />
     </>
   );
 }

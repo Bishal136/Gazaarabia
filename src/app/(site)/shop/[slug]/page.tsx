@@ -4,6 +4,8 @@ import CategoryContent from "./CategoryContent";
 import { BreadcrumbSchema } from "@/components/BreadcrumbSchema";
 import { CollectionPageSchema } from "@/components/CollectionPageSchema";
 
+import { fetchShopData } from "@/lib/server/shopData";
+
 interface Props {
   params: Promise<{ slug: string }>;
 }
@@ -70,8 +72,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function Page({ params }: Props) {
   const { slug } = await params;
-  const category = slug !== "all" ? await getCategoryData(slug) : null;
-  const categoryName = category?.name || "All Products";
+  const [category, initialData] = await Promise.all([
+    slug !== "all" ? getCategoryData(slug) : null,
+    fetchShopData(slug, 1, 16).catch(() => null),
+  ]);
+  const categoryName = category?.name || initialData?.parentCategory?.name || "All Products";
 
   return (
     <>
@@ -90,7 +95,7 @@ export default async function Page({ params }: Props) {
         }
         url={`https://gazaarabia.com/shop/${slug}`}
       />
-      <CategoryContent />
+      <CategoryContent initialData={initialData} />
     </>
   );
 }

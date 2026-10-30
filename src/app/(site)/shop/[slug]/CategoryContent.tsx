@@ -22,7 +22,7 @@ import {
   X,
 } from "lucide-react";
 
-export default function CategoryContent() {
+export default function CategoryContent({ initialData }: { initialData?: any }) {
   const params = useParams<{ slug: string }>();
   const slug = params?.slug || "all";
   const router = useRouter();
@@ -30,12 +30,12 @@ export default function CategoryContent() {
   const { data: session, status } = useSession();
   const token = session?.user?.token || null;
 
-  const [products, setProducts] = useState<any[]>([]);
-  const [totalProducts, setTotalProducts] = useState<number>(0);
-  const [parentCategory, setParentCategory] = useState<any>(null);
-  const [subcategories, setSubcategories] = useState<any[]>([]);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [products, setProducts] = useState<any[]>(initialData?.products || []);
+  const [totalProducts, setTotalProducts] = useState<number>(initialData?.total || 0);
+  const [parentCategory, setParentCategory] = useState<any>(initialData?.parentCategory || null);
+  const [subcategories, setSubcategories] = useState<any[]>(initialData?.subcategories || []);
+  const [totalPages, setTotalPages] = useState(initialData?.totalPages || 1);
+  const [loading, setLoading] = useState<boolean>(!initialData);
 
   // Layout View Mode: Grid View (4 squares) vs List View (horizontal rows)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -189,9 +189,15 @@ export default function CategoryContent() {
     }
   };
 
+  const isInitialMountRef = React.useRef(Boolean(initialData));
+
   // Re-fetch when dependencies change
   useEffect(() => {
     if (status !== "loading") {
+      if (isInitialMountRef.current) {
+        isInitialMountRef.current = false;
+        return;
+      }
       fetchProducts(filters, currentPage, sort);
     }
   }, [slug, currentPage, sort, filters, status, token]);

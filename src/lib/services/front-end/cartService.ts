@@ -12,6 +12,11 @@ function getCartHeaders(token?: any): Record<string, string> {
 
 export const cartService = {
   async getAll(token?: any) {
+    // Guest mode fast-path: immediately return localCart without wasting an unauthenticated network round-trip
+    if (!token || token === "undefined" || token === "null") {
+      return localCartService.get();
+    }
+
     try {
       const res = await fetch("/api/front-end/cart", {
         method: "GET",
