@@ -16,7 +16,7 @@ git fetch origin main
 git reset --hard origin/main
 
 echo "[2/4] Ensuring dependencies are up-to-date and database indexes exist..."
-npm install --prefer-offline --no-audit
+npm install --include=dev --prefer-offline --no-audit
 npx tsx scripts/ensure-indexes.ts || true
 
 echo "[3/4] Building production Next.js application..."
