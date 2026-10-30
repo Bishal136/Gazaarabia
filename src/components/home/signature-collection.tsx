@@ -101,11 +101,16 @@ export default function SignatureCollection({ products }: SignatureProductsProps
                       className="object-cover w-full h-[420px] md:h-[450px] transition-transform duration-[1500ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-105"
                     />
                   </div> */}
-                  <div className="relative w-full aspect-[3/4] overflow-hidden">
+                  <div
+                    className="relative w-full aspect-[3/4] overflow-hidden max-w-[320px] mx-auto"
+                    style={{ aspectRatio: "3/4" }}
+                  >
                     <Image
-                      src={p.productimage?.[0]?.url}
+                      src={p.productimage?.[0]?.url || "/placeholder.jpg"}
                       alt={p.title}
                       fill
+                      loading="lazy"
+                      sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 280px"
                       className="object-cover transition-transform duration-[1500ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-105"
                     />
                   </div>

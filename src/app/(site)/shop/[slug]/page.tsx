@@ -6,6 +6,8 @@ import { CollectionPageSchema } from "@/components/CollectionPageSchema";
 
 import { fetchShopData } from "@/lib/server/shopData";
 
+export const revalidate = 60; // ISR cache revalidation every 60s
+
 interface Props {
   params: Promise<{ slug: string }>;
 }

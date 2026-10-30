@@ -76,9 +76,9 @@ export default function ShopByCategory({ categories }: ShopByCategoryProps) {
                   src={cat.image}
                   alt={cat.name}
                   fill
-                  sizes={`${isLarge ? "(max-width:640px) 50vw, 25vw" : isWide ? "(max-width:640px) 50vw, 50vw" : "(max-width:640px) 50vw, 25vw"}`}
+                  loading="lazy"
+                  sizes={`${isLarge ? "(max-width:640px) 50vw, 360px" : isWide ? "(max-width:640px) 50vw, 500px" : "(max-width:640px) 50vw, 280px"}`}
                   className="object-cover transition-transform duration-[1500ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-110"
-                  priority={index < 4}
                 />
 
                 {/* Overlay */}

@@ -128,7 +128,10 @@ export default function TrendingNow({ products }: TrendingNowProps) {
                   onClick={() => handleCardClick(p.slug)}
                 >
                   {/* Image Container */}
-                  <div className="relative w-full aspect-[3/4] overflow-hidden rounded-lg sm:rounded-xl bg-gray-100">
+                  <div
+                    className="relative w-full aspect-[3/4] overflow-hidden rounded-lg sm:rounded-xl bg-gray-100 max-w-[320px] mx-auto"
+                    style={{ aspectRatio: "3/4" }}
+                  >
                     {/* Trending Badge */}
                     <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[8px] sm:text-[10px] font-semibold px-2 sm:px-3 py-0.5 sm:py-1 rounded-full shadow-md uppercase tracking-wider">
                       Trending
@@ -138,7 +141,8 @@ export default function TrendingNow({ products }: TrendingNowProps) {
                       src={p.productimage?.[0]?.url || "/placeholder.jpg"}
                       alt={p.title}
                       fill
-                      sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+                      loading="lazy"
+                      sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 280px"
                       className="object-cover transition-transform duration-[1200ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-110"
                     />
 
@@ -148,7 +152,8 @@ export default function TrendingNow({ products }: TrendingNowProps) {
                         src={p.productimage[1].url}
                         alt={`${p.title} - alternate`}
                         fill
-                        sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+                        loading="lazy"
+                        sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 280px"
                         className="object-cover absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 hidden sm:block"
                       />
                     )}

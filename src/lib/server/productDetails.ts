@@ -6,7 +6,18 @@ import {
 } from "@/lib/helpers/stockHelper";
 import { connectToDatabase } from "@/lib/mongoose";
 
+// In-memory cache for fast product detail views (60s TTL)
+const productCache = new Map<string, { data: any; expiry: number }>();
+const PRODUCT_CACHE_TTL_MS = 60 * 1000;
+
 export async function fetchProductBySlug(slug: string, userId: number | null = null) {
+  if (!userId) {
+    const cached = productCache.get(slug);
+    if (cached && Date.now() < cached.expiry) {
+      return cached.data;
+    }
+  }
+
   const product = await prisma.products.findUnique({
     where: { slug },
     include: {
@@ -212,7 +223,7 @@ export async function fetchProductBySlug(slug: string, userId: number | null = n
   }
 
   // Serialize to pure JSON to guarantee clean RSC boundary crossing
-  return JSON.parse(
+  const responseData = JSON.parse(
     JSON.stringify({
       ...product,
       seller: sellerInfo || product.seller || null,
@@ -229,4 +240,14 @@ export async function fetchProductBySlug(slug: string, userId: number | null = n
       deliverySettings,
     })
   );
+
+  if (!userId) {
+    if (productCache.size > 200) {
+      const oldestKey = productCache.keys().next().value;
+      if (oldestKey) productCache.delete(oldestKey);
+    }
+    productCache.set(slug, { data: responseData, expiry: Date.now() + PRODUCT_CACHE_TTL_MS });
+  }
+
+  return responseData;
 }

@@ -4,6 +4,8 @@ import ProductDetails from "./ProductDetails";
 import { BreadcrumbSchema } from "@/components/BreadcrumbSchema";
 import { fetchProductBySlug } from "@/lib/server/productDetails";
 
+export const revalidate = 60; // ISR cache revalidation every 60s
+
 interface Props {
   params: Promise<{ slug: string }>;
 }

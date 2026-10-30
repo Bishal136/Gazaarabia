@@ -68,7 +68,10 @@ export default function BestSellers({ products }: BestSellersProps) {
                 className="group cursor-pointer relative overflow-hidden rounded-xl sm:rounded-2xl bg-white shadow-sm hover:shadow-xl transition-shadow duration-500"
                 onClick={() => handleCardClick(p.slug)}
               >
-                <div className="relative w-full aspect-[3/4] overflow-hidden">
+                <div
+                  className="relative w-full aspect-[3/4] overflow-hidden"
+                  style={{ aspectRatio: "3/4" }}
+                >
                   <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10 flex items-center gap-1.5">
                     <div className="w-6 h-6 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
                       <span className="text-white text-[10px] sm:text-sm font-bold">#{i + 1}</span>
@@ -81,7 +84,8 @@ export default function BestSellers({ products }: BestSellersProps) {
                     src={p.productimage?.[0]?.url || "/placeholder.jpg"}
                     alt={p.title}
                     fill
-                    sizes="(max-width:640px) 50vw, 45vw"
+                    loading="lazy"
+                    sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 360px"
                     className="object-cover transition-transform duration-[1500ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -129,7 +133,10 @@ export default function BestSellers({ products }: BestSellersProps) {
                 className="group cursor-pointer overflow-hidden rounded-lg sm:rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-500"
                 onClick={() => handleCardClick(p.slug)}
               >
-                <div className="relative w-full aspect-[3/4] overflow-hidden">
+                <div
+                  className="relative w-full aspect-[3/4] overflow-hidden"
+                  style={{ aspectRatio: "3/4" }}
+                >
                   <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 w-5 h-5 sm:w-7 sm:h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm">
                     <span className="text-gray-700 text-[9px] sm:text-xs font-bold">#{i + 3}</span>
                   </div>
@@ -137,12 +144,19 @@ export default function BestSellers({ products }: BestSellersProps) {
                     src={p.productimage?.[0]?.url || "/placeholder.jpg"}
                     alt={p.title}
                     fill
-                    sizes="(max-width:640px) 50vw, (max-width:768px) 33vw, 25vw"
+                    loading="lazy"
+                    sizes="(max-width:640px) 50vw, (max-width:768px) 33vw, 250px"
                     className="object-cover transition-transform duration-[1200ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-110"
                   />
                   {p.productimage?.[1] && (
-                    <Image src={p.productimage[1].url} alt={`${p.title} alt`} fill sizes="(max-width:640px) 50vw, 25vw"
-                      className="object-cover absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 hidden sm:block" />
+                    <Image
+                      src={p.productimage[1].url}
+                      alt={`${p.title} alt`}
+                      fill
+                      loading="lazy"
+                      sizes="(max-width:640px) 50vw, 250px"
+                      className="object-cover absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 hidden sm:block"
+                    />
                   )}
                 </div>
                 <div className="p-2 sm:p-3 md:p-4 text-center">

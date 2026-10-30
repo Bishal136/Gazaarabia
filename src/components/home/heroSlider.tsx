@@ -22,7 +22,10 @@ export default function HeroSlider({ heroSlides }: HeroSliderProps) {
     const canLoop = slides.length > 1;
 
     return (
-        <section className="relative w-full h-[100vh] overflow-hidden">
+        <section
+            className="relative w-full h-[100vh] min-h-[100vh] bg-[#4A0E17] overflow-hidden"
+            style={{ backgroundColor: "#4A0E17", minHeight: "100vh" }}
+        >
             <Swiper
                 key={`hero-swiper-${slides.length}-${canLoop}`}
                 modules={[Autoplay, Pagination, EffectFade]}
@@ -30,11 +33,14 @@ export default function HeroSlider({ heroSlides }: HeroSliderProps) {
                 pagination={canLoop ? { clickable: true } : false}
                 autoplay={canLoop ? { delay: 5000, disableOnInteraction: false } : false}
                 loop={canLoop}
-                className="h-full w-full"
+                className="h-full w-full bg-[#4A0E17]"
             >
                 {slides.map((slide, index) => (
-                    <SwiperSlide key={index}>
-                        <div className="relative w-full h-[100vh]">
+                    <SwiperSlide key={index} className="bg-[#4A0E17]">
+                        <div
+                            className="relative w-full h-[100vh] bg-[#4A0E17]"
+                            style={{ backgroundColor: "#4A0E17" }}
+                        >
                             <picture className="w-full h-full">
                                 <source media="(max-width: 1023px)" srcSet={slide.mobile} />
                                 <source media="(min-width: 1024px)" srcSet={slide.desktop} />
@@ -44,6 +50,7 @@ export default function HeroSlider({ heroSlides }: HeroSliderProps) {
                                     className="object-cover object-center w-full h-full"
                                     fetchPriority={index === 0 ? "high" : "low"}
                                     loading={index === 0 ? "eager" : "lazy"}
+                                    decoding={index === 0 ? "sync" : "async"}
                                 />
                             </picture>
                         </div>

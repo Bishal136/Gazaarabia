@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import path from "path";
 import fs from "fs/promises";
+import crypto from "crypto";
+import sharp from "sharp";
 
 export async function POST(req: Request) {
   try {
@@ -16,17 +18,33 @@ export async function POST(req: Request) {
     }
 
     const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    const inputBuffer = Buffer.from(bytes);
 
-    const fileName = `${Date.now()}-${file.name}`;
+    // Auto-convert to optimized WebP & resize to maximum bounding box
+    const isHeroOrBanner = folder.includes("hero") || folder.includes("banner");
+    const maxWidth = isHeroOrBanner ? 1600 : 1000;
+    const quality = isHeroOrBanner ? 80 : 78;
+
+    const webpBuffer = await sharp(inputBuffer)
+      .resize({ width: maxWidth, withoutEnlargement: true, fit: "inside" })
+      .webp({ quality })
+      .toBuffer();
+
+    // Deduplicate by SHA-256 hash (16 chars) to eliminate duplicated variant uploads
+    const hash = crypto.createHash("sha256").update(webpBuffer).digest("hex").slice(0, 16);
+    const fileName = `${hash}.webp`;
+
     const uploadDir = path.join(process.cwd(), "uploads", folder);
     await fs.mkdir(uploadDir, { recursive: true });
 
     const filePath = path.join(uploadDir, fileName);
-    await fs.writeFile(filePath, buffer);
+    try {
+      await fs.access(filePath);
+    } catch {
+      await fs.writeFile(filePath, webpBuffer);
+    }
 
     const fileUrl = `/uploads/${folder}/${fileName}`;
-    console.log("File uploaded:", fileUrl);
     return NextResponse.json({ url: fileUrl });
   } catch (error) {
     console.error("UPLOAD ERROR:", error);

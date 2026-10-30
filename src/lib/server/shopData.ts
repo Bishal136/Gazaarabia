@@ -3,6 +3,10 @@ import { getWishlistProductIds } from "@/lib/helpers/wishlist";
 import { getBulkProductAvailableStock } from "@/lib/helpers/stockHelper";
 import { getBulkProductRatingStats } from "@/lib/helpers/reviewHelper";
 
+// In-memory cache for fast SSR category and shop pages (60s TTL)
+const shopCache = new Map<string, { data: any; expiry: number }>();
+const SHOP_CACHE_TTL_MS = 60 * 1000;
+
 export async function fetchShopData(
   slug: string,
   page = 1,
@@ -10,6 +14,14 @@ export async function fetchShopData(
   filters: any = {},
   userId: number | null = null
 ) {
+  const cacheKey = `${slug}:${page}:${limit}:${JSON.stringify(filters)}`;
+  if (!userId) {
+    const cached = shopCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiry) {
+      return cached.data;
+    }
+  }
+
   const skip = (page - 1) * limit;
 
   const q = (filters.q || "").trim();
@@ -290,7 +302,7 @@ export async function fetchShopData(
     };
   });
 
-  return JSON.parse(
+  const responseData = JSON.parse(
     JSON.stringify({
       products: enrichedProducts,
       total,
@@ -301,4 +313,14 @@ export async function fetchShopData(
       subcategories,
     })
   );
+
+  if (!userId) {
+    if (shopCache.size > 200) {
+      const oldestKey = shopCache.keys().next().value;
+      if (oldestKey) shopCache.delete(oldestKey);
+    }
+    shopCache.set(cacheKey, { data: responseData, expiry: Date.now() + SHOP_CACHE_TTL_MS });
+  }
+
+  return responseData;
 }

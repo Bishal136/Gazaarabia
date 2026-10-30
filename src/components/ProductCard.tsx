@@ -242,8 +242,10 @@ export default function ProductCard({
 
 
       {/* --- Image Section --- */}
-      {/* <div className="relative w-full aspect-[3/4] overflow-hidden rounded-xl bg-gray-50 shadow-sm hover:shadow-md transition-all duration-300"> */}
-      <div className="relative w-full aspect-[3/4] overflow-hidden bg-gray-50 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300">
+      <div
+        className="relative w-full aspect-[3/4] overflow-hidden bg-gray-50 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 max-w-[320px]"
+        style={{ aspectRatio: "3/4" }}
+      >
 
         {/* Wishlist Button */}
         <button
