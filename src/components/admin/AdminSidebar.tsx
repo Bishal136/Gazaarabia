@@ -363,6 +363,7 @@ export default function AdminSidebar({
                                   <Link
                                     key={child.href}
                                     href={child.href}
+                                    prefetch={false}
                                     className={`flex items-center gap-2 text-sm px-2 py-1.5 rounded-md transition
                       ${isActive ? "text-white font-medium" : "text-gray-400 hover:text-white"}
                     `}
@@ -387,6 +388,7 @@ export default function AdminSidebar({
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={false}
                     className={`flex items-center gap-3 px-4 py-[12px] rounded-xl text-sm transition
         ${isActive ? "bg-[var(--brand-primary)] text-white mt-2" : "text-[var(--soft-gray)] hover:bg-[var(--brand-secondary)] hover:text-white mt-2"}      `}
                     style={{ justifyContent: collapsed ? "center" : "flex-start" }}

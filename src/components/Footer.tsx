@@ -40,13 +40,13 @@ export default function Footer() {
               Free UK delivery on orders over £60
             </li>
             <li className="hover:underline cursor-pointer">
-              <Link href="/shipping-and-delivery">Shipping Information</Link>
+              <Link href="/shipping-and-delivery" prefetch={false}>Shipping Information</Link>
             </li>
             <li className="hover:underline cursor-pointer">
-              <Link href="/shipping-and-delivery">Delivery</Link>
+              <Link href="/shipping-and-delivery" prefetch={false}>Delivery</Link>
             </li>
             <li className="hover:underline cursor-pointer">
-              <Link href="/returns-exchanges"> Returns & Exchanges </Link>
+              <Link href="/returns-exchanges" prefetch={false}> Returns & Exchanges </Link>
             </li>
 
           </ul>
@@ -59,24 +59,24 @@ export default function Footer() {
           </h3>
           <ul className="space-y-2 text-sm">
             <li className="hover:underline cursor-pointer">
-              <Link href="/seller/register">Become a Seller</Link>
+              <Link href="/seller/register" prefetch={false}>Become a Seller</Link>
             </li>
             <li className="hover:underline cursor-pointer">
-              <Link href="/about">Our Story</Link>
+              <Link href="/about" prefetch={false}>Our Story</Link>
             </li>
             {/* <li className="hover:underline cursor-pointer">Visit us</li> */}
             {/* <li className="hover:underline cursor-pointer">Careers</li> */}
             <li className="hover:underline cursor-pointer">
-              <Link href="/blogs">Blogs</Link>
+              <Link href="/blogs" prefetch={false}>Blogs</Link>
             </li>
             <li className="hover:underline cursor-pointer">
-              <Link href="/loyalty">Loyalty</Link>
+              <Link href="/loyalty" prefetch={false}>Loyalty</Link>
             </li>
             <li className="hover:underline cursor-pointer">
-              <Link href="/charity">Charity</Link>
+              <Link href="/charity" prefetch={false}>Charity</Link>
             </li>
             <li className="hover:underline cursor-pointer">
-              <Link href="/solidarity-receipts">Solidarity Receipts</Link>
+              <Link href="/solidarity-receipts" prefetch={false}>Solidarity Receipts</Link>
             </li>
           </ul>
         </div>
@@ -92,17 +92,17 @@ export default function Footer() {
             {/* <li className="hover:underline cursor-pointer">Care & Repair</li> */}
 
             <li className="hover:underline cursor-pointer">
-              <Link href="/ambassador-terms">Ambassador Terms</Link>
+              <Link href="/ambassador-terms" prefetch={false}>Ambassador Terms</Link>
             </li>
             <li className="hover:underline cursor-pointer">
-              <Link href="/privacy-policy">Privacy Policy</Link>
+              <Link href="/privacy-policy" prefetch={false}>Privacy Policy</Link>
             </li>
             <li className="hover:underline cursor-pointer">
-              <Link href="/terms-and-conditions">Terms & Conditions</Link>
+              <Link href="/terms-and-conditions" prefetch={false}>Terms & Conditions</Link>
             </li>
 
             <li className="hover:underline cursor-pointer">
-              <Link href="/cookies-policy"> Cookies Policy </Link>
+              <Link href="/cookies-policy" prefetch={false}> Cookies Policy </Link>
             </li>
 
           </ul>
@@ -123,7 +123,7 @@ export default function Footer() {
               <p className="hover:underline cursor-pointer">+44 (0) 203 823 7768</p>
             </li> */}
             <li className="hover:underline cursor-pointer">
-              <Link href="/contact">Contact Us</Link>
+              <Link href="/contact" prefetch={false}>Contact Us</Link>
             </li>
             <li>
               <p>Email us</p>
@@ -132,7 +132,7 @@ export default function Footer() {
               </p>
             </li>
             <li className="hover:underline cursor-pointer">
-              <Link href="/faq">Frequently Asked Questions</Link>
+              <Link href="/faq" prefetch={false}>Frequently Asked Questions</Link>
             </li>
           </ul>
         </div>
