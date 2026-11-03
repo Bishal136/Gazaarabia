@@ -22,6 +22,29 @@ import {
   X,
 } from "lucide-react";
 
+// Helper to produce a deterministic key of the query state
+const serializeShopParams = (
+  s: string,
+  p: number,
+  srt: string,
+  f: FilterState
+) => {
+  return JSON.stringify({
+    s,
+    p,
+    srt,
+    q: f.q || "",
+    avail: [...f.availability].sort(),
+    sizes: [...f.sizes].sort(),
+    colors: [...f.colors].sort(),
+    cats: [...f.categories].sort(),
+    subcats: [...f.subcategories].sort(),
+    pMin: f.priceMin,
+    pMax: f.priceMax,
+    r: f.rating,
+  });
+};
+
 export default function CategoryContent({ initialData }: { initialData?: any }) {
   const params = useParams<{ slug: string }>();
   const slug = params?.slug || "all";
@@ -189,17 +212,36 @@ export default function CategoryContent({ initialData }: { initialData?: any }) 
     }
   };
 
-  const isInitialMountRef = React.useRef(Boolean(initialData));
+  // Track the exact parameter key of the current loaded dataset
+  const lastFetchedKeyRef = React.useRef<string>(
+    initialData ? serializeShopParams(slug, currentPage, sort, filters) : ""
+  );
 
-  // Re-fetch when dependencies change
+  // Synchronize state if initialData changes via route navigation
   useEffect(() => {
-    if (status !== "loading") {
-      if (isInitialMountRef.current) {
-        isInitialMountRef.current = false;
-        return;
-      }
-      fetchProducts(filters, currentPage, sort);
+    if (initialData) {
+      setProducts(initialData.products || []);
+      setTotalProducts(initialData.total || 0);
+      setParentCategory(initialData.parentCategory || null);
+      setSubcategories(initialData.subcategories || []);
+      setTotalPages(initialData.totalPages || 1);
+      setLoading(false);
+      lastFetchedKeyRef.current = serializeShopParams(slug, currentPage, sort, filters);
     }
+  }, [slug, initialData]);
+
+  // Re-fetch only when query parameters actually change
+  useEffect(() => {
+    if (status === "loading") return;
+
+    const currentKey = serializeShopParams(slug, currentPage, sort, filters);
+    // Fast path: If the current filters and pagination match what was already fetched or rendered via SSR, skip network call
+    if (currentKey === lastFetchedKeyRef.current) {
+      return;
+    }
+
+    lastFetchedKeyRef.current = currentKey;
+    fetchProducts(filters, currentPage, sort);
   }, [slug, currentPage, sort, filters, status, token]);
 
   // Wishlist Toggle

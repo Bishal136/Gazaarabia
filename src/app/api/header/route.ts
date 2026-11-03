@@ -43,7 +43,7 @@ export async function GET() {
   const now = Date.now();
   if (cachedHeader && now < cachedHeader.expiry) {
     const res = NextResponse.json(cachedHeader.data);
-    res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+    res.headers.set("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=600");
     return res;
   }
 
@@ -119,7 +119,7 @@ export async function GET() {
       };
 
       const res = NextResponse.json(payload);
-      res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+      res.headers.set("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=600");
       return res;
     }
 

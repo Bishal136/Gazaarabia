@@ -8,7 +8,7 @@ export async function GET() {
   const now = Date.now();
   if (cachedOptions && now < cachedOptions.expiry) {
     const res = NextResponse.json(cachedOptions.data);
-    res.headers.set("Cache-Control", "public, s-maxage=120, stale-while-revalidate=600");
+    res.headers.set("Cache-Control", "public, max-age=120, s-maxage=300, stale-while-revalidate=600");
     return res;
   }
 
@@ -48,7 +48,7 @@ export async function GET() {
     };
 
     const res = NextResponse.json(payload);
-    res.headers.set("Cache-Control", "public, s-maxage=120, stale-while-revalidate=600");
+    res.headers.set("Cache-Control", "public, max-age=120, s-maxage=300, stale-while-revalidate=600");
     return res;
   } catch (error) {
     console.error("Product meta fetch error:", error);

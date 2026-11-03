@@ -64,6 +64,10 @@ interface MenuItem {
   dropdown: MenuDropdown;
 }
 
+// Client-side in-memory cache to prevent redundant network fetches across navigations
+let clientMenuMemoryCache: { data: MenuItem[]; headerText?: string; timestamp: number } | null = null;
+const CLIENT_MENU_CACHE_TTL_MS = 60 * 1000;
+
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
@@ -77,13 +81,13 @@ export default function Header() {
   const { cartCount, isCartDrawerOpen, openCartDrawer, closeCartDrawer } = useCart();
 
   // Navigation State
-  const [menus, setMenus] = useState<MenuItem[]>([]);
+  const [menus, setMenus] = useState<MenuItem[]>(() => clientMenuMemoryCache?.data || []);
   const [activeMenu, setActiveMenu] = useState<MenuItem | null>(null);
   const [activeSubmenu, setActiveSubmenu] = useState<Submenu | null>(null);
   const [activeCategory, setActiveCategory] = useState<Category | null>(null);
 
   // UI State
-  const [toolbarText, setToolbarText] = useState<string>("");
+  const [toolbarText, setToolbarText] = useState<string>(() => clientMenuMemoryCache?.headerText || "");
   const [hovered, setHovered] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -166,12 +170,23 @@ export default function Header() {
 
 
 
-  // Fetch menu data
+  // Fetch menu data with client-side cache
   const fetchMenus = useCallback(async () => {
+    const now = Date.now();
+    if (clientMenuMemoryCache && now - clientMenuMemoryCache.timestamp < CLIENT_MENU_CACHE_TTL_MS) {
+      setMenus(clientMenuMemoryCache.data);
+      if (clientMenuMemoryCache.headerText) setToolbarText(clientMenuMemoryCache.headerText);
+      return;
+    }
     try {
-      const res = await fetch("/api/header", { next: { revalidate: 60 } });
+      const res = await fetch("/api/header");
       const data = await res.json();
       if (data.success) {
+        clientMenuMemoryCache = {
+          data: data.data,
+          headerText: data.headerText || "",
+          timestamp: Date.now(),
+        };
         setMenus(data.data);
         if (data.headerText) setToolbarText(data.headerText);
       }
