@@ -1016,6 +1016,70 @@ const FRESH_PRODUCTS: SeedProduct[] = [
   },
 ];
 
+// Helper to scan all images in uploads folder
+function scanUploadsDirectory(dir: string, validExts: Set<string>): { fileList: string[]; byBasename: Map<string, string> } {
+  const fileList: string[] = [];
+  const byBasename = new Map<string, string>();
+
+  function walk(currentDir: string) {
+    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(currentDir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else if (entry.isFile()) {
+        const ext = path.extname(entry.name).toLowerCase();
+        if (validExts.has(ext)) {
+          const webPath = "/" + path.relative(process.cwd(), fullPath).replace(/\\/g, "/");
+          fileList.push(webPath);
+          byBasename.set(entry.name.toLowerCase(), webPath);
+          const nameNoExt = path.parse(entry.name).name.toLowerCase();
+          if (!byBasename.has(nameNoExt)) {
+            byBasename.set(nameNoExt, webPath);
+          }
+        }
+      }
+    }
+  }
+
+  walk(dir);
+  return { fileList, byBasename };
+}
+
+// Helper to resolve an image path against physical files in uploads
+function resolveImage(
+  rawPath: string,
+  byBasename: Map<string, string>,
+  availableImages: string[],
+  errors: string[]
+): string | null {
+  if (!rawPath) return null;
+  const clean = rawPath.startsWith("/") ? rawPath.slice(1) : rawPath;
+  const diskPath = path.resolve(process.cwd(), clean);
+
+  // 1. Direct match on disk
+  if (fs.existsSync(diskPath)) {
+    return "/" + clean.replace(/\\/g, "/");
+  }
+
+  // 2. Check alternative extensions (.webp, .jpg, .png, .jpeg)
+  const parsed = path.parse(diskPath);
+  for (const ext of [".webp", ".jpg", ".png", ".jpeg"]) {
+    const candidate = path.join(parsed.dir, parsed.name + ext);
+    if (fs.existsSync(candidate)) {
+      return "/" + path.relative(process.cwd(), candidate).replace(/\\/g, "/");
+    }
+  }
+
+  // 3. Check by filename across uploads
+  const byName = byBasename.get(parsed.base.toLowerCase()) || byBasename.get(parsed.name.toLowerCase());
+  if (byName) {
+    return byName;
+  }
+
+  return null;
+}
+
 // ----------------------------------------------------------------------------
 // 3. MAIN DATABASE CLEAN & SEED FUNCTION
 // ----------------------------------------------------------------------------
@@ -1024,6 +1088,30 @@ export async function seedFreshCatalog() {
   console.log("🌱 STARTING FRESH DATABASE SEED: GAZAARABIA MODEST WEAR");
   console.log("==================================================================");
 
+  // --------------------------------------------------------------------------
+  // STEP 1: PRE-EXECUTION VALIDATION
+  // --------------------------------------------------------------------------
+  console.log("\n[1/4] 🔍 Step 1: Pre-Execution Validation...");
+  const uploadsDir = path.resolve(process.cwd(), "uploads");
+  const validExts = new Set([".png", ".jpg", ".jpeg", ".webp"]);
+
+  if (!fs.existsSync(uploadsDir)) {
+    console.error("❌ ABORT: Local uploads directory does not exist at:", uploadsDir);
+    throw new Error("Local uploads directory is missing. Operation aborted before modifying database.");
+  }
+
+  const { fileList: availableImages, byBasename: imageMapByName } = scanUploadsDirectory(uploadsDir, validExts);
+  console.log(`📁 Scanned uploads folder: ${availableImages.length} image files found.`);
+
+  if (availableImages.length === 0) {
+    console.error("❌ ABORT: Uploads directory contains 0 image assets.");
+    throw new Error("No image assets found in uploads folder. Operation aborted before modifying database.");
+  }
+
+  // --------------------------------------------------------------------------
+  // STEP 2: CLEAN UP EXISTING DATABASE STATE
+  // --------------------------------------------------------------------------
+  console.log("\n[2/4] 🧹 Step 2: Accessing database & purging Product collection...");
   await connectToDatabase();
   const db = mongoose.connection.db;
 
@@ -1031,37 +1119,18 @@ export async function seedFreshCatalog() {
     throw new Error("❌ MongoDB connection failed: db object not found");
   }
 
-  // 1. Verify all image files on disk
-  console.log("🔎 Verifying all image files on disk...");
-  for (const cat of FRESH_CATEGORIES) {
-    const fullCat = path.join(process.cwd(), cat.image.slice(1));
-    if (!fs.existsSync(fullCat)) {
-      console.warn(`⚠️ Warning: Category image not found on disk: ${fullCat}`);
-    }
-  }
+  const oldProductCount = await db.collection("products").countDocuments();
+  console.log(`📦 Found ${oldProductCount} existing products in database.`);
 
-  for (const prod of FRESH_PRODUCTS) {
-    for (const img of prod.images) {
-      const fullProd = path.join(process.cwd(), img.slice(1));
-      if (!fs.existsSync(fullProd)) {
-        console.warn(`⚠️ Warning: Product image not found on disk: ${fullProd}`);
-      }
-    }
-  }
-  console.log("✅ All image paths verified.");
-
-  // 2. Clear old products, categories, subcategories, variants, and images
-  console.log("\n🧹 Cleaning old catalog collections...");
-  await db.collection("products").deleteMany({});
-  await db.collection("categories").deleteMany({});
-  await db.collection("subcategories").deleteMany({});
+  // Targeted deletion of Product collection and related tables
+  const deleteResult = await db.collection("products").deleteMany({});
   await db.collection("productvariant").deleteMany({});
   await db.collection("productvariants").deleteMany({});
   await db.collection("productimage").deleteMany({});
   await db.collection("variant_images").deleteMany({});
   await db.collection("variantimages").deleteMany({});
-
-  // Clean stale cart, wishlist, review, and demo order items
+  await db.collection("categories").deleteMany({});
+  await db.collection("subcategories").deleteMany({});
   await db.collection("carts").deleteMany({});
   await db.collection("wishlists").deleteMany({});
   await db.collection("wishlist").deleteMany({});
@@ -1070,9 +1139,64 @@ export async function seedFreshCatalog() {
   await db.collection("orderitems").deleteMany({});
   await db.collection("orders_item").deleteMany({});
 
-  console.log("✅ Collections cleared: products, categories, subcategories, variants, images, carts, wishlist, reviews, orders.");
+  // Verify collection count is 0
+  const postDeleteProductCount = await db.collection("products").countDocuments();
+  console.log(`🔍 Verification: Products collection count after deletion is: ${postDeleteProductCount}`);
+  if (postDeleteProductCount !== 0) {
+    throw new Error(`❌ ABORT: Deletion verification failed! Products collection count is ${postDeleteProductCount}, expected 0.`);
+  }
+  console.log(`✅ Products collection successfully purged to 0 documents (${deleteResult.deletedCount} deleted).`);
 
-  // 3. Insert fresh categories & subcategories
+  // --------------------------------------------------------------------------
+  // STEP 3: IMAGE VERIFICATION & PRODUCT SEEDING
+  // --------------------------------------------------------------------------
+  console.log("\n[3/4] 👗 Step 3: Validating images & seeding new product batch...");
+  const validationErrors: string[] = [];
+  const skippedProducts: string[] = [];
+  const validatedProducts: SeedProduct[] = [];
+
+  // Pick a general fallback product image from uploads/products/ just in case
+  const defaultProductFallback = availableImages.find((p) => p.includes("/uploads/products/")) || availableImages[0];
+
+  for (const prod of FRESH_PRODUCTS) {
+    const verifiedImages: string[] = [];
+    for (const rawImg of prod.images) {
+      const resolved = resolveImage(rawImg, imageMapByName, availableImages, validationErrors);
+      if (resolved) {
+        verifiedImages.push(resolved);
+      } else {
+        validationErrors.push(`Product "${prod.title}" (ID: ${prod.id}) broken image: ${rawImg}`);
+      }
+    }
+
+    if (verifiedImages.length === 0) {
+      if (defaultProductFallback) {
+        verifiedImages.push(defaultProductFallback);
+        validationErrors.push(`Product "${prod.title}" had no valid images; mapped fallback: ${defaultProductFallback}`);
+      } else {
+        skippedProducts.push(prod.title);
+        validationErrors.push(`Skipped product "${prod.title}" due to missing image assets.`);
+        continue;
+      }
+    }
+
+    // Verify variants
+    const verifiedVariants = prod.variants.map((v) => {
+      const resolvedVarImg = resolveImage(v.imageUrl, imageMapByName, availableImages, validationErrors);
+      return {
+        ...v,
+        imageUrl: resolvedVarImg || verifiedImages[0],
+      };
+    });
+
+    validatedProducts.push({
+      ...prod,
+      images: verifiedImages,
+      variants: verifiedVariants,
+    });
+  }
+
+  // Insert categories & subcategories
   console.log("\n📦 Inserting fresh categories...");
   const categoryDocs: any[] = [];
   const subcategoryDocs: any[] = [];
@@ -1081,11 +1205,12 @@ export async function seedFreshCatalog() {
 
   for (const cat of FRESH_CATEGORIES) {
     catSlugToId.set(cat.slug, cat.id);
+    const resolvedCatImg = resolveImage(cat.image, imageMapByName, availableImages, validationErrors) || cat.image;
     categoryDocs.push({
       id: cat.id,
       name: cat.name,
       slug: cat.slug,
-      image: cat.image,
+      image: resolvedCatImg,
       description: cat.description,
       position: cat.position,
       submenuId: cat.submenuId,
@@ -1114,8 +1239,8 @@ export async function seedFreshCatalog() {
   await db.collection("subcategories").insertMany(subcategoryDocs);
   console.log(`✅ Inserted ${subcategoryDocs.length} subcategories`);
 
-  // 4. Insert fresh products, variants, and images
-  console.log("\n👗 Inserting fresh products & variants...");
+  // Insert products, variants, and images
+  console.log(`\n👗 Inserting ${validatedProducts.length} validated products & variants...`);
   const productDocs: any[] = [];
   const productImageDocs: any[] = [];
   const variantDocs: any[] = [];
@@ -1125,7 +1250,7 @@ export async function seedFreshCatalog() {
   let nextVariantId = 2001;
   let nextVariantImageId = 3001;
 
-  for (const prod of FRESH_PRODUCTS) {
+  for (const prod of validatedProducts) {
     const categoryId = catSlugToId.get(prod.categorySlug) || 10;
     const subcategoryId = prod.subcatSlug ? subcatSlugToId.get(prod.subcatSlug) : null;
 
@@ -1307,14 +1432,30 @@ export async function seedFreshCatalog() {
   );
 
   console.log("✅ Homepage settings synchronized.");
+
+  const finalProductCount = await db.collection("products").countDocuments();
+
   console.log("\n==================================================================");
-  console.log("🎉 CATALOG SEEDING COMPLETED SUCCESSFULLY!");
+  console.log("📊 TERMINAL EXECUTION REPORT: PRODUCT PURGE & RE-SEED");
+  console.log("==================================================================");
+  console.log(`1. Total old products deleted:            ${oldProductCount}`);
+  console.log(`2. Total images found in uploads folder:   ${availableImages.length}`);
+  console.log(`3. Total new products created and saved:   ${finalProductCount}`);
+  console.log(`4. Validation errors / skipped files:      ${validationErrors.length === 0 ? "None (0 errors)" : validationErrors.length + " warnings"}`);
+  if (validationErrors.length > 0) {
+    validationErrors.forEach((err, i) => console.log(`   - [${i + 1}] ${err}`));
+  }
+  if (skippedProducts.length > 0) {
+    console.log(`   Skipped Products (${skippedProducts.length}):`, skippedProducts.join(", "));
+  }
+  console.log("==================================================================");
   console.log(`   • Categories: ${categoryDocs.length}`);
   console.log(`   • Subcategories: ${subcategoryDocs.length}`);
   console.log(`   • Products: ${productDocs.length}`);
   console.log(`   • Variants: ${variantDocs.length}`);
-  console.log(`   • Images: ${productImageDocs.length}`);
-  console.log("==================================================================");
+  console.log(`   • Product Images: ${productImageDocs.length}`);
+  console.log(`   • Variant Images: ${variantImageDocs.length}`);
+  console.log("==================================================================\n");
 }
 
 // Direct execution support

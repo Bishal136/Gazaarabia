@@ -1,0 +1,49 @@
+version: '3.8'
+
+# ==============================================================================
+# Gazaarabia Docker Compose Production Orchestration
+# Completely isolated runtime, zero dependency conflict with Markitool
+# ==============================================================================
+
+services:
+  gazaarabia-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gazaarabia-production
+    restart: always
+    
+    # network_mode: host connects directly to VPS localhost (127.0.0.1:27017 for MongoDB)
+    # with zero virtual ethernet NAT/bridge overhead and perfect compatibility.
+    network_mode: "host"
+
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+
+    # Persistent storage volumes:
+    # 1. ./uploads keeps all product pictures and variant videos safely on VPS disk
+    # 2. ./logs stores process and application logs
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+
+    # Dedicated resource allocation (protects Markitool and shared VPS services)
+    deploy:
+      resources:
+        limits:
+          cpus: '6.0'      # Max 6 CPU cores allocated out of 12 cores
+          memory: 6G       # Max 6 GB RAM allocated out of 24 GB RAM
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:3000/api/health || curl -f http://127.0.0.1:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

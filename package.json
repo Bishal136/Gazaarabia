@@ -35,6 +35,7 @@
     "@tinymce/tinymce-react": "^6.3.0",
     "aos": "^2.3.4",
     "apexcharts": "^5.3.6",
+    "autoprefixer": "^10.4.21",
     "bcryptjs": "^3.0.2",
     "exceljs": "^4.4.0",
     "fontkit": "^2.0.4",
@@ -54,13 +55,13 @@
     "react-icons": "^5.5.0",
     "react-quill-new": "^3.8.3",
     "recharts": "^3.7.0",
+    "sharp": "^0.35.5",
     "slugify": "^1.6.6",
     "stripe": "^20.0.0",
     "swiper": "^12.0.2",
     "tailwind-scrollbar": "^3.1.0",
     "tinymce": "^8.6.0",
-    "zustand": "^5.0.8",
-    "autoprefixer": "^10.4.21"
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@types/fontkit": "^2.0.8",
