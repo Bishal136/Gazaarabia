@@ -20,8 +20,9 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# 1. Install dependencies
+# 1. Install dependencies (copy package manifests and scripts for postinstall hooks)
 COPY package.json package-lock.json ./
+COPY scripts ./scripts
 RUN npm ci --include=dev
 
 # 2. Copy source code
