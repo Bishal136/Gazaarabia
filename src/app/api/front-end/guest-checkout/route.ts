@@ -7,12 +7,13 @@ import { getAmbassadorForProduct } from "@/lib/helpers/ambassador";
 import { prisma as rawPrisma } from "@/lib/prisma";
 const prisma: any = rawPrisma;
 import { stripe } from "@/lib/stripe";
-import { validateStockInTransaction } from "@/lib/helpers/stockHelper";
+import { validateStockInTransaction, commitStockReservation } from "@/lib/helpers/stockHelper";
 import { computeCouponDiscount } from "@/lib/helpers/couponDiscount";
 import { pushExternalItemsForOrder } from "@/lib/orderPush";
 import { deriveVerifiedOrderStatus } from "@/lib/payments/verifyPaymentStatus";
 import { getAuthenticatedUser } from "@/lib/authToken";
 import { connectToDatabase, mongoose } from "@/lib/mongoose";
+import { ledgerService } from "@/lib/services/ledgerService";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -568,6 +569,83 @@ export async function POST(req: NextRequest) {
           userId: newOrder.userId.toString(),
         },
       });
+    }
+
+    // ==========================================================
+    // PARTITION SUB-ORDERS PER SELLER & WRITE FINANCIAL LEDGER
+    // ==========================================================
+    try {
+      await connectToDatabase();
+      const db = mongoose.connection.db;
+      if (db && newOrder.orderItems && newOrder.orderItems.length > 0) {
+        // Group items by sellerId for independent tracking
+        const sellerGroups = new Map<number, any[]>();
+        for (const item of newOrder.orderItems) {
+          const sId = item.sellerId;
+          const list = sellerGroups.get(sId) || [];
+          list.push(item);
+          sellerGroups.set(sId, list);
+        }
+
+        const sellerSubOrders = [];
+        const sellerEarningsList: Array<{ sellerId: number; earning: number }> = [];
+
+        for (const [sellerId, items] of sellerGroups.entries()) {
+          const sellerSubtotal = items.reduce((sum, i) => sum + (i.subtotal || i.price * i.quantity), 0);
+          const sellerCommission = items.reduce((sum, i) => sum + (i.commissionAmount || 0), 0);
+          const sellerNet = items.reduce((sum, i) => sum + (i.sellerEarning || 0), 0);
+
+          sellerEarningsList.push({ sellerId, earning: sellerNet });
+
+          sellerSubOrders.push({
+            orderId: newOrder.id,
+            sellerId,
+            items: items.map(i => ({
+              orderItemId: i.id,
+              productId: i.productId,
+              variantId: i.variantId,
+              quantity: i.quantity,
+              price: i.price,
+              subtotal: i.subtotal,
+              sellerEarning: i.sellerEarning,
+            })),
+            subtotal: sellerSubtotal,
+            commissionTotal: sellerCommission,
+            sellerNetPayout: sellerNet,
+            fulfillmentStatus: "unfulfilled",
+            deliveryStatus: "pending_dispatch",
+            carrier: null,
+            trackingNumber: null,
+            dispatchedAt: null,
+            deliveredAt: null,
+            createdAt: new Date(),
+          });
+        }
+
+        if (sellerSubOrders.length > 0) {
+          await db.collection("seller_orders").insertMany(sellerSubOrders);
+        }
+
+        // Commit stock reservations
+        const sessionKey = payment.transactionId || `order_${newOrder.id}`;
+        await commitStockReservation(sessionKey);
+
+        // Record double-entry financial ledger entry
+        await ledgerService.recordOrderCapture({
+          orderId: newOrder.id,
+          transactionId: payment.transactionId || `tx_${newOrder.id}`,
+          totalAmount: payment.totalAmount,
+          itemsTotal: payment.itemsTotal || payment.totalAmount,
+          shippingCost: shippingFee,
+          sellerEarnings: sellerEarningsList,
+          platformCommission: platformCommission,
+          discountTotal: finalDiscountTotal,
+          discountFundedBy: couponData?.fundedBy || "PLATFORM",
+          charityAmount: charity?.amount || 0,
+        });
+      }
+    } catch (subOrderErr) {
+      console.warn("Sub-order / ledger recording warning:", subOrderErr);
     }
 
 

@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: "Seller profile not found" }, { status: 404 });
     }
 
+    const now = new Date();
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -40,20 +41,85 @@ export async function GET(req: NextRequest) {
     const productMap = new Map(products.map((p: any) => [p.id, p]));
     const orderMap = new Map(orders.map((o: any) => [o.id, o]));
 
-    const recentEarnings = sellerItems.slice(0, 20).map((item: any) => {
+    // Dynamic Balance Taxonomy
+    let calculatedAvailable = 0;
+    let calculatedCooling = 0;
+    let calculatedOnHold = 0;
+    let calculatedTotalEarned = 0;
+    let missingCostCount = 0;
+
+    const upcomingReleases: Array<{
+      orderItemId: number;
+      orderId: number;
+      productTitle: string;
+      amount: number;
+      releaseDate: string;
+    }> = [];
+
+    sellerItems.forEach((item: any) => {
+      const isRefunded = item.returnStatus === "refunded";
+      const isDisputed = item.returnStatus === "pending" || item.returnStatus === "disputed";
+      const isPaidOut = item.isPaidOut === true;
+      const earning = item.sellerEarning || 0;
       const prod = productMap.get(item.productId);
-      const ord = orderMap.get(item.orderId);
+
+      if (!prod?.costPrice || prod.costPrice <= 0) {
+        missingCostCount++;
+      }
+
+      if (isRefunded) {
+        // Excluded from balances
+        return;
+      }
+
+      calculatedTotalEarned += earning;
+
+      if (isPaidOut) {
+        // Already disbursed
+        return;
+      }
+
+      if (isDisputed) {
+        calculatedOnHold += earning;
+      } else {
+        const eligibleAt = item.payoutEligibleAt ? new Date(item.payoutEligibleAt) : null;
+        if (eligibleAt && eligibleAt <= now) {
+          calculatedAvailable += earning;
+        } else {
+          calculatedCooling += earning;
+          if (eligibleAt) {
+            upcomingReleases.push({
+              orderItemId: item.id,
+              orderId: item.orderId,
+              productTitle: prod?.title || item.productTitle || "Product",
+              amount: Number(earning.toFixed(2)),
+              releaseDate: eligibleAt.toISOString().split("T")[0],
+            });
+          }
+        }
+      }
+    });
+
+    // Sort upcoming releases by earliest date
+    upcomingReleases.sort((a, b) => a.releaseDate.localeCompare(b.releaseDate));
+
+    const recentEarnings = sellerItems.slice(0, 20).map((item: any) => {
+      const prod: any = productMap.get(item.productId);
+      const ord: any = orderMap.get(item.orderId);
       return {
         id: item.id,
         orderId: item.orderId,
         productTitle: prod?.title || item.productTitle || "Product",
         amount: item.sellerEarning || 0,
+        returnStatus: item.returnStatus || null,
+        payoutEligibleAt: item.payoutEligibleAt || null,
         createdAt: ord?.createdAt || item.createdAt || new Date(),
       };
     });
 
     const chartDataMap: Record<string, number> = {};
     sellerItems.forEach((item: any) => {
+      if (item.returnStatus === "refunded") return;
       const dateObj = item.createdAt ? new Date(item.createdAt) : null;
       if (dateObj && dateObj >= thirtyDaysAgo) {
         const date = dateObj.toISOString().split("T")[0];
@@ -68,11 +134,23 @@ export async function GET(req: NextRequest) {
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
+    // Fallback to stored balances if calculated is 0 and stored exists
+    const availableFinal = calculatedAvailable > 0 ? calculatedAvailable : (seller.availableBalance || 0);
+    const pendingFinal = calculatedCooling > 0 ? calculatedCooling : (seller.pendingBalance || 0);
+    const totalEarnedFinal = calculatedTotalEarned > 0 ? calculatedTotalEarned : (seller.totalEarned || 0);
+
     return NextResponse.json({
       balances: {
-        available: seller.availableBalance || 0,
-        pending: seller.pendingBalance || 0,
-        totalEarned: seller.totalEarned || 0,
+        available: Number(availableFinal.toFixed(2)),
+        pending: Number(pendingFinal.toFixed(2)), // in 30-day cooling escrow
+        onHold: Number(calculatedOnHold.toFixed(2)), // dispute / return hold
+        totalEarned: Number(totalEarnedFinal.toFixed(2)),
+      },
+      upcomingReleases: upcomingReleases.slice(0, 10),
+      analyticsGuards: {
+        hasCompleteCostData: missingCostCount === 0,
+        missingCostItemsCount: missingCostCount,
+        note: missingCostCount > 0 ? `${missingCostCount} items lack cost price; profit analytics require cost data.` : "All products have valid cost data.",
       },
       recentEarnings,
       chartData,

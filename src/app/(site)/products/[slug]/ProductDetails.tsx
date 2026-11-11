@@ -1685,8 +1685,7 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
          
 
           {/* ========================== LOWER SECTION 4: YOU MAY ALSO LIKE ========================== */}
-          {Array.isArray(product?.youMayAlsoLike || product?.wearWith) &&
-            ((product?.youMayAlsoLike || product?.wearWith).length > 0) && (
+          {product && (
             <section className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 bg-[#e8d5c8]/25">
               <div className="bg-white rounded-3xl border border-[#e8d5c8]/70 shadow-[0_12px_45px_rgba(0,0,0,0.06)] p-6 sm:p-8 lg:p-10">
                 <h2 className="text-xl sm:text-2xl font-extrabold text-[#0a0808] mb-6 pb-4 border-b border-gray-100">

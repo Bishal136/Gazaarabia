@@ -1,46 +1,42 @@
-# Feature Concept: Gazaarabia Production Docker Architecture & Image Acceleration Pipeline
+# Feature Concept: Dynamic 'You May Also Like' Engine & Interactive Product Recommendations
 
-* **Author:** Gazaarabia Architecture & DevOps Team
-* **Date:** 2026-11-08
+* **Author:** Gazaarabia Engineering & Frontend UX Team
+* **Date:** 2026-11-11
+* **Status:** Resolved & Verified
 
 ## Overview
 
-Containerization of the Gazaarabia multi-vendor e-commerce platform using Docker and resolution of the slow image-loading bottleneck. The deployment coexists with existing production workloads (specifically Markitool) on a shared 12-core, 24 GB RAM Ubuntu 24.04 VPS without resource starvation or port collisions.
+Investigation, root-cause bug isolation, and technical refactoring of the "You may also like" product recommendation carousel on the Gazaarabia Product Details page (`/products/[slug]`). The audit resolved a fatal React infinite re-render crash (`Maximum update depth exceeded`), established a dedicated dynamic backend recommendation endpoint (`/api/front-end/product/[slug]/related`), connected interactive color swatches that switch variant images on click, and wired the "Add to Bag" button directly to the Cart Context and slide-over Cart Drawer.
 
-## Analysis
+## Root Cause Analysis: 'Maximum update depth exceeded'
 
-### 1. Root Cause of Image Latency
-The root cause of image-loading delays was the omission of the `sharp` image processing library in `package.json`. Next.js defaulted to synchronous WebAssembly/Squoosh encoding. When catalog pages requested 20 to 30 images simultaneously, the Node.js event loop stalled for 2 to 5 seconds per request. Adding `sharp: ^0.35.5` introduces native C++ `libvips` SIMD acceleration, reducing per-image processing times to under 40 milliseconds.
+* **Failing File & Line:** `src/components/ProductSuggestions.tsx:47`
+* **Trigger Mechanism:**
+  `ProductSuggestions` declared a default parameter `recentlyViewed = []`. In React, when `ProductDetails.tsx` rendered `<ProductSuggestions wearWith={...} hideHeader={true} />` without supplying `recentlyViewed`, a new empty array literal (`[]`) was allocated in memory on every render.
+  `ProductSuggestions` included `useEffect(..., [recentlyViewed])`. Because `[] !== []` by object identity, this effect ran on every single render and called `setRecent(list)`. Calling `setRecent` scheduled another render, creating an unconditional infinite update cycle that crashed the client with `Maximum update depth exceeded`.
+* **Remediation:**
+  1. The localStorage reader effect in `ProductSuggestions.tsx` was decoupled from the prop and scoped to run strictly once on mount with an empty dependency array (`[]`).
+  2. The redundant duplicate state `const [wearWithProducts, setWearWithProducts] = useState(wearWith)` with a reactive syncing `useEffect` was replaced with a clean `useMemo` pipeline and client fallback.
 
-### 2. Multi-Tenant VPS Coexistence
-Markitool runs on the same VPS, serving an SPA from `/var/www/Markitool/client/dist` and proxying API traffic to `127.0.0.1:5010`. Gazaarabia binds exclusively to `127.0.0.1:3000` (web) and `127.0.0.1:9000` (webhook). Docker Compose enforces explicit cgroup resource limits (6 CPU cores and 6 GB RAM maximum), leaving the remaining 6 cores and 18 GB RAM permanently available for Markitool and host processes.
+## Implementation Details
 
-### 3. Media Persistence & Host Database Access
-168+ MB of product images and variant videos reside in `/var/www/Gazaarabia/uploads`. Using a Docker bind mount (`./uploads:/app/uploads`), all media uploads remain on the host filesystem and persist across container rebuilds. Running the container in `network_mode: "host"` allows seamless zero-overhead communication with host MongoDB on `127.0.0.1:27017` without modifying MongoDB configuration or exposing the database port to external interfaces.
+### 1. Dedicated Dynamic Recommendation Endpoint
+* **File:** [src/app/api/front-end/product/[slug]/related/route.ts](file:///home/bishal/BishalHome/Cours/Ecommarce/Gazaarabia/src/app/api/front-end/product/[slug]/related/route.ts)
+* **Algorithm:**
+  1. Identifies the active product by slug.
+  2. Queries curated "Wear With" associations (`asParentRelations`).
+  3. Fills remaining quota (up to 10 items) by matching `subcategoryId`, then `categoryId`, strictly excluding the active product (`id != activeProduct.id`).
+  4. Returns rich variant metadata including `color.hexCode`, `variantImages`, `availableStock`, and wishlist status for logged-in users.
 
-## Goals vs. Non-Goals
+### 2. Interactive Color Swatches & Image Swapping
+* **File:** [src/components/SingleImgMultiColorsProductCard.tsx](file:///home/bishal/BishalHome/Cours/Ecommarce/Gazaarabia/src/components/SingleImgMultiColorsProductCard.tsx)
+* **Mechanism:**
+  - Swatches are interactive `<button>` elements with `selectedColor` state.
+  - Clicking a swatch updates `displayImg` to the variant image corresponding to that color hex code and renders an active focus ring (`ring-2 ring-[var(--brand-primary)]`).
 
-* **In-Scope Goals:**
-  - Containerize the Next.js 16 application with `node:20-slim` and PM2 cluster execution.
-  - Install native `sharp` to eliminate WebAssembly image conversion bottlenecks.
-  - Preserve all media assets in `./uploads` with zero data loss.
-  - Isolate resource allocation to protect Markitool and system stability.
-  - Maintain the existing Nginx reverse proxy configuration.
-
-* **Out-of-Scope Non-Goals:**
-  - Modifying application UI code, API endpoints, or database schemas.
-  - Migrating MongoDB out of the VPS into an external managed cluster.
-  - Containerizing the host Nginx ingress or Markitool.
-
-## Alternatives Weighed
-
-1. **Virtual Bridge Network with `extra_hosts`**:
-   - *Rejected*: MongoDB on the host is bound strictly to `127.0.0.1:27017`. Virtual bridge networking requires reconfiguring MongoDB to listen on docker bridge interfaces (e.g., `172.17.0.1`), introducing configuration risks. `network_mode: "host"` achieves native loopback compatibility and zero packet latency overhead.
-2. **Next.js Standalone Output (`output: "standalone"`)**:
-   - *Rejected*: Standalone output alters the runtime directory structure and does not natively support PM2 cluster mode without refactoring `server.js` and `ecosystem.config.cjs`. Using the full multi-stage build preserves existing application structure with zero code modifications.
-
-## Key Decisions & Staging for Next Steps
-
-1. **Image Engine**: Native `sharp: ^0.35.5` added to dependencies.
-2. **Container Engine**: `Dockerfile` and `docker-compose.yml` authored and verified with a clean Next.js production build (243 static pages compiled).
-3. **Rollout Sequence**: Commit and push artifacts to GitHub `origin main`, followed by safe VPS image build and controlled PM2 cutover.
+### 3. Functional 'Add to Bag' Action & Cart Drawer Confirmation
+* **File:** [src/components/ProductSuggestions.tsx](file:///home/bishal/BishalHome/Cours/Ecommarce/Gazaarabia/src/components/ProductSuggestions.tsx)
+* **Mechanism:**
+  - Consumes `useCart()` (`refreshCart` and `openCartDrawer`).
+  - Calls `cartService.add()` targeting the selected color variant or first in-stock variant.
+  - Automatically refreshes the global cart counter and slides out `CartDrawer` with visual confirmation ("Added to Bag").
