@@ -6,7 +6,6 @@
 # 1. DEPENDENCIES & PACKAGE MANAGERS
 # ------------------------------------------------------------------------------
 /node_modules
-/docs
 /.pnp
 .pnp.*
 .yarn/*
@@ -58,6 +57,7 @@ id_ed25519*
 # 4. SENSITIVE CREDENTIAL DOCS & NOTES (NEVER PUSH TO PUBLIC/REPO)
 # ------------------------------------------------------------------------------
 docs/note.md
+docs/user.md
 docs/*.doc
 docs/*.docx
 docs/*.doc#
