@@ -152,6 +152,7 @@ export default function SingleImgMultiColorProductCard({
       {/* Product Image */}
       <div
         className="relative w-full aspect-[3/4] overflow-hidden rounded-2xl bg-[#f8f5f0] flex items-center justify-center shadow-sm hover:shadow-lg transition-all duration-300 hover:ring-2 hover:ring-[var(--brand-secondary)]"
+        style={{ aspectRatio: "3/4" }}
       >
         <Image
           src={displayImg || "/images/placeholder.png"}
@@ -159,7 +160,7 @@ export default function SingleImgMultiColorProductCard({
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           loading="lazy"
-          className="object-cover group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
         />
       </div>
 

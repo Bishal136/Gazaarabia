@@ -54,7 +54,7 @@ export default function ProductCard({
         className="group flex flex-col sm:flex-row items-stretch w-full bg-white border border-gray-200/80 hover:border-gray-300 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer p-4 sm:p-5 gap-5 sm:gap-6 min-w-0"
       >
         {/* --- Image Section --- */}
-        <div className="relative w-full sm:w-56 shrink-0 aspect-[3/4] overflow-hidden bg-gray-50 rounded-xl">
+        <div className="relative w-full sm:w-56 shrink-0 aspect-[3/4] overflow-hidden bg-[#f8f5f0] rounded-xl" style={{ aspectRatio: "3/4" }}>
           {/* Wishlist Button */}
           <button
             onClick={handleWishlistClick}
@@ -87,7 +87,7 @@ export default function ProductCard({
               sizes="(max-width: 640px) 100vw, 224px"
               priority={Boolean(priority)}
               loading={priority ? "eager" : "lazy"}
-              className={`object-cover transition-all duration-500 ${
+              className={`w-full h-full object-cover object-top transition-all duration-500 ${
                 secondaryImg ? "group-hover:opacity-0 group-hover:scale-105" : "group-hover:scale-105"
               }`}
               onError={(e: any) => {
@@ -105,7 +105,7 @@ export default function ProductCard({
                 fill
                 sizes="(max-width: 640px) 100vw, 224px"
                 loading="lazy"
-                className="object-cover absolute inset-0 opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+                className="w-full h-full object-cover object-top absolute inset-0 opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
                 onError={(e: any) => {
                   if (e.target && e.target.src) {
                     e.target.onerror = null;
@@ -243,7 +243,7 @@ export default function ProductCard({
 
       {/* --- Image Section --- */}
       <div
-        className="relative w-full aspect-[3/4] overflow-hidden bg-gray-50 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 max-w-[320px]"
+        className="relative w-full aspect-[3/4] overflow-hidden bg-[#f8f5f0] rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
         style={{ aspectRatio: "3/4" }}
       >
 
@@ -276,7 +276,7 @@ export default function ProductCard({
             sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
             priority={Boolean(priority)}
             loading={priority ? "eager" : "lazy"}
-            className={`object-cover transition-all duration-500 ${
+            className={`w-full h-full object-cover object-top transition-all duration-500 ${
               secondaryImg ? "group-hover:opacity-0 group-hover:scale-105" : "group-hover:scale-105"
             }`}
             onError={(e: any) => {
@@ -294,7 +294,7 @@ export default function ProductCard({
               fill
               sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
               loading="lazy"
-              className="object-cover absolute inset-0 opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+              className="w-full h-full object-cover object-top absolute inset-0 opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
               onError={(e: any) => {
                 if (e.target && e.target.src) {
                   e.target.onerror = null;

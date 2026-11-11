@@ -96,7 +96,8 @@ export default function ProductCard({
       {/*  Product Image */}
       <div
         onClick={handleCardClick}
-        className="relative w-full aspect-[3/4] overflow-hidden rounded-2xl bg-white flex items-center justify-center shadow-sm hover:shadow-lg transition-all duration-300 hover:ring-2 hover:ring-[var(--brand-secondary)] pointer-events-auto"
+        className="relative w-full aspect-[3/4] overflow-hidden rounded-2xl bg-[#f8f5f0] flex items-center justify-center shadow-sm hover:shadow-lg transition-all duration-300 hover:ring-2 hover:ring-[var(--brand-secondary)] pointer-events-auto"
+        style={{ aspectRatio: "3/4" }}
       >
         <Image
           src={product.img || "/images/placeholder.png"}
@@ -104,7 +105,7 @@ export default function ProductCard({
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           loading="lazy"
-          className="object-cover group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
         />
       </div>
 

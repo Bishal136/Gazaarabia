@@ -703,17 +703,22 @@ function ProductFormContent() {
 
         {/*  Images */}
         <Box className="lg:col-span-2 bg-white p-6 rounded-xl shadow">
-          <h2 className="text-lg font-semibold mb-2">
-            Images <span className="text-red-600">*</span>
-          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+            <h2 className="text-lg font-semibold">
+              Images <span className="text-red-600">*</span>
+            </h2>
+            <span className="text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full font-medium inline-block">
+              📐 Recommended: 3:4 Portrait (e.g. 1200×1600px). Uploads are auto-oriented and formatted to 3:4 portrait.
+            </span>
+          </div>
           <div className="flex flex-wrap gap-4">
             {images.map((img, idx) => (
-              <div key={idx} className="relative group">
-                <img src={img.url} alt="" className="w-24 h-24 object-cover rounded border" />
+              <div key={idx} className="relative group w-24 h-32 aspect-[3/4]">
+                <img src={img.url} alt="" className="w-full h-full object-cover object-top rounded-lg border bg-[#f8f5f0]" />
                 <button
                   type="button"
                   onClick={() => setImages(images.filter((_, i) => i !== idx))}
-                  className="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"
+                  className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition shadow-sm"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -721,9 +726,10 @@ function ProductFormContent() {
             ))}
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="w-24 h-24 border-2 border-dashed flex items-center justify-center cursor-pointer rounded text-gray-400 hover:text-black transition"
+              className="w-24 h-32 aspect-[3/4] border-2 border-dashed flex flex-col items-center justify-center cursor-pointer rounded-lg text-gray-400 hover:text-black transition gap-1"
             >
-              <Upload size={24} />
+              <Upload size={22} />
+              <span className="text-[10px] font-medium">3:4 Photo</span>
             </div>
             <input ref={fileInputRef} type="file" multiple accept=".jpg,.jpeg,.png,image/jpeg,image/png" onChange={handleFileChange} className="hidden" />
           </div>
@@ -852,17 +858,22 @@ function ProductFormContent() {
 
               {/*  Variant Images */}
               <div className="mt-4">
-                <label className="text-sm font-medium text-gray-700">
-                  Variant Images
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm font-medium text-gray-700">
+                    Variant Images
+                  </label>
+                  <span className="text-[11px] text-amber-700 font-medium">
+                    (Auto-formatted to 3:4 portrait)
+                  </span>
+                </div>
 
                 <div className="flex flex-wrap gap-3 mt-2">
                   {v.images?.map((img: any, i: number) => (
-                    <div key={i} className="relative group">
+                    <div key={i} className="relative group w-20 h-28 aspect-[3/4]">
                       <img
                         src={img.url}
                         alt=""
-                        className="w-20 h-20 object-cover rounded border border-gray-300"
+                        className="w-full h-full object-cover object-top rounded-lg border border-gray-300 bg-[#f8f5f0]"
                       />
                       <button
                         type="button"
@@ -880,7 +891,7 @@ function ProductFormContent() {
                             handleVariantChange(idx, "images", updated);
                           }
                         }}
-                        className="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"
+                        className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition shadow-sm"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -890,9 +901,10 @@ function ProductFormContent() {
                   {/* Upload Button */}
                   <div
                     onClick={() => document.getElementById(`variantFile${idx}`)?.click()}
-                    className="w-20 h-20 border-2 border-dashed rounded flex items-center justify-center cursor-pointer text-gray-400 hover:text-black transition"
+                    className="w-20 h-28 aspect-[3/4] border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer text-gray-400 hover:text-black transition gap-1"
                   >
                     <Upload size={18} />
+                    <span className="text-[9px] font-medium">3:4</span>
                   </div>
 
                   <input

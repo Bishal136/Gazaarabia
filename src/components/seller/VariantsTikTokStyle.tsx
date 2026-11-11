@@ -513,21 +513,22 @@ export const VariantsTikTokStyle = ({
                     <div className="relative group shrink-0">
                       <div
                         onClick={() => fileInputRefs.current[idx]?.click()}
-                        className={`w-14 h-14 rounded-xl border-2 flex items-center justify-center overflow-hidden cursor-pointer bg-gray-50 transition ${
+                        className={`w-14 h-[72px] aspect-[3/4] rounded-xl border-2 flex items-center justify-center overflow-hidden cursor-pointer bg-gray-50 transition ${
                           photo
                             ? "border-orange-500 shadow-2xs"
                             : "border-dashed border-gray-300 hover:border-[#f85606] text-gray-400 hover:text-[#f85606]"
                         }`}
-                        title="Click to upload/change variant photo"
+                        style={{ aspectRatio: "3/4" }}
+                        title="Click to upload/change variant photo (auto-crops to 3:4 portrait)"
                       >
                         {isUploadingThis ? (
                           <CircularProgress size={18} sx={{ color: "#f85606" }} />
                         ) : photo ? (
-                          <img src={photo} alt="" className="w-full h-full object-cover" />
+                          <img src={photo} alt="" className="w-full h-full object-cover object-top" />
                         ) : (
                           <div className="flex flex-col items-center">
                             <Upload size={14} />
-                            <span className="text-[9px] font-bold mt-0.5">Photo</span>
+                            <span className="text-[9px] font-bold mt-0.5">3:4</span>
                           </div>
                         )}
                       </div>

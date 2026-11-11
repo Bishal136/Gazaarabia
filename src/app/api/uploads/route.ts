@@ -18,8 +18,7 @@ export async function POST(req: Request) {
 
     const urls: string[] = [];
     const isHeroOrBanner = folder.includes("hero") || folder.includes("banner");
-    const maxWidth = isHeroOrBanner ? 1600 : 1000;
-    const quality = isHeroOrBanner ? 80 : 78;
+    const isProductOrVariant = folder.includes("product") || folder.includes("variant");
 
     const uploadDir = path.join(process.cwd(), "uploads", folder);
     await fs.mkdir(uploadDir, { recursive: true });
@@ -32,11 +31,32 @@ export async function POST(req: Request) {
       const bytes = await file.arrayBuffer();
       const inputBuffer = Buffer.from(bytes);
 
-      // Auto-convert to optimized WebP & resize
-      const webpBuffer = await sharp(inputBuffer)
-        .resize({ width: maxWidth, withoutEnlargement: true, fit: "inside" })
-        .webp({ quality })
-        .toBuffer();
+      // 1. Auto-orient according to EXIF orientation metadata (fixes iPhone/Android portrait camera tags)
+      const imageProcessor = sharp(inputBuffer).rotate();
+
+      let webpBuffer: Buffer;
+      if (isProductOrVariant) {
+        // 2. Enforce standard 3:4 portrait ratio (1200x1600) with top framing for clothing & modest fashion
+        webpBuffer = await imageProcessor
+          .resize({
+            width: 1200,
+            height: 1600,
+            fit: "cover",
+            position: "top",
+          })
+          .webp({ quality: 82 })
+          .toBuffer();
+      } else if (isHeroOrBanner) {
+        webpBuffer = await imageProcessor
+          .resize({ width: 1600, withoutEnlargement: true, fit: "inside" })
+          .webp({ quality: 80 })
+          .toBuffer();
+      } else {
+        webpBuffer = await imageProcessor
+          .resize({ width: 1000, withoutEnlargement: true, fit: "inside" })
+          .webp({ quality: 78 })
+          .toBuffer();
+      }
 
       // Deduplicate by SHA-256 hash
       const hash = crypto.createHash("sha256").update(webpBuffer).digest("hex").slice(0, 16);

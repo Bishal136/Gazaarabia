@@ -92,8 +92,11 @@ export const MediaUploader = ({
           Drag images here or click to upload
         </p>
         <p className="text-sm text-gray-500 mt-1">
-          PNG, JPG up to 10MB • Max {maxImages} images
+          PNG, JPG, WEBP up to 10MB • Max {maxImages} images
         </p>
+        <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 rounded-full text-xs text-amber-800 font-medium">
+          <span>📐 Recommended: 3:4 Portrait (e.g. 1200×1600px). Uploads are automatically auto-oriented and formatted to 3:4 portrait.</span>
+        </div>
         {isUploading && (
           <div className="mt-3 flex items-center justify-center gap-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
@@ -115,11 +118,11 @@ export const MediaUploader = ({
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {images.map((img, idx) => (
             <div key={idx} className="group relative">
-              <div className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-100">
+              <div className="relative aspect-[3/4] rounded-lg overflow-hidden border-2 border-gray-200 bg-[#f8f5f0]" style={{ aspectRatio: "3/4" }}>
                 <img
                   src={img.url}
                   alt={img.alt || `Product ${idx + 1}`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover object-top"
                 />
 
                 {idx === 0 && (
