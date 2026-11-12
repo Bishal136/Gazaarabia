@@ -89,17 +89,17 @@ export default function DashboardPage() {
 
   if (!dashboardData) {
     return (
-      <div className="bg-white rounded-2xl p-12 border border-[#e8d5c8] text-center shadow-sm max-w-lg mx-auto mt-12">
-        <div className="w-14 h-14 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+      <div className="bg-white rounded-2xl p-12 border border-slate-200 text-center shadow-sm max-w-lg mx-auto mt-12">
+        <div className="w-14 h-14 bg-red-50 text-[var(--brand-primary)] rounded-full flex items-center justify-center mx-auto mb-4">
           <AlertTriangle size={28} />
         </div>
-        <h3 className="text-xl font-bold text-[#0a0808] mb-2">Failed to load dashboard</h3>
-        <p className="text-[#57534e] text-sm mb-6">
+        <h3 className="text-xl font-bold text-slate-900 mb-2">Failed to load dashboard</h3>
+        <p className="text-slate-500 text-sm mb-6">
           There was an error communicating with the analytics API. Please verify your connection and try again.
         </p>
         <button
           onClick={fetchDashboard}
-          className="px-5 py-2.5 bg-[#b08a78] hover:bg-[#9c7766] text-white font-medium rounded-xl text-sm transition shadow-sm inline-flex items-center gap-2"
+          className="px-5 py-2.5 bg-[var(--navy-blue)] hover:bg-slate-800 text-white font-medium rounded-xl text-sm transition shadow-sm inline-flex items-center gap-2"
         >
           <RefreshCw size={16} />
           Retry Connection
@@ -360,17 +360,17 @@ export default function DashboardPage() {
 
       {/* =========================================================================
           ROW 3: ANALYTICS CHARTS (2-Column Grid)
-          Preserved Orders Over Time and Revenue Over Time line charts with #b08a78 theme
+          Styled with Gazaarabia Admin Theme (#1E2A4A Navy & #E82C3F Brand Red)
       ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Orders Over Time */}
-        <div className="bg-white rounded-2xl p-6 border border-[#e8d5c8] shadow-sm">
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="text-base font-bold text-[#0a0808]">Orders Over Time</h3>
-              <p className="text-xs text-[#57534e]">Customer checkout volume trends</p>
+              <h3 className="text-base font-bold text-slate-900">Orders Over Time</h3>
+              <p className="text-xs text-slate-500">Customer checkout volume trends</p>
             </div>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#fbf9f6] border border-[#e8d5c8] text-[#0a0808]">
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-800">
               {totalOrders} Total Orders
             </span>
           </div>
@@ -379,26 +379,26 @@ export default function DashboardPage() {
             {ordersChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={ordersChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0ece6" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis
                     dataKey="date"
                     tickLine={false}
-                    axisLine={{ stroke: "#e8d5c8" }}
-                    tick={{ fill: "#57534e", fontSize: 11 }}
+                    axisLine={{ stroke: "#e2e8f0" }}
+                    tick={{ fill: "#64748b", fontSize: 11 }}
                   />
                   <YAxis
                     allowDecimals={false}
                     tickLine={false}
-                    axisLine={{ stroke: "#e8d5c8" }}
-                    tick={{ fill: "#57534e", fontSize: 11 }}
+                    axisLine={{ stroke: "#e2e8f0" }}
+                    tick={{ fill: "#64748b", fontSize: 11 }}
                   />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "#ffffff",
                       borderRadius: "12px",
-                      border: "1px solid #e8d5c8",
+                      border: "1px solid #e2e8f0",
                       boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
-                      color: "#0a0808",
+                      color: "#0f172a",
                       fontSize: "12px",
                       padding: "8px 12px",
                     }}
@@ -410,15 +410,15 @@ export default function DashboardPage() {
                   <Line
                     type="monotone"
                     dataKey="orders"
-                    stroke="#b08a78"
+                    stroke="#1E2A4A"
                     strokeWidth={2.5}
-                    dot={{ r: 3, fill: "#b08a78", strokeWidth: 1, stroke: "#ffffff" }}
-                    activeDot={{ r: 6, fill: "#b08a78", stroke: "#ffffff", strokeWidth: 2 }}
+                    dot={{ r: 3, fill: "#1E2A4A", strokeWidth: 1, stroke: "#ffffff" }}
+                    activeDot={{ r: 6, fill: "#1E2A4A", stroke: "#ffffff", strokeWidth: 2 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-sm text-[#57534e]">
+              <div className="h-full flex items-center justify-center text-sm text-slate-500">
                 No order history recorded yet.
               </div>
             )}
@@ -426,13 +426,13 @@ export default function DashboardPage() {
         </div>
 
         {/* Revenue Over Time */}
-        <div className="bg-white rounded-2xl p-6 border border-[#e8d5c8] shadow-sm">
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="text-base font-bold text-[#0a0808]">Revenue Over Time</h3>
-              <p className="text-xs text-[#57534e]">Gross merchant transaction volume</p>
+              <h3 className="text-base font-bold text-slate-900">Revenue Over Time</h3>
+              <p className="text-xs text-slate-500">Gross merchant transaction volume</p>
             </div>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#fbf9f6] border border-[#e8d5c8] text-[#0a0808]">
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-800">
               GBP {totalRevenue.toFixed(2)}
             </span>
           </div>
@@ -441,26 +441,26 @@ export default function DashboardPage() {
             {revenueChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={revenueChartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0ece6" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis
                     dataKey="date"
                     tickLine={false}
-                    axisLine={{ stroke: "#e8d5c8" }}
-                    tick={{ fill: "#57534e", fontSize: 11 }}
+                    axisLine={{ stroke: "#e2e8f0" }}
+                    tick={{ fill: "#64748b", fontSize: 11 }}
                   />
                   <YAxis
                     tickLine={false}
-                    axisLine={{ stroke: "#e8d5c8" }}
-                    tick={{ fill: "#57534e", fontSize: 11 }}
+                    axisLine={{ stroke: "#e2e8f0" }}
+                    tick={{ fill: "#64748b", fontSize: 11 }}
                     tickFormatter={(val) => `£${val}`}
                   />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "#ffffff",
                       borderRadius: "12px",
-                      border: "1px solid #e8d5c8",
+                      border: "1px solid #e2e8f0",
                       boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
-                      color: "#0a0808",
+                      color: "#0f172a",
                       fontSize: "12px",
                       padding: "8px 12px",
                     }}
@@ -472,15 +472,15 @@ export default function DashboardPage() {
                   <Line
                     type="monotone"
                     dataKey="revenue"
-                    stroke="#b08a78"
+                    stroke="#E82C3F"
                     strokeWidth={2.5}
-                    dot={{ r: 3, fill: "#b08a78", strokeWidth: 1, stroke: "#ffffff" }}
-                    activeDot={{ r: 6, fill: "#b08a78", stroke: "#ffffff", strokeWidth: 2 }}
+                    dot={{ r: 3, fill: "#E82C3F", strokeWidth: 1, stroke: "#ffffff" }}
+                    activeDot={{ r: 6, fill: "#E82C3F", stroke: "#ffffff", strokeWidth: 2 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-sm text-[#57534e]">
+              <div className="h-full flex items-center justify-center text-sm text-slate-500">
                 No revenue records recorded yet.
               </div>
             )}
@@ -490,15 +490,14 @@ export default function DashboardPage() {
 
       {/* =========================================================================
           ROW 4: CATALOG QUICK-STATS (Compact Strip) & RECENT BLOGS
-          Replaces the old scattered 3 rows with a sleek horizontal summary strip
       ========================================================================= */}
-      <div className="bg-white rounded-2xl p-6 border border-[#e8d5c8] shadow-sm">
+      <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-base font-bold text-[#0a0808]">Catalog & Attributes</h3>
-            <p className="text-xs text-[#57534e]">Storefront taxonomies and metadata specifications</p>
+            <h3 className="text-base font-bold text-slate-900">Catalog & Attributes</h3>
+            <p className="text-xs text-slate-500">Storefront taxonomies and metadata specifications</p>
           </div>
-          <span className="text-xs text-[#57534e] font-medium hidden sm:inline">
+          <span className="text-xs text-slate-500 font-medium hidden sm:inline">
             Click any section to manage
           </span>
         </div>
@@ -510,15 +509,15 @@ export default function DashboardPage() {
               <button
                 key={item.label}
                 onClick={() => router.push(item.path)}
-                className="p-3 rounded-xl bg-[#fbf9f6] border border-[#f0ece6] hover:border-[#b08a78] hover:bg-white text-left transition group shadow-2xs cursor-pointer flex flex-col justify-between h-[84px]"
+                className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/80 hover:border-slate-400 hover:bg-white text-left transition group shadow-2xs cursor-pointer flex flex-col justify-between h-[84px]"
               >
                 <div className="flex items-center justify-between">
-                  <Icon size={16} className="text-[#b08a78] group-hover:scale-110 transition" />
-                  <span className="text-xs font-bold text-[#0a0808]">
+                  <Icon size={16} className="text-slate-600 group-hover:text-[var(--brand-primary)] group-hover:scale-110 transition" />
+                  <span className="text-xs font-bold text-slate-900">
                     {item.count ?? 0}
                   </span>
                 </div>
-                <p className="text-xs font-medium text-[#57534e] group-hover:text-[#0a0808] transition truncate">
+                <p className="text-xs font-medium text-slate-500 group-hover:text-slate-900 transition truncate">
                   {item.label}
                 </p>
               </button>
@@ -528,29 +527,29 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent Blogs */}
-      <div className="bg-white rounded-2xl p-6 border border-[#e8d5c8] shadow-sm">
+      <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="text-base font-bold text-[#0a0808]">Recent Blogs</h3>
-            <p className="text-xs text-[#57534e]">Editorial content and fashion articles published on the storefront</p>
+            <h3 className="text-base font-bold text-slate-900">Recent Blogs</h3>
+            <p className="text-xs text-slate-500">Editorial content and fashion articles published on the storefront</p>
           </div>
           <button
             onClick={() => router.push("/admin/blogs")}
-            className="text-xs font-semibold text-[#b08a78] hover:text-[#9c7766] transition flex items-center gap-1"
+            className="text-xs font-semibold text-[var(--brand-primary)] hover:underline transition flex items-center gap-1"
           >
             Manage blogs <ExternalLink size={12} />
           </button>
         </div>
 
-        <div className="divide-y divide-[#f5f1eb]">
+        <div className="divide-y divide-slate-100">
           {dashboardData.recentBlogs?.length > 0 ? (
             dashboardData.recentBlogs.map((blog: any) => (
-              <div key={blog.id} className="py-3.5 flex justify-between items-center hover:bg-[#faf7f4] px-2 rounded-xl transition">
+              <div key={blog.id} className="py-3.5 flex justify-between items-center hover:bg-slate-50/80 px-2 rounded-xl transition">
                 <div className="pr-4">
-                  <p className="font-semibold text-sm text-[#0a0808] hover:text-[#b08a78] transition cursor-pointer" onClick={() => router.push(`/admin/blogs/form/${blog.id}`)}>
+                  <p className="font-semibold text-sm text-slate-900 hover:text-[var(--brand-primary)] transition cursor-pointer" onClick={() => router.push(`/admin/blogs/form/${blog.id}`)}>
                     {blog.title}
                   </p>
-                  <p className="text-[#57534e] text-xs mt-0.5">
+                  <p className="text-slate-400 text-xs mt-0.5">
                     {new Date(blog.createdAt).toLocaleDateString("en-GB", {
                       day: "numeric",
                       month: "short",
@@ -560,14 +559,14 @@ export default function DashboardPage() {
                 </div>
                 <button
                   onClick={() => router.push(`/admin/blogs/form/${blog.id}`)}
-                  className="px-3.5 py-1 text-xs font-semibold rounded-lg border border-[#e8d5c8] text-[#0a0808] hover:border-[#b08a78] hover:text-[#b08a78] hover:bg-white transition bg-[#fbf9f6] shrink-0"
+                  className="px-3.5 py-1 text-xs font-semibold rounded-lg border border-slate-200 text-slate-700 hover:border-slate-400 hover:text-black hover:bg-white transition bg-slate-50 shrink-0"
                 >
                   View
                 </button>
               </div>
             ))
           ) : (
-            <div className="text-sm text-[#57534e] py-6 text-center">
+            <div className="text-sm text-slate-500 py-6 text-center">
               No recent blogs found.
             </div>
           )}
@@ -579,7 +578,7 @@ export default function DashboardPage() {
       ========================================================================= */}
       {isHealthModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full border border-[#e8d5c8] shadow-xl p-6 relative animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-xl p-6 relative animate-in fade-in zoom-in-95 duration-150">
             <button
               onClick={() => setIsHealthModalOpen(false)}
               className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition"
@@ -588,50 +587,50 @@ export default function DashboardPage() {
             </button>
 
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#fbf9f6] border border-[#e8d5c8] flex items-center justify-center text-[#b08a78]">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[var(--navy-blue)]">
                 <Activity size={20} />
               </div>
               <div>
-                <h3 className="text-base font-bold text-[#0a0808]">Marketplace System Health</h3>
-                <p className="text-xs text-[#57534e]">Live telemetry & service connectivity</p>
+                <h3 className="text-base font-bold text-slate-900">Marketplace System Health</h3>
+                <p className="text-xs text-slate-500">Live telemetry & service connectivity</p>
               </div>
             </div>
 
             <div className="space-y-3.5 text-sm">
-              <div className="p-3 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <Database size={16} className="text-[#b08a78]" />
-                  <span className="font-medium text-[#0a0808]">Database (MongoDB)</span>
+                  <Database size={16} className="text-[var(--navy-blue)]" />
+                  <span className="font-medium text-slate-900">Database (MongoDB)</span>
                 </div>
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                   <CheckCircle2 size={12} /> Connected
                 </span>
               </div>
 
-              <div className="p-3 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <CreditCard size={16} className="text-[#b08a78]" />
-                  <span className="font-medium text-[#0a0808]">Stripe & PayPal</span>
+                  <CreditCard size={16} className="text-[var(--navy-blue)]" />
+                  <span className="font-medium text-slate-900">Stripe & PayPal</span>
                 </div>
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                   <CheckCircle2 size={12} /> Operational
                 </span>
               </div>
 
-              <div className="p-3 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <Server size={16} className="text-[#b08a78]" />
-                  <span className="font-medium text-[#0a0808]">PM2 Process Cluster</span>
+                  <Server size={16} className="text-[var(--navy-blue)]" />
+                  <span className="font-medium text-slate-900">PM2 Process Cluster</span>
                 </div>
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                   <CheckCircle2 size={12} /> 4 Workers Active
                 </span>
               </div>
 
-              <div className="p-3 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <Activity size={16} className="text-[#b08a78]" />
-                  <span className="font-medium text-[#0a0808]">Sharp Image Processing</span>
+                  <Activity size={16} className="text-[var(--navy-blue)]" />
+                  <span className="font-medium text-slate-900">Sharp Image Processing</span>
                 </div>
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                   <CheckCircle2 size={12} /> SIMD libvips
@@ -639,10 +638,10 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
+            <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end">
               <button
                 onClick={() => setIsHealthModalOpen(false)}
-                className="px-4 py-2 bg-[#b08a78] hover:bg-[#9c7766] text-white rounded-xl text-xs font-semibold transition"
+                className="px-4 py-2 bg-[var(--navy-blue)] hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition"
               >
                 Close Diagnostics
               </button>
