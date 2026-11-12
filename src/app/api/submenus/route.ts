@@ -7,22 +7,14 @@ const prisma: any = new PrismaClient();
 /** GET - All submenus */
 export async function GET() {
   try {
-    const [submenus, menus] = await Promise.all([
-      prisma.submenus.findMany({
-        orderBy: [{ position: "asc" }, { id: "asc" }],
-      }),
-      prisma.menus.findMany({
-        select: { id: true, name: true, slug: true, type: true },
-      }),
-    ]);
+    const submenus = await prisma.submenus.findMany({
+      include: {
+        menu: { select: { id: true, name: true, slug: true, type: true } },
+      },
+      orderBy: [{ position: "asc" }, { id: "asc" }],
+    });
 
-    const menuMap = new Map(menus.map((m: any) => [m.id, m]));
-    const data = submenus.map((s: any) => ({
-      ...s,
-      menu: menuMap.get(s.menuId) || null,
-    }));
-
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: submenus });
   } catch (error) {
     console.error("Error fetching submenus:", error);
     return NextResponse.json(

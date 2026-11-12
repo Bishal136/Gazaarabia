@@ -14,6 +14,13 @@ export async function GET(
     const { id } = await context.params;
     const submenu = await prisma.submenus.findUnique({
       where: { id: Number(id) },
+      include: {
+        menu: {
+          include: {
+            blogCategory: true,
+          },
+        },
+      },
     });
 
     if (!submenu) {
@@ -23,14 +30,7 @@ export async function GET(
       );
     }
 
-    let menu = null;
-    if (submenu.menuId) {
-      menu = await prisma.menus.findUnique({
-        where: { id: submenu.menuId },
-      });
-    }
-
-    return NextResponse.json({ success: true, data: { ...submenu, menu } });
+    return NextResponse.json({ success: true, data: submenu });
   } catch (error) {
     console.error("Error fetching submenu:", error);
     return NextResponse.json(

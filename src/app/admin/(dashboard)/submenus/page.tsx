@@ -89,19 +89,15 @@ function SortableRow({
       <td className="py-3 px-3 font-medium text-gray-800">{submenu.name}</td>
       <td className="py-3 px-3 text-gray-600">{submenu.slug}</td>
       <td className="py-3 px-3 text-gray-700">
-        {submenu.menu?.name ? (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-            {submenu.menu.name}
-          </span>
+        {submenu.menu ? (
+          submenu.menu.name
         ) : (
           <span className="text-gray-400 italic">—</span>
         )}
       </td>
       <td className="py-3 px-3 text-gray-700">
-        {submenu.position !== undefined && submenu.position !== null ? (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-medium bg-gray-100 text-gray-700">
-            {submenu.position}
-          </span>
+        {submenu.category ? (
+          submenu.category.name
         ) : (
           <span className="text-gray-400 italic">—</span>
         )}
