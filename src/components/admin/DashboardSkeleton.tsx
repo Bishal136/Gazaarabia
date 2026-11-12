@@ -66,19 +66,6 @@ export default function DashboardSkeleton() {
           <div className="h-[280px] w-full bg-gray-50 rounded-xl" />
         </div>
       </div>
-
-      {/* Row 4: Catalog Quick-Stats Strip */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-        <div className="h-4 w-36 bg-gray-200 rounded mb-4" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-            <div key={s} className="h-14 bg-gray-50 rounded-xl p-3 flex flex-col justify-between">
-              <div className="h-3 w-16 bg-gray-200 rounded" />
-              <div className="h-4 w-8 bg-gray-300 rounded" />
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

@@ -3,31 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  FileText,
-  Layers,
-  ShoppingBag,
-  Tag,
-  Palette,
-  ClipboardList,
-  Truck,
-  Droplets,
-  Ruler,
-  Grid,
-  Users as UsersIcon,
-  Store,
   AlertTriangle,
   CheckCircle2,
-  Clock,
   Activity,
-  ArrowUpRight,
-  ExternalLink,
-  ShieldCheck,
   RefreshCw,
   X,
   CreditCard,
   Database,
   Server,
-  Package,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { ROUTES } from "@/constants/routes";
@@ -140,19 +123,6 @@ export default function DashboardPage() {
   const syncFailures = dashboardData.syncFailures ?? 0;
   const totalProducts = dashboardData.products ?? 0;
   const totalUsers = dashboardData.users ?? 0;
-  const deliveryOptionsCount = dashboardData.deliveryOptions ?? 0;
-
-  // Secondary catalog navigation items
-  const catalogQuickStats = [
-    { label: "Categories", count: dashboardData.categories, icon: ClipboardList, path: "/admin/category-list" },
-    { label: "Subcategories", count: dashboardData.subcategories, icon: Grid, path: "/admin/subcategories" },
-    { label: "Brands", count: dashboardData.brands, icon: Tag, path: "/admin/brands" },
-    { label: "Colors", count: dashboardData.colors, icon: Palette, path: "/admin/colors-list" },
-    { label: "Sizes", count: dashboardData.sizes, icon: Ruler, path: "/admin/sizes" },
-    { label: "Material Cares", count: dashboardData.materialCares, icon: Droplets, path: "/admin/material-cares" },
-    { label: "Delivery Options", count: dashboardData.deliveryOptions, icon: Truck, path: "/admin/delivery-options" },
-    { label: "Blog Categories", count: dashboardData.blogCategories, icon: Layers, path: "/admin/blog-categories" },
-  ];
 
   return (
     <div className="space-y-6 md:space-y-8 pb-10">
@@ -488,90 +458,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* =========================================================================
-          ROW 4: CATALOG QUICK-STATS (Compact Strip) & RECENT BLOGS
-      ========================================================================= */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">Catalog & Attributes</h3>
-            <p className="text-xs text-slate-500">Storefront taxonomies and metadata specifications</p>
-          </div>
-          <span className="text-xs text-slate-500 font-medium hidden sm:inline">
-            Click any section to manage
-          </span>
-        </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-          {catalogQuickStats.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.label}
-                onClick={() => router.push(item.path)}
-                className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/80 hover:border-slate-400 hover:bg-white text-left transition group shadow-2xs cursor-pointer flex flex-col justify-between h-[84px]"
-              >
-                <div className="flex items-center justify-between">
-                  <Icon size={16} className="text-slate-600 group-hover:text-[var(--brand-primary)] group-hover:scale-110 transition" />
-                  <span className="text-xs font-bold text-slate-900">
-                    {item.count ?? 0}
-                  </span>
-                </div>
-                <p className="text-xs font-medium text-slate-500 group-hover:text-slate-900 transition truncate">
-                  {item.label}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Recent Blogs */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">Recent Blogs</h3>
-            <p className="text-xs text-slate-500">Editorial content and fashion articles published on the storefront</p>
-          </div>
-          <button
-            onClick={() => router.push("/admin/blogs")}
-            className="text-xs font-semibold text-[var(--brand-primary)] hover:underline transition flex items-center gap-1"
-          >
-            Manage blogs <ExternalLink size={12} />
-          </button>
-        </div>
-
-        <div className="divide-y divide-slate-100">
-          {dashboardData.recentBlogs?.length > 0 ? (
-            dashboardData.recentBlogs.map((blog: any) => (
-              <div key={blog.id} className="py-3.5 flex justify-between items-center hover:bg-slate-50/80 px-2 rounded-xl transition">
-                <div className="pr-4">
-                  <p className="font-semibold text-sm text-slate-900 hover:text-[var(--brand-primary)] transition cursor-pointer" onClick={() => router.push(`/admin/blogs/form/${blog.id}`)}>
-                    {blog.title}
-                  </p>
-                  <p className="text-slate-400 text-xs mt-0.5">
-                    {new Date(blog.createdAt).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
-                <button
-                  onClick={() => router.push(`/admin/blogs/form/${blog.id}`)}
-                  className="px-3.5 py-1 text-xs font-semibold rounded-lg border border-slate-200 text-slate-700 hover:border-slate-400 hover:text-black hover:bg-white transition bg-slate-50 shrink-0"
-                >
-                  View
-                </button>
-              </div>
-            ))
-          ) : (
-            <div className="text-sm text-slate-500 py-6 text-center">
-              No recent blogs found.
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* =========================================================================
           MODAL: MARKETPLACE SYSTEM HEALTH DETAILS
