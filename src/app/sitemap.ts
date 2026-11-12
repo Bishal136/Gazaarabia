@@ -14,7 +14,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/about",
     "/contact",
     "/faq",
-    "/blogs",
+    "/blogs/journal",
     "/privacy-policy",
     "/terms-and-conditions",
     "/shipping-and-delivery",
@@ -35,7 +35,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       prisma.products.findMany({
         where: { active: true, isDeleted: false },
         select: { slug: true, updatedAt: true },
-        take: 1000,
+        orderBy: { updatedAt: "desc" },
       }),
 
       prisma.categories.findMany({
@@ -43,6 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }),
 
       prisma.blogs.findMany({
+        where: { status: "Active" },
         select: { slug: true, updatedAt: true },
       }),
     ]);
@@ -62,7 +63,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }));
 
     const blogRoutes = blogs.map((b) => ({
-      url: `${baseUrl}/blogs/${b.slug}`,
+      url: `${baseUrl}/blogs/journal/${b.slug}`,
       lastModified: b.updatedAt,
       changeFrequency: "monthly" as const,
       priority: 0.6,

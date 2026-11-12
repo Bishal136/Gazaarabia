@@ -134,8 +134,11 @@ export default function OrderSuccessPage() {
         if (response?.success && response.data) {
           setOrder(response.data);
           
-          // Track Purchase
-          if (!hasTracked) {
+          // Track Purchase (Deduplicated across page reloads and revisits)
+          const trackingKey = `gaza_order_tracked_${response.data.id}`;
+          const alreadyTracked = typeof window !== "undefined" && localStorage.getItem(trackingKey);
+
+          if (!hasTracked && !alreadyTracked) {
             fbEvent("Purchase", {
               value: Number(response.data.totalAmount || 0),
               currency: "GBP",
@@ -143,6 +146,9 @@ export default function OrderSuccessPage() {
               content_type: "product",
             });
             gaEvent("purchase", "Ecommerce", `Order #${response.data.id}`, Number(response.data.totalAmount || 0));
+            try {
+              localStorage.setItem(trackingKey, "true");
+            } catch {}
             setHasTracked(true);
           }
         } else {

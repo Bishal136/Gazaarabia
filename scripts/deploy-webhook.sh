@@ -23,7 +23,7 @@ echo "[3/4] Building production Next.js application..."
 npm run build
 
 echo "[4/5] Gracefully reloading PM2 cluster..."
-pm2 reload ecosystem.config.cjs || pm2 start ecosystem.config.cjs
+pm2 reload gazaarabia-api || pm2 reload ecosystem.config.cjs || pm2 start ecosystem.config.cjs
 
 echo "[5/5] Checking and applying Nginx performance tuning if permitted..."
 if [ -f "$APP_DIR/deploy/install-nginx-tuning.sh" ]; then

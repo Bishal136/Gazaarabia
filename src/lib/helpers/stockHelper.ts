@@ -88,7 +88,7 @@ export async function getBulkProductAvailableStock(productIds: number[]) {
         .toArray(),
       db
         .collection("orders_item")
-        .find({ productId: { $in: productIds } })
+        .find({ productId: { $in: productIds }, returnStatus: { $nin: ["cancelled", "refunded"] } })
         .toArray(),
       db
         .collection("stock_reservations")
@@ -146,7 +146,7 @@ export async function getVariantAvailableQuantity(
     const [orderedItems, reservedQty] = await Promise.all([
       db
         .collection("orders_item")
-        .find({ variantId })
+        .find({ variantId, returnStatus: { $nin: ["cancelled", "refunded"] } })
         .toArray(),
       getActiveReservedQuantity({ variantId, excludeSessionKey }),
     ]);
@@ -184,7 +184,7 @@ export async function getProductAvailableQuantity(
     const [orderedItems, reservedQty] = await Promise.all([
       db
         .collection("orders_item")
-        .find({ productId })
+        .find({ productId, returnStatus: { $nin: ["cancelled", "refunded"] } })
         .toArray(),
       getActiveReservedQuantity({ productId, excludeSessionKey }),
     ]);

@@ -1,10 +1,20 @@
 "use client";
 
 import Script from "next/script";
-import { useEffect, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { getCookieConsent } from "@/lib/cookies";
 
 export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+
+function isLocalhost(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname.endsWith(".local")
+  );
+}
 
 function GoogleAnalyticsEvents() {
   const pathname = usePathname();
@@ -25,7 +35,36 @@ function GoogleAnalyticsEvents() {
 }
 
 export default function GoogleAnalytics() {
-  if (!GA_MEASUREMENT_ID) return null;
+  const [canLoad, setCanLoad] = useState(false);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development" || isLocalhost()) {
+      return;
+    }
+
+    const checkConsent = () => {
+      const consent = getCookieConsent();
+      if (!consent) return false;
+      return consent.analytics === true;
+    };
+
+    if (checkConsent()) {
+      setCanLoad(true);
+    }
+
+    const handleConsentResolved = () => {
+      if (checkConsent()) {
+        setCanLoad(true);
+      }
+    };
+
+    window.addEventListener("cookieConsentResolved", handleConsentResolved);
+    return () => {
+      window.removeEventListener("cookieConsentResolved", handleConsentResolved);
+    };
+  }, []);
+
+  if (!GA_MEASUREMENT_ID || !canLoad) return null;
 
   return (
     <>

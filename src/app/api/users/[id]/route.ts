@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { getTokenFromHeader, getUserIdFromToken } from "@/lib/authToken";
+import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
 const prisma = new PrismaClient();
 
@@ -91,9 +93,9 @@ export async function PUT(req: Request, { params }: any) {
       roleId: roleRecord.id,
     };
 
-    // Optional: update password if present
+    // Hash password before saving if provided
     if (body.password && body.password.trim() !== "") {
-      updateData.password = body.password;
+      updateData.password = await bcrypt.hash(body.password.trim(), 10);
     }
 
     const updatedUser = await prisma.users.update({
@@ -123,18 +125,57 @@ export async function DELETE(req: Request, { params }: any) {
   }
 
   try {
-    //  A user with orders can't be hard-deleted (order history is protected at
-    //  the DB level). Ask the admin to deactivate instead.
-    const orderCount = await prisma.orders.count({ where: { userId: Number(params.id) } });
+    const url = new URL(req.url);
+    const anonymize = url.searchParams.get("anonymize") === "true";
+    const targetUserId = Number(params.id);
+
+    // If GDPR anonymization is requested for a user with historical records
+    if (anonymize) {
+      await prisma.users.update({
+        where: { id: targetUserId },
+        data: {
+          name: "GDPR Redacted",
+          email: `redacted_${targetUserId}_${Date.now()}@anonymized.local`,
+          phone: "0000000000",
+          password: "GDPR_REDACTED_ACCOUNT",
+        },
+      });
+
+      // Anonymize user's shipping addresses in orders
+      try {
+        await connectToDatabase();
+        const db = mongoose.connection.db;
+        if (db) {
+          await db.collection("orders").updateMany(
+            { userId: targetUserId },
+            {
+              $set: {
+                "address.name": "GDPR Redacted",
+                "address.phone": "0000000000",
+                "address.address": "Redacted for GDPR compliance",
+              },
+            }
+          );
+        }
+      } catch (err) {
+        console.warn("Could not redact order addresses:", err);
+      }
+
+      return NextResponse.json({ message: "User PII successfully anonymized under GDPR compliance" });
+    }
+
+    // A user with orders can't be hard-deleted (order history is protected at
+    // the DB level). Ask the admin to anonymize or deactivate instead.
+    const orderCount = await prisma.orders.count({ where: { userId: targetUserId } });
     if (orderCount > 0) {
       return NextResponse.json(
-        { error: "Cannot delete a user who has orders. Deactivate the account instead." },
+        { error: "Cannot delete a user who has orders. Use ?anonymize=true to redact customer PII for GDPR compliance." },
         { status: 409 }
       );
     }
 
     await prisma.users.delete({
-      where: { id: Number(params.id) },
+      where: { id: targetUserId },
     });
 
     return NextResponse.json({ message: "User deleted successfully" });

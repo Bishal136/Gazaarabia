@@ -28,8 +28,10 @@ next-env.d.ts
 # Self-hosted TinyMCE (auto-copied during postinstall/build)
 /public/tinymce
 
-# Prisma generated client if local
-/src/generated/prisma
+# Backups
+backup_*.json
+*.bak
+*.dump
 
 # ------------------------------------------------------------------------------
 # 3. ENVIRONMENT & SECRETS (NEVER COMMIT SENSITIVE CONFIGS)
@@ -123,3 +125,4 @@ desktop.ini
 # ------------------------------------------------------------------------------
 .agents/
 .gemini/
+Backup

@@ -28,7 +28,7 @@ export default function RichTextEditor({
   const handleImageUpload = (blobInfo: any): Promise<string> => {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.withCredentials = false;
+      xhr.withCredentials = true;
       xhr.open("POST", "/api/upload?folder=editor");
 
       xhr.upload.onprogress = (e) => {

@@ -3,9 +3,15 @@ import path from "path";
 import fs from "fs/promises";
 import crypto from "crypto";
 import sharp from "sharp";
+import { checkAuth } from "@/lib/authToken";
 
 export async function POST(req: Request) {
   try {
+    const userId = await checkAuth(req);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized: Authentication required to upload files" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const folder = searchParams.get("folder") || "misc";
 

@@ -38,6 +38,7 @@ export async function GET(req: NextRequest) {
   });
 
   let pushed = 0;
+  const startTime = Date.now();
   const errors: { orderId: number; error: string }[] = [];
   for (const { id } of orders) {
     try {
@@ -46,6 +47,23 @@ export async function GET(req: NextRequest) {
     } catch (e) {
       errors.push({ orderId: id, error: (e as Error).message });
     }
+  }
+
+  // Record structured telemetry into cron_logs
+  try {
+    await prisma.cronLog.create({
+      data: {
+        type: "push-pending-external",
+        status: errors.length === 0 ? "success" : pushed > 0 ? "partial" : "failed",
+        successful: pushed,
+        failed: errors.length,
+        totalSellers: orders.length,
+        details: errors.length > 0 ? (errors as any) : undefined,
+        duration: Date.now() - startTime,
+      },
+    });
+  } catch (logErr) {
+    console.warn("Failed to write push-pending-external cron log:", logErr);
   }
 
   return NextResponse.json({ scanned: orders.length, pushed, errors });

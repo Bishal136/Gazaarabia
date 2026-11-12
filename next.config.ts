@@ -99,6 +99,11 @@ const nextConfig: NextConfig = {
         destination: "/blogs/journal/:slug",
         permanent: true,
       },
+      {
+        source: "/blogs/:slug((?!journal).*)",
+        destination: "/blogs/journal/:slug",
+        permanent: true,
+      },
     ];
   },
 

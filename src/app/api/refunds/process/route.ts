@@ -148,6 +148,7 @@ export async function POST(req: NextRequest) {
 
     // Call Stripe API to refund payment if paid via Stripe
     let stripeRefundId: string | null = null;
+    let stripeWarning: string | null = null;
     if (
       order.paymentMethod === "stripe" &&
       order.transactionId &&
@@ -168,7 +169,7 @@ export async function POST(req: NextRequest) {
         stripeRefundId = stripeRefund.id;
       } catch (stripeErr: any) {
         console.error("Stripe refund call warning:", stripeErr.message);
-        // Continue DB update even if gateway requires manual intervention
+        stripeWarning = `Gateway refund notice: ${stripeErr.message}`;
       }
     }
 
@@ -201,9 +202,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Refund of £${calculatedRefundAmount.toFixed(2)} processed successfully.`,
+      message: stripeWarning
+        ? `Refund recorded with warning: ${stripeWarning}`
+        : `Refund of £${calculatedRefundAmount.toFixed(2)} processed successfully.`,
       paymentStatus: newPaymentStatus,
       stripeRefundId,
+      gatewayWarning: stripeWarning,
       order: refundedOrder,
     });
   } catch (error: any) {

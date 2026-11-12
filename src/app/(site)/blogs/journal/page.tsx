@@ -7,6 +7,12 @@ import Pagination from "@/components/Pagination";
 // import { blogCategoryService } from "@/lib/services/blogCategoryService";
 import { blogsService } from "@/lib/services/front-end/blogsService";
 
+function stripHtmlToExcerpt(html: string, maxLength: number = 160): string {
+    if (!html) return "";
+    const clean = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    return clean.length > maxLength ? `${clean.substring(0, maxLength)}...` : clean;
+}
+
 interface Blog {
     id: number;
     title: string;
@@ -187,9 +193,9 @@ export default function BlogsPage() {
                                             {blog.title}
                                         </h3>
 
-                                        <div className="text-[var(--text-secondary)] text-sm line-clamp-3 leading-relaxed">
-                                            <div dangerouslySetInnerHTML={{ __html: blog.content }} />
-                                        </div>
+                                        <p className="text-[var(--text-secondary)] text-sm line-clamp-3 leading-relaxed">
+                                            {stripHtmlToExcerpt(blog.content, 140)}
+                                        </p>
 
                                         <a
                                             href={`/blogs/journal/${blog.slug}`}
