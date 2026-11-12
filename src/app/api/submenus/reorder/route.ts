@@ -101,11 +101,15 @@ export async function PUT(req: NextRequest) {
     });
 
     // Re-fetch all submenus for the menu to return normalized data
-    const allSubmenus = await prisma.submenus.findMany({
+    const submenusList = await prisma.submenus.findMany({
       where: { menuId: Number(menuId) },
       orderBy: { position: "asc" },
-      include: { menu: { select: { id: true, name: true } } },
     });
+
+    const allSubmenus = submenusList.map((s: any) => ({
+      ...s,
+      menu: { id: menu.id, name: menu.name, slug: menu.slug, type: menu.type },
+    }));
 
     return NextResponse.json({
       success: true,
