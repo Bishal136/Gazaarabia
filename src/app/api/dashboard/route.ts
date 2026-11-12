@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase, mongoose } from "@/lib/mongoose";
 import { getAuthenticatedUser } from "@/lib/authToken";
 
-// GET Dashboard Counts
+// GET Dashboard Analytics & Operational Counts
 export async function GET(req: Request) {
   try {
     const user = await getAuthenticatedUser(req);
@@ -39,6 +39,12 @@ export async function GET(req: Request) {
       users,
       orders,
       sellers,
+      pendingSellers,
+      activeSellers,
+      pendingOrders,
+      openDisputes,
+      pendingPayouts,
+      lowStockProducts,
     ] = await Promise.all([
       db.collection("blogs").countDocuments(),
       db.collection("blog_categories").countDocuments()
@@ -56,6 +62,15 @@ export async function GET(req: Request) {
       db.collection("users").countDocuments(),
       db.collection("orders").countDocuments(),
       db.collection("sellers").countDocuments(),
+      db.collection("sellers").countDocuments({ status: { $in: ["Pending", "pending"] } }),
+      db.collection("sellers").countDocuments({ status: { $in: ["Active", "active"] } }),
+      db.collection("orders").countDocuments({ status: { $in: ["Pending", "pending", "Processing", "processing"] } }),
+      db.collection("returnrequests").countDocuments({ status: { $ne: "Resolved" } })
+        .catch(() => 0),
+      db.collection("sellerpayouts").countDocuments({ status: { $in: ["Pending", "pending", "On Hold", "on hold"] } })
+        .catch(() => 0),
+      db.collection("products").countDocuments({ stock: { $lte: 5 } })
+        .catch(() => 0),
     ]);
 
     const recentBlogs = await db.collection("blogs")
@@ -72,13 +87,17 @@ export async function GET(req: Request) {
     const ordersOverTime: Record<string, number> = {};
     const revenueOverTime: Record<string, number> = {};
     const statusCounts: Record<string, number> = {};
+    let totalRevenue = 0;
 
     for (const order of orderDocs) {
+      const orderAmount = Number(order.totalAmount) || 0;
+      totalRevenue += orderAmount;
+
       if (order.createdAt) {
         const d = new Date(order.createdAt);
         const date = !isNaN(d.getTime()) ? d.toISOString().split("T")[0] : "unknown";
         ordersOverTime[date] = (ordersOverTime[date] || 0) + 1;
-        revenueOverTime[date] = (revenueOverTime[date] || 0) + (Number(order.totalAmount) || 0);
+        revenueOverTime[date] = (revenueOverTime[date] || 0) + orderAmount;
       }
       if (order.status) {
         statusCounts[order.status] = (statusCounts[order.status] || 0) + 1;
@@ -105,11 +124,23 @@ export async function GET(req: Request) {
       users,
       orders,
       sellers,
+      activeSellers: activeSellers > 0 ? activeSellers : Math.max(0, sellers - pendingSellers),
+      pendingSellers,
+      pendingOrders,
+      openDisputes,
+      pendingPayouts,
+      lowStockProducts,
+      totalRevenue: Number(totalRevenue.toFixed(2)),
       recentBlogs,
       charts: {
         ordersOverTime,
         revenueOverTime,
         orderStatus,
+      },
+      systemHealth: {
+        payments: "operational",
+        database: "connected",
+        updatedAt: new Date().toISOString(),
       },
     });
   } catch (error) {

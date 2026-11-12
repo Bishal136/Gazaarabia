@@ -11,7 +11,27 @@ export interface DashboardData {
   deliveryOptions: number;
   materialCares: number;
   products: number;
+  users: number;
+  orders: number;
+  sellers: number;
+  activeSellers: number;
+  pendingSellers: number;
+  pendingOrders: number;
+  openDisputes: number;
+  pendingPayouts: number;
+  lowStockProducts: number;
+  totalRevenue: number;
   recentBlogs: { id: number; title: string; createdAt: string }[];
+  charts: {
+    ordersOverTime: Record<string, number>;
+    revenueOverTime: Record<string, number>;
+    orderStatus: { status: string; _count: { id: number } }[];
+  };
+  systemHealth: {
+    payments: string;
+    database: string;
+    updatedAt: string;
+  };
 }
 
 export const dashboardService = {
