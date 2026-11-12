@@ -137,6 +137,7 @@ export default function DashboardPage() {
   const pendingOrders = dashboardData.pendingOrders ?? 0;
   const openDisputes = dashboardData.openDisputes ?? 0;
   const pendingPayouts = dashboardData.pendingPayouts ?? 0;
+  const syncFailures = dashboardData.syncFailures ?? 0;
   const totalProducts = dashboardData.products ?? 0;
   const totalUsers = dashboardData.users ?? 0;
   const deliveryOptionsCount = dashboardData.deliveryOptions ?? 0;
@@ -156,368 +157,201 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 md:space-y-8 pb-10">
       {/* =========================================================================
-          ROW 1: EXECUTIVE KPI SUMMARY CARDS (4-Column Grid)
-          Styled with left-aligned labels, large bold numbers & #b08a78 highlights
+          ROW 1: 4 HIGH-IMPACT KPI CARDS (Matching Target Reference)
+          Minimalist, bold typography, clean borders and generous padding
       ========================================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
         {/* Card 1: Paid sales */}
         <div
           onClick={() => router.push("/admin/revenue-breakdown")}
-          className="bg-white rounded-2xl p-6 border border-[#e8d5c8] shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group flex flex-col justify-between min-h-[136px]"
+          className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between min-h-[120px]"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-[#57534e] tracking-tight">
-              Paid sales
-            </span>
-            <span className="w-8 h-8 rounded-full bg-[#fbf9f6] border border-[#e8d5c8] text-[#b08a78] flex items-center justify-center group-hover:bg-[#b08a78] group-hover:text-white transition">
-              <ArrowUpRight size={16} />
-            </span>
+          <div className="text-sm font-semibold text-slate-700 tracking-tight">
+            Paid sales
           </div>
           <div className="mt-3">
-            <div className="text-3xl font-extrabold text-[#0a0808] tracking-tight">
-              GBP {totalRevenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <div className="text-3xl font-bold tracking-tight text-slate-900">
+              GBP {totalRevenue > 0 ? totalRevenue.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : "0"}
             </div>
-            <p className="text-xs text-[#57534e]/80 mt-1 font-medium">
-              Settled lifetime revenue
-            </p>
           </div>
         </div>
 
         {/* Card 2: Active sellers */}
         <div
           onClick={() => router.push("/admin/seller")}
-          className="bg-white rounded-2xl p-6 border border-[#e8d5c8] shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group flex flex-col justify-between min-h-[136px]"
+          className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between min-h-[120px]"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-[#57534e] tracking-tight">
-              Active sellers
-            </span>
-            <span className="w-8 h-8 rounded-full bg-[#fbf9f6] border border-[#e8d5c8] text-[#b08a78] flex items-center justify-center group-hover:bg-[#b08a78] group-hover:text-white transition">
-              <Store size={16} />
-            </span>
+          <div className="text-sm font-semibold text-slate-700 tracking-tight">
+            Active sellers
           </div>
           <div className="mt-3">
-            <div className="text-3xl font-extrabold text-[#0a0808] tracking-tight">
+            <div className="text-3xl font-bold tracking-tight text-slate-900">
               {activeSellers}
             </div>
-            <div className="flex items-center gap-1.5 mt-1">
-              {pendingSellers > 0 ? (
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/60">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  {pendingSellers} pending review
-                </span>
-              ) : (
-                <span className="text-xs text-[#57534e]/80 font-medium">
-                  {dashboardData.sellers} total registered
-                </span>
-              )}
-            </div>
           </div>
         </div>
 
-        {/* Card 3: Total Orders / Open disputes */}
+        {/* Card 3: Open disputes */}
         <div
           onClick={() => router.push(openDisputes > 0 ? "/admin/returns" : "/admin/orders")}
-          className="bg-white rounded-2xl p-6 border border-[#e8d5c8] shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group flex flex-col justify-between min-h-[136px]"
+          className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between min-h-[120px]"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-[#57534e] tracking-tight">
-              Open disputes
-            </span>
-            <span className="w-8 h-8 rounded-full bg-[#fbf9f6] border border-[#e8d5c8] text-[#b08a78] flex items-center justify-center group-hover:bg-[#b08a78] group-hover:text-white transition">
-              <AlertTriangle size={16} />
-            </span>
+          <div className="text-sm font-semibold text-slate-700 tracking-tight">
+            Open disputes
           </div>
           <div className="mt-3">
-            <div className="text-3xl font-extrabold text-[#0a0808] tracking-tight flex items-baseline gap-2">
+            <div className="text-3xl font-bold tracking-tight text-slate-900">
               {openDisputes}
-              <span className="text-sm font-normal text-[#57534e]">
-                / {totalOrders} orders
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 mt-1">
-              {openDisputes > 0 ? (
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200/60">
-                  Action required
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
-                  <CheckCircle2 size={12} /> Zero active disputes
-                </span>
-              )}
             </div>
           </div>
         </div>
 
-        {/* Card 4: Total Products / Active Users */}
+        {/* Card 4: Sync failures */}
         <div
-          onClick={() => router.push("/admin/products")}
-          className="bg-white rounded-2xl p-6 border border-[#e8d5c8] shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group flex flex-col justify-between min-h-[136px]"
+          onClick={() => router.push("/admin/sync-all")}
+          className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between min-h-[120px]"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-[#57534e] tracking-tight">
-              Total products
-            </span>
-            <span className="w-8 h-8 rounded-full bg-[#fbf9f6] border border-[#e8d5c8] text-[#b08a78] flex items-center justify-center group-hover:bg-[#b08a78] group-hover:text-white transition">
-              <ShoppingBag size={16} />
-            </span>
+          <div className="text-sm font-semibold text-slate-700 tracking-tight">
+            Sync failures
           </div>
           <div className="mt-3">
-            <div className="text-3xl font-extrabold text-[#0a0808] tracking-tight">
-              {totalProducts}
+            <div className="text-3xl font-bold tracking-tight text-slate-900">
+              {syncFailures}
             </div>
-            <p className="text-xs text-[#57534e]/80 mt-1 font-medium">
-              {totalUsers} active customer accounts
-            </p>
           </div>
         </div>
       </div>
 
       {/* =========================================================================
-          ROW 2: OPERATIONAL SPLIT (2/3 Left Action Queue + 1/3 Right Health Card)
+          ROW 2: OPERATIONAL SPLIT (2/3 Left Action Queue + 1/3 Right Marketplace Health)
       ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Panel: Action Queue (2/3) */}
-        <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-[#e8d5c8] shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2.5">
-                <h3 className="text-lg font-bold text-[#0a0808]">Action queue</h3>
-                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-[#f5ede7] text-[#b08a78] border border-[#e8d5c8]">
-                  {pendingSellers + pendingOrders + pendingPayouts + (deliveryOptionsCount === 0 ? 1 : 0)} items
-                </span>
-              </div>
-              <span className="text-xs text-[#57534e] font-medium hidden sm:inline">
-                Live task prioritization
-              </span>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Left Panel: Action queue (2/3) */}
+        <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+          <h2 className="text-lg font-bold text-slate-900 mb-4 tracking-tight">
+            Action queue
+          </h2>
 
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-[#f0ece6] text-xs font-semibold text-[#57534e] uppercase tracking-wider">
-                    <th className="py-3 px-4 bg-[#fbf9f6] rounded-l-xl">Issue</th>
-                    <th className="py-3 px-4 bg-[#fbf9f6] text-center">Count</th>
-                    <th className="py-3 px-4 bg-[#fbf9f6] text-right rounded-r-xl">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#f5f1eb] text-sm">
-                  {/* Row 1: Seller approvals */}
-                  <tr className="hover:bg-[#faf7f4] transition-colors">
-                    <td className="py-3.5 px-4 font-medium text-[#0a0808]">
-                      <div className="flex items-center gap-2">
-                        <Store size={16} className="text-[#b08a78]" />
-                        <span>Seller approvals</span>
-                      </div>
-                      <span className="text-xs text-[#57534e] font-normal block pl-6">
-                        Vendor onboarding applications awaiting verification
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <span
-                        className={`inline-block font-bold text-sm ${
-                          pendingSellers > 0 ? "text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200" : "text-[#57534e]"
-                        }`}
-                      >
-                        {pendingSellers}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => router.push("/admin/seller")}
-                        className="px-3.5 py-1.5 text-xs font-semibold text-[#0a0808] bg-white border border-[#e8d5c8] rounded-lg hover:border-[#b08a78] hover:text-[#b08a78] hover:bg-[#faf7f4] transition shadow-2xs"
-                      >
-                        Review
-                      </button>
-                    </td>
-                  </tr>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-[#f1f5f9]/70 text-xs font-semibold text-slate-600">
+                  <th className="py-2.5 px-4 rounded-l-lg">Issue</th>
+                  <th className="py-2.5 px-4 text-center">Count</th>
+                  <th className="py-2.5 px-4 text-right rounded-r-lg">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm">
+                {/* Row 1: Seller approvals */}
+                <tr className="hover:bg-slate-50/70 transition-colors">
+                  <td className="py-3 px-4 font-semibold text-slate-900">
+                    Seller approvals
+                  </td>
+                  <td className="py-3 px-4 text-center text-slate-700 font-medium">
+                    {pendingSellers}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <button
+                      onClick={() => router.push("/admin/seller")}
+                      className="text-slate-800 hover:text-black font-medium hover:underline transition"
+                    >
+                      Review
+                    </button>
+                  </td>
+                </tr>
 
-                  {/* Row 2: Late dispatch / Pending orders */}
-                  <tr className="hover:bg-[#faf7f4] transition-colors">
-                    <td className="py-3.5 px-4 font-medium text-[#0a0808]">
-                      <div className="flex items-center gap-2">
-                        <Truck size={16} className="text-[#b08a78]" />
-                        <span>Late dispatch / Processing</span>
-                      </div>
-                      <span className="text-xs text-[#57534e] font-normal block pl-6">
-                        Customer orders waiting for fulfillment and courier handover
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <span
-                        className={`inline-block font-bold text-sm ${
-                          pendingOrders > 0 ? "text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200" : "text-[#57534e]"
-                        }`}
-                      >
-                        {pendingOrders}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => router.push("/admin/orders")}
-                        className="px-3.5 py-1.5 text-xs font-semibold text-[#0a0808] bg-white border border-[#e8d5c8] rounded-lg hover:border-[#b08a78] hover:text-[#b08a78] hover:bg-[#faf7f4] transition shadow-2xs"
-                      >
-                        Open orders
-                      </button>
-                    </td>
-                  </tr>
+                {/* Row 2: Late dispatch */}
+                <tr className="hover:bg-slate-50/70 transition-colors">
+                  <td className="py-3 px-4 font-semibold text-slate-900">
+                    Late dispatch
+                  </td>
+                  <td className="py-3 px-4 text-center text-slate-700 font-medium">
+                    {pendingOrders}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <button
+                      onClick={() => router.push("/admin/orders")}
+                      className="text-slate-800 hover:text-black font-medium hover:underline transition"
+                    >
+                      Open orders
+                    </button>
+                  </td>
+                </tr>
 
-                  {/* Row 3: Payouts on hold */}
-                  <tr className="hover:bg-[#faf7f4] transition-colors">
-                    <td className="py-3.5 px-4 font-medium text-[#0a0808]">
-                      <div className="flex items-center gap-2">
-                        <CreditCard size={16} className="text-[#b08a78]" />
-                        <span>Payouts on hold</span>
-                      </div>
-                      <span className="text-xs text-[#57534e] font-normal block pl-6">
-                        Seller or affiliate balance disbursements pending approval
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <span
-                        className={`inline-block font-bold text-sm ${
-                          pendingPayouts > 0 ? "text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200" : "text-[#57534e]"
-                        }`}
-                      >
-                        {pendingPayouts}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => router.push("/admin/seller-payouts")}
-                        className="px-3.5 py-1.5 text-xs font-semibold text-[#0a0808] bg-white border border-[#e8d5c8] rounded-lg hover:border-[#b08a78] hover:text-[#b08a78] hover:bg-[#faf7f4] transition shadow-2xs"
-                      >
-                        Review holds
-                      </button>
-                    </td>
-                  </tr>
+                {/* Row 3: Payouts on hold */}
+                <tr className="hover:bg-slate-50/70 transition-colors">
+                  <td className="py-3 px-4 font-semibold text-slate-900">
+                    Payouts on hold
+                  </td>
+                  <td className="py-3 px-4 text-center text-slate-700 font-medium">
+                    {pendingPayouts}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <button
+                      onClick={() => router.push("/admin/seller-payouts")}
+                      className="text-slate-800 hover:text-black font-medium hover:underline transition"
+                    >
+                      Review holds
+                    </button>
+                  </td>
+                </tr>
 
-                  {/* Row 4: Catalog & Delivery Alerts */}
-                  <tr className="hover:bg-[#faf7f4] transition-colors">
-                    <td className="py-3.5 px-4 font-medium text-[#0a0808]">
-                      <div className="flex items-center gap-2">
-                        <Package size={16} className="text-[#b08a78]" />
-                        <span>
-                          {deliveryOptionsCount === 0
-                            ? "Delivery options configuration"
-                            : "Catalog & Stock Alerts"}
-                        </span>
-                      </div>
-                      <span className="text-xs text-[#57534e] font-normal block pl-6">
-                        {deliveryOptionsCount === 0
-                          ? "Storefront has zero active delivery rates configured"
-                          : "Inventory tracking and catalog availability checks"}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <span
-                        className={`inline-block font-bold text-sm ${
-                          deliveryOptionsCount === 0
-                            ? "text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200"
-                            : "text-[#57534e]"
-                        }`}
-                      >
-                        {deliveryOptionsCount === 0 ? "Alert" : "Normal"}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() =>
-                          router.push(
-                            deliveryOptionsCount === 0
-                              ? "/admin/delivery-options"
-                              : "/admin/products"
-                          )
-                        }
-                        className="px-3.5 py-1.5 text-xs font-semibold text-[#0a0808] bg-white border border-[#e8d5c8] rounded-lg hover:border-[#b08a78] hover:text-[#b08a78] hover:bg-[#faf7f4] transition shadow-2xs"
-                      >
-                        Inspect
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+                {/* Row 4: Failed connections */}
+                <tr className="hover:bg-slate-50/70 transition-colors">
+                  <td className="py-3 px-4 font-semibold text-slate-900">
+                    Failed connections
+                  </td>
+                  <td className="py-3 px-4 text-center text-slate-700 font-medium">
+                    {syncFailures}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <button
+                      onClick={() => router.push("/admin/sync-all")}
+                      className="text-slate-800 hover:text-black font-medium hover:underline transition"
+                    >
+                      Inspect
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
-        {/* Right Panel: Marketplace Health (1/3) */}
-        <div className="lg:col-span-1 bg-white rounded-2xl p-6 border border-[#e8d5c8] shadow-sm flex flex-col justify-between">
+        {/* Right Panel: Marketplace health (1/3) */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-[#0a0808]">Marketplace health</h3>
-              <Activity size={18} className="text-[#b08a78]" />
-            </div>
+            <h2 className="text-lg font-bold text-slate-900 mb-5 tracking-tight">
+              Marketplace health
+            </h2>
 
-            <div className="space-y-4">
-              {/* Payments Status */}
-              <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-100 flex items-start gap-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 mt-1.5 shrink-0 shadow-xs" />
-                <div>
-                  <p className="text-sm font-bold text-emerald-900">
-                    Payments: operational
-                  </p>
-                  <p className="text-xs text-emerald-700/90 mt-0.5">
-                    Stripe & PayPal webhooks responsive
-                  </p>
-                </div>
+            <div className="space-y-4 text-sm font-medium">
+              {/* Payments status in green */}
+              <div className="text-emerald-600 flex items-center gap-2">
+                <span>Payments: operational</span>
               </div>
 
-              {/* Orders Status */}
-              <div
-                className={`p-3.5 rounded-xl border flex items-start gap-3 ${
-                  pendingOrders > 0
-                    ? "bg-rose-50/70 border-rose-100 text-rose-900"
-                    : "bg-emerald-50/70 border-emerald-100 text-emerald-900"
-                }`}
-              >
-                <span
-                  className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 shadow-xs ${
-                    pendingOrders > 0 ? "bg-rose-500 animate-pulse" : "bg-emerald-500"
-                  }`}
-                />
-                <div>
-                  <p className="text-sm font-bold">
-                    {pendingOrders > 0
-                      ? `Orders: ${pendingOrders} require attention`
-                      : "Orders: all dispatched"}
-                  </p>
-                  <p className="text-xs opacity-90 mt-0.5">
-                    {pendingOrders > 0
-                      ? "Fulfillment or courier tracking pending"
-                      : "Zero fulfillment backlog"}
-                  </p>
-                </div>
+              {/* Orders require attention in red */}
+              <div className={`${pendingOrders > 0 ? "text-rose-600" : "text-emerald-600"} flex items-center gap-2`}>
+                <span>
+                  {pendingOrders > 0
+                    ? `Orders: ${pendingOrders} require attention`
+                    : "Orders: all dispatched"}
+                </span>
               </div>
 
-              {/* Database & Sync Status */}
-              <div className="p-3.5 rounded-xl bg-[#fbf9f6] border border-[#e8d5c8] flex items-start gap-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#b08a78] mt-1.5 shrink-0 shadow-xs" />
-                <div>
-                  <p className="text-sm font-bold text-[#0a0808]">
-                    Database: MongoDB 7.0 Active
-                  </p>
-                  <p className="text-xs text-[#57534e] mt-0.5">
-                    All 68 collections & indexes synchronized
-                  </p>
-                </div>
-              </div>
-
-              {/* Timestamp */}
-              <div className="flex items-center gap-2 pt-1 text-xs text-[#57534e]">
-                <Clock size={14} className="text-[#b08a78]" />
-                <span>Data updated: {lastSyncTime || "Just now"}</span>
+              {/* Data updated timestamp in muted gray */}
+              <div className="text-slate-400 text-xs font-normal pt-2">
+                Data updated: {lastSyncTime || "Just now"}
               </div>
             </div>
           </div>
 
-          <div className="pt-5 mt-auto">
+          <div className="pt-6">
             <button
               onClick={() => setIsHealthModalOpen(true)}
-              className="w-full py-2.5 px-4 bg-white hover:bg-[#faf7f4] border border-[#e8d5c8] text-[#0a0808] font-semibold rounded-xl text-sm transition shadow-2xs hover:border-[#b08a78] flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 bg-white border border-slate-200 rounded-xl text-slate-800 font-semibold text-sm hover:bg-slate-50 transition shadow-2xs text-center"
             >
-              <ShieldCheck size={16} className="text-[#b08a78]" />
               View system health
             </button>
           </div>

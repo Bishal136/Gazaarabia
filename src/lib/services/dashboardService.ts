@@ -20,6 +20,7 @@ export interface DashboardData {
   openDisputes: number;
   pendingPayouts: number;
   lowStockProducts: number;
+  syncFailures?: number;
   totalRevenue: number;
   recentBlogs: { id: number; title: string; createdAt: string }[];
   charts: {

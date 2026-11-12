@@ -45,6 +45,7 @@ export async function GET(req: Request) {
       openDisputes,
       pendingPayouts,
       lowStockProducts,
+      syncFailures,
     ] = await Promise.all([
       db.collection("blogs").countDocuments(),
       db.collection("blog_categories").countDocuments()
@@ -70,6 +71,8 @@ export async function GET(req: Request) {
       db.collection("sellerpayouts").countDocuments({ status: { $in: ["Pending", "pending", "On Hold", "on hold"] } })
         .catch(() => 0),
       db.collection("products").countDocuments({ stock: { $lte: 5 } })
+        .catch(() => 0),
+      db.collection("store_syncs").countDocuments({ status: { $in: ["failed", "Failed", "error", "Error"] } })
         .catch(() => 0),
     ]);
 
@@ -130,6 +133,7 @@ export async function GET(req: Request) {
       openDisputes,
       pendingPayouts,
       lowStockProducts,
+      syncFailures,
       totalRevenue: Number(totalRevenue.toFixed(2)),
       recentBlogs,
       charts: {
