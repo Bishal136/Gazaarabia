@@ -2,11 +2,18 @@ import { Metadata, ResolvingMetadata } from "next";
 import { notFound } from "next/navigation";
 import { FaCalendarAlt, FaUserAlt, FaTag } from "react-icons/fa";
 import moment from "moment";
-import DOMPurify from "isomorphic-dompurify";
 import { prisma } from "@/lib/prisma";
 
 interface Props {
   params: Promise<{ slug: string }>;
+}
+
+function sanitizeHtml(html: string): string {
+  if (!html) return "";
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/\son\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, "")
+    .replace(/javascript\s*:/gi, "");
 }
 
 function stripHtmlToExcerpt(html: string, maxLength: number = 160): string {
@@ -89,10 +96,7 @@ export default async function BlogDetailPage({ params }: Props) {
     notFound();
   }
 
-  const sanitizedContent = DOMPurify.sanitize(blog.content, {
-    ADD_TAGS: ["iframe"],
-    ADD_ATTR: ["allow", "allowfullscreen", "frameborder", "scrolling", "target"],
-  });
+  const sanitizedContent = sanitizeHtml(blog.content);
 
   const excerpt = stripHtmlToExcerpt(blog.content, 160);
   const articleSchema = {
