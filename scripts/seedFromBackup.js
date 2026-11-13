@@ -429,15 +429,32 @@ async function runSeed() {
 
   const homeSettingUpdate = {
     shopByCategory: catIds.slice(0, 10),
-    signatureProducts: prodIds.slice(0, 6),
+    signatureProducts: prodIds.slice(0, 8),
     trendingNow: prodIds.slice(0, 8),
+    trendingProducts: prodIds.slice(0, 8),
     bestSellers: prodIds.slice(4, 12),
+    bestSellerProducts: prodIds.slice(4, 12),
     updatedAt: new Date(),
   };
 
   await db.collection("home-page-setting").updateOne(
     {},
     { $set: homeSettingUpdate, $setOnInsert: { createdAt: new Date() } },
+    { upsert: true }
+  );
+
+  await db.collection("homepage_settings").updateOne(
+    {},
+    {
+      $set: {
+        shopByCategory: catIds.slice(0, 10),
+        signatureProducts: prodIds.slice(0, 8),
+        trendingProducts: prodIds.slice(0, 8),
+        bestSellerProducts: prodIds.slice(4, 12),
+        updatedAt: new Date(),
+      },
+      $setOnInsert: { id: 1, createdAt: new Date() },
+    },
     { upsert: true }
   );
 

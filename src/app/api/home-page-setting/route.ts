@@ -46,32 +46,33 @@ export async function PUT(req: NextRequest) {
         const body = await req.json();
         const { heroSlides, shopByCategory, midBanner, signatureProducts, headerText, affiliateCommission, ambassadorCommission, trendingProducts, bestSellerProducts, shopByColors } = body;
 
+        const updateData: any = {};
+        if (heroSlides !== undefined) updateData.heroSlides = heroSlides;
+        if (shopByCategory !== undefined) updateData.shopByCategory = shopByCategory;
+        if (midBanner !== undefined) updateData.midBanner = midBanner;
+        if (signatureProducts !== undefined) updateData.signatureProducts = signatureProducts;
+        if (headerText !== undefined) updateData.headerText = headerText;
+        if (affiliateCommission !== undefined) updateData.affiliateCommission = affiliateCommission;
+        if (ambassadorCommission !== undefined) updateData.ambassadorCommission = ambassadorCommission;
+        if (trendingProducts !== undefined) updateData.trendingProducts = trendingProducts;
+        if (bestSellerProducts !== undefined) updateData.bestSellerProducts = bestSellerProducts;
+        if (shopByColors !== undefined) updateData.shopByColors = shopByColors;
+
         const updated = await prisma.homePageSetting.upsert({
             where: { id: 1 }, // If the row doesn't exist, this triggers CREATE
-            update: {
-                heroSlides,
-                shopByCategory,
-                midBanner,
-                signatureProducts,
-                headerText,
-                affiliateCommission,
-                ambassadorCommission,
-                trendingProducts,
-                bestSellerProducts,
-                shopByColors,
-            },
+            update: updateData,
             create: {
                 id: 1,
-                heroSlides,
-                shopByCategory,
-                midBanner,
-                signatureProducts,
-                headerText,
-                affiliateCommission,
-                ambassadorCommission,
-                trendingProducts,
-                bestSellerProducts,
-                shopByColors,
+                heroSlides: heroSlides || [],
+                shopByCategory: shopByCategory || [],
+                midBanner: midBanner || null,
+                signatureProducts: signatureProducts || [],
+                headerText: headerText || "",
+                affiliateCommission: affiliateCommission || 0,
+                ambassadorCommission: ambassadorCommission || 0,
+                trendingProducts: trendingProducts || null,
+                bestSellerProducts: bestSellerProducts || null,
+                shopByColors: shopByColors || null,
             },
         });
 

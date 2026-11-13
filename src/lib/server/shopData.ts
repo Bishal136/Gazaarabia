@@ -41,8 +41,8 @@ export async function fetchShopData(
   const hasOutOfStock = availability.includes("Out of stock");
 
   const andConditions: any[] = [
-    { active: true },
-    { isDeleted: false },
+    { active: { not: false } },
+    { isDeleted: { not: true } },
   ];
 
   // 1. Price Range condition (handles both regular sellingPrice and discountPrice if product is on sale)
@@ -126,7 +126,7 @@ export async function fetchShopData(
   if (sizes.length > 0 || colors.length > 0) {
     const matchingVariants = await prisma.productvariant.findMany({
       where: {
-        isActive: true,
+        isActive: { not: false },
         ...(sizes.length > 0 && { sizeId: { in: sizes } }),
         ...(colors.length > 0 && { colorId: { in: colors } }),
       },

@@ -22,6 +22,19 @@ import {
   X,
 } from "lucide-react";
 
+// Default empty filters state
+const DEFAULT_EMPTY_FILTERS: FilterState = {
+  q: "",
+  availability: [],
+  sizes: [],
+  colors: [],
+  categories: [],
+  subcategories: [],
+  priceMin: 0,
+  priceMax: 1000,
+  rating: 0,
+};
+
 // Helper to produce a deterministic key of the query state
 const serializeShopParams = (
   s: string,
@@ -213,8 +226,9 @@ export default function CategoryContent({ initialData }: { initialData?: any }) 
   };
 
   // Track the exact parameter key of the current loaded dataset
+  // Note: initialData from SSR represents the default unfiltered state (page 1, sort new, default empty filters)
   const lastFetchedKeyRef = React.useRef<string>(
-    initialData ? serializeShopParams(slug, currentPage, sort, filters) : ""
+    initialData ? serializeShopParams(slug, 1, "new", DEFAULT_EMPTY_FILTERS) : ""
   );
 
   // Synchronize state if initialData changes via route navigation
@@ -226,7 +240,7 @@ export default function CategoryContent({ initialData }: { initialData?: any }) 
       setSubcategories(initialData.subcategories || []);
       setTotalPages(initialData.totalPages || 1);
       setLoading(false);
-      lastFetchedKeyRef.current = serializeShopParams(slug, currentPage, sort, filters);
+      lastFetchedKeyRef.current = serializeShopParams(slug, 1, "new", DEFAULT_EMPTY_FILTERS);
     }
   }, [slug, initialData]);
 
@@ -290,20 +304,9 @@ export default function CategoryContent({ initialData }: { initialData?: any }) 
 
   // Reset all filters
   const handleResetFilters = () => {
-    const freshFilters: FilterState = {
-      q: "",
-      availability: [],
-      sizes: [],
-      colors: [],
-      categories: [],
-      subcategories: [],
-      priceMin: 0,
-      priceMax: 1000,
-      rating: 0,
-    };
-    setFilters(freshFilters);
+    setFilters(DEFAULT_EMPTY_FILTERS);
     setCurrentPage(1);
-    syncUrlWithState(1, sort, freshFilters);
+    syncUrlWithState(1, sort, DEFAULT_EMPTY_FILTERS);
   };
 
   const activeFilterCount =
