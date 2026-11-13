@@ -206,9 +206,24 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 <p className="text-sm font-semibold leading-tight line-clamp-1">
                   {item.product.title}
                 </p>
-                <p className="mt-1 text-[15px] font-semibold text-[var(--brand-primary)]">
-                  {formatGBP((item.selectedVariantData?.price ?? item.product?.sellingPrice ?? 0) * (item.quantity || 1))}
-                </p>
+                {(() => {
+                  const unitPrice = item.selectedVariantData?.price ?? item.product?.discountPrice ?? item.product?.sellingPrice ?? 0;
+                  const compareAt = item.selectedVariantData?.compareAtPrice ?? (item.product?.discountPrice && item.product.discountPrice < item.product.sellingPrice ? item.product.sellingPrice : null);
+                  const qty = item.quantity || 1;
+                  const hasDisc = compareAt && compareAt > unitPrice;
+                  return (
+                    <div className="mt-1 flex items-baseline gap-2">
+                      <span className="text-[15px] font-bold text-[var(--brand-primary)]">
+                        {formatGBP(unitPrice * qty)}
+                      </span>
+                      {hasDisc && (
+                        <span className="text-xs text-gray-400 line-through">
+                          {formatGBP(compareAt * qty)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="flex items-center justify-between mt-3">
                   {/*  Quantity */}

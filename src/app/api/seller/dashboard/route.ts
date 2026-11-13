@@ -27,11 +27,27 @@ export async function GET(req: NextRequest) {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // 1. Products count
-    const productsCount = await db.collection("products").countDocuments({
-      sellerId: seller.id,
-      isDeleted: { $ne: true },
-    });
+    // 1. Live vs Draft Products count
+    const [liveProductsCount, draftProductsCount, sellerProducts] = await Promise.all([
+      db.collection("products").countDocuments({
+        sellerId: seller.id,
+        isDeleted: { $ne: true },
+        active: true,
+      }),
+      db.collection("products").countDocuments({
+        sellerId: seller.id,
+        isDeleted: { $ne: true },
+        active: false,
+      }),
+      db
+        .collection("products")
+        .find({ sellerId: seller.id, isDeleted: { $ne: true } })
+        .limit(100)
+        .toArray(),
+    ]);
+
+    const totalProductsCount = liveProductsCount + draftProductsCount;
+    const sellerProductIds = sellerProducts.map((p: any) => p.id);
 
     // 2. Seller order items
     const sellerItems = await db
@@ -41,69 +57,57 @@ export async function GET(req: NextRequest) {
 
     const orderIds = Array.from(new Set(sellerItems.map((i: any) => i.orderId).filter(Boolean)));
 
-    // 3. Orders count
-    const ordersCount = orderIds.length > 0
-      ? await db.collection("orders").countDocuments({ id: { $in: orderIds } })
-      : 0;
-
-    // 4. Recent orders (top 5)
-    const recentOrdersRaw = orderIds.length > 0
+    // 3. Orders fetch & breakdown
+    const allOrders = orderIds.length > 0
       ? await db
           .collection("orders")
           .find({ id: { $in: orderIds } })
-          .sort({ createdAt: -1 })
-          .limit(5)
           .toArray()
       : [];
 
-    const recentOrders = recentOrdersRaw.map((order: any) => {
-      const items = sellerItems.filter((i: any) => i.orderId === order.id);
-      return {
-        id: order.id,
-        total: items.reduce((sum: number, item: any) => sum + (item.sellerEarning || item.price || 0), 0),
-        status: order.status || "pending",
-        createdAt: order.createdAt,
-        customer: `${order.firstName || ""} ${order.lastName || ""}`.trim() || order.customerEmail || "Customer",
-        itemsCount: items.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0),
-      };
-    });
+    const ordersCount = allOrders.length;
+    const orderMap = new Map(allOrders.map((o: any) => [o.id, o]));
 
-    // 5. Seller products
-    const sellerProducts = await db
-      .collection("products")
-      .find({ sellerId: seller.id, isDeleted: { $ne: true } })
-      .limit(50)
-      .toArray();
+    // Paid statuses that count towards Net Sales
+    const PAID_STATUSES = new Set(["paid", "succeeded", "processing", "confirmed", "shipped", "delivered"]);
 
-    const sellerProductIds = sellerProducts.map((p: any) => p.id);
+    let netSales = 0;
+    let paidOrdersCount = 0;
+    let pendingPaymentCount = 0;
 
-    // Top products by sales
-    const productSalesMap: Record<number, number> = {};
-    sellerItems.forEach((item: any) => {
-      if (item.productId) {
-        productSalesMap[item.productId] = (productSalesMap[item.productId] || 0) + (item.quantity || 1);
+    const paidOrderIdsSet = new Set<number>();
+
+    allOrders.forEach((o: any) => {
+      const statusLower = (o.status || "").toLowerCase();
+      if (PAID_STATUSES.has(statusLower)) {
+        paidOrderIdsSet.add(o.id);
+      }
+      if (statusLower === "pending") {
+        pendingPaymentCount++;
       }
     });
 
-    const topProducts = sellerProducts
-      .map((p: any) => ({
-        id: p.id,
-        title: p.title,
-        price: p.sellingPrice || 0,
-        salesCount: productSalesMap[p.id] || 0,
-      }))
-      .sort((a, b) => b.salesCount - a.salesCount)
-      .slice(0, 5);
+    paidOrdersCount = paidOrderIdsSet.size;
 
-    // 6. Low stock variants
+    sellerItems.forEach((item: any) => {
+      if (item.returnStatus === "refunded" || item.returnStatus === "cancelled") {
+        return;
+      }
+      if (paidOrderIdsSet.has(item.orderId)) {
+        netSales += Number(item.sellerEarning || (item.price * (item.quantity || 1)) || 0);
+      }
+    });
+
+    // 4. Low stock variants
     const lowStockCount = sellerProductIds.length > 0
       ? await db.collection("productvariant").countDocuments({
           productId: { $in: sellerProductIds },
           stock: { $lte: 5 },
+          isActive: true,
         })
       : 0;
 
-    // 7. Reviews
+    // 5. Reviews
     const reviews = sellerProductIds.length > 0
       ? await db.collection("review").find({
           productId: { $in: sellerProductIds },
@@ -115,7 +119,75 @@ export async function GET(req: NextRequest) {
       ? reviews.reduce((sum: number, r: any) => sum + (Number(r.rating) || 0), 0) / reviewsCount
       : 0;
 
-    // 8. Orders & Revenue over last 30 days
+    // 6. Pending return requests
+    const pendingReturnsCount = await db.collection("return_requests").countDocuments({
+      sellerId: seller.id,
+      status: "pending",
+    });
+
+    // 7. Store connection status
+    const isConnected = !!seller.storeType && (
+      seller.storeType === "woocommerce" ? !!seller.wooSiteUrl : true
+    );
+
+    // Items needing review (e.g. draft products or unmapped items)
+    const itemsNeedingReviewCount = await db.collection("products").countDocuments({
+      sellerId: seller.id,
+      isDeleted: { $ne: true },
+      $or: [{ active: false }, { syncIssue: { $exists: true, $ne: null } }],
+    });
+
+    // 8. Dynamic "Needs your attention" Tasks
+    const attentionTasks: Array<{
+      id: string;
+      task: string;
+      action: string;
+      href: string;
+    }> = [];
+
+    if (pendingPaymentCount > 0) {
+      attentionTasks.push({
+        id: "pending-orders",
+        task: `${pendingPaymentCount} ${pendingPaymentCount === 1 ? "order: payment pending" : "orders: payment pending"}`,
+        action: "Review orders",
+        href: "/seller/orders",
+      });
+    }
+
+    if (draftProductsCount > 0) {
+      attentionTasks.push({
+        id: "draft-products",
+        task: `${draftProductsCount} ${draftProductsCount === 1 ? "draft needs completing" : "drafts need completing"}`,
+        action: "Continue editing",
+        href: "/seller/products",
+      });
+    }
+
+    if (lowStockCount > 0) {
+      attentionTasks.push({
+        id: "low-stock",
+        task: `${lowStockCount} ${lowStockCount === 1 ? "variant running low" : "variants running low"}`,
+        action: "Check stock",
+        href: "/seller/products",
+      });
+    }
+
+    if (pendingReturnsCount > 0) {
+      attentionTasks.push({
+        id: "pending-returns",
+        task: `${pendingReturnsCount} ${pendingReturnsCount === 1 ? "return request pending" : "return requests pending"}`,
+        action: "Review returns",
+        href: "/seller/returns",
+      });
+    }
+
+    // 9. Balances & Paid out calculation
+    const availableBalance = Number(seller.availableBalance || 0);
+    const pendingBalance = Number(seller.pendingBalance || 0);
+    const totalEarned = Number(seller.totalEarned || 0);
+    const paidOut = Math.max(0, totalEarned - availableBalance - pendingBalance);
+
+    // 10. Orders & Revenue over last 30 days (for charts & legacy consumers)
     const recentSellerItems = sellerItems.filter((i: any) => {
       const itemDate = i.createdAt ? new Date(i.createdAt) : null;
       return itemDate && itemDate >= thirtyDaysAgo;
@@ -130,47 +202,70 @@ export async function GET(req: NextRequest) {
       revenueOverTime[date] = (revenueOverTime[date] || 0) + (item.sellerEarning || 0);
     });
 
-    // 9. Order status breakdown
-    const orderStatusMap: Record<string, number> = {};
-    if (orderIds.length > 0) {
-      const allOrders = await db
-        .collection("orders")
-        .find({ id: { $in: orderIds } })
-        .project({ status: 1 })
-        .toArray();
-
-      allOrders.forEach((o: any) => {
-        const s = o.status || "pending";
-        orderStatusMap[s] = (orderStatusMap[s] || 0) + 1;
+    // 11. Recent orders preview
+    const recentOrders = allOrders
+      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5)
+      .map((order: any) => {
+        const items = sellerItems.filter((i: any) => i.orderId === order.id);
+        return {
+          id: order.id,
+          total: items.reduce((sum: number, item: any) => sum + (item.sellerEarning || item.price || 0), 0),
+          status: order.status || "pending",
+          createdAt: order.createdAt,
+          customer: `${order.firstName || ""} ${order.lastName || ""}`.trim() || order.customerEmail || "Customer",
+          itemsCount: items.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0),
+        };
       });
-    }
 
-    const orderStatus = Object.entries(orderStatusMap).map(([status, count]) => ({
-      status,
-      _count: { id: count },
-    }));
-
-    // 10. Total revenue
     const totalRevenue = sellerItems.reduce((sum: number, i: any) => sum + (i.sellerEarning || 0), 0);
 
     return NextResponse.json({
-      products: productsCount,
+      // ── Core metrics matching new Dashboard UI ──
+      netSales: Number(netSales.toFixed(2)),
+      paidOrdersCount,
       orders: ordersCount,
+      ordersPendingPayment: pendingPaymentCount,
+      ordersSubtitle: pendingPaymentCount > 0 ? "Payment pending" : "All fulfilled",
+
+      products: {
+        total: totalProductsCount,
+        live: liveProductsCount,
+        drafts: draftProductsCount,
+      },
+
+      reviews: {
+        count: reviewsCount,
+        avgRating: Number(avgRating.toFixed(1)),
+      },
+
+      attentionTasks,
+
+      balances: {
+        available: Number(availableBalance.toFixed(2)),
+        pending: Number(pendingBalance.toFixed(2)),
+        paidOut: Number(paidOut.toFixed(2)),
+        totalEarned: Number(totalEarned.toFixed(2)),
+      },
+
+      storeConnection: {
+        connected: isConnected,
+        storeType: seller.storeType || null,
+        shopName: seller.shopName || (seller.storeType === "woocommerce" ? "WooCommerce" : seller.storeType === "shopify" ? "Shopify" : "Store"),
+        lastSyncedAt: seller.lastSyncedAt || seller.updatedAt || null,
+        itemsNeedingReview: itemsNeedingReviewCount,
+      },
+
+      // ── Backward-compatible legacy fields ──
+      productsCount: totalProductsCount,
       revenue: Number(totalRevenue.toFixed(2)),
       avgRating: Number(avgRating.toFixed(1)),
       lowStock: lowStockCount,
-      reviews: reviewsCount,
+      reviewsCount,
       recentOrders,
-      topProducts,
-      balances: {
-        available: seller.availableBalance || 0,
-        pending: seller.pendingBalance || 0,
-        totalEarned: seller.totalEarned || 0,
-      },
       charts: {
         ordersOverTime,
         revenueOverTime,
-        orderStatus,
       },
     });
   } catch (error: any) {

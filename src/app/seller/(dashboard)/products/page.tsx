@@ -205,15 +205,15 @@ export default function ProductListPage() {
           <p className="text-gray-500 mt-2 font-medium">Manage, track and optimize your product catalog.</p>
         </div>
 
-        {/* <div className="flex flex-wrap gap-4 w-full lg:w-auto">
+        <div className="flex flex-wrap gap-4 w-full lg:w-auto">
           <button
             onClick={() => router.push("/seller/products/form")}
-            className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white px-8 py-4 rounded-[1.5rem] font-bold transition-all shadow-xl shadow-black/10 active:scale-95 group"
+            className="flex-1 lg:flex-none inline-flex items-center justify-center gap-2.5 bg-[var(--brand-primary)] hover:bg-[#c32230] text-white px-6 py-3.5 rounded-xl font-bold text-sm shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 active:scale-95 transition-all duration-200 group"
           >
-            <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
-            Create Product
+            <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
+            <span>Create Product</span>
           </button>
-        </div> */}
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -508,12 +508,6 @@ export default function ProductListPage() {
                         <h3 className="text-xl font-black text-gray-900">Inventory Empty</h3>
                         <p className="text-gray-400 font-medium mt-2">No products match your current filters or you haven't added any yet.</p>
                       </div>
-                      <button
-                        onClick={() => router.push("/seller/products/form")}
-                        className="bg-gray-900 text-white px-8 py-3 rounded-2xl font-bold text-sm hover:bg-black transition-all shadow-lg shadow-black/10"
-                      >
-                        Add Your First Product
-                      </button>
                     </div>
                   </td>
                 </tr>

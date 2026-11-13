@@ -13,6 +13,7 @@ export interface ProductVariant {
   sizeId: string | number;
   sku: string;
   price: string | number;
+  compareAtPrice?: string | number;
   stock: string | number;
   isActive?: boolean;
   images: VariantImage[];

@@ -1,103 +1,74 @@
-# Feature Concept: Standardized 3:4 Portrait Aspect Ratio & Automated Image Cropping Pipeline across Catalog & Uploads
+# Product Discount Pricing System: Seller Form & Storefront Architecture
 
-* **Author:** Gazaarabia Core Engineering & UI/UX Team
-* **Date:** 2026-11-11
-* **Status:** Resolved, Implemented & Verified
+* **Author:** Antigravity (EGM Brainstorm)
+* **Date:** 2026-11-13
+* **Status:** Initial Brainstorm & Problem Definition
 
----
+## Overview
 
-## 1. Executive Summary & Problem Diagnosis
+Gazaarabia currently displays single flat prices (e.g., £60.00) across the storefront without e-commerce discount mechanics (regular price strikethrough, discounted sale price, or percentage-off badges). Furthermore, the Seller Panel product form only exposes "Selling Price" and "Cost Price" fields, preventing sellers from running sales, promotional markdowns, or seasonal discounts.
 
-On the `/shop/women` catalog route, several product items (specifically *"Butter Yellow Embellished Abaya"*, ID 205, and *"Black and White Polka Dot Abaya"*, ID 203) displayed in an awkward landscape orientation instead of standard luxury portrait catalog cards.
-
-### Root-Cause Isolation:
-1. **EXIF Camera Orientation Tag 6:**
-   Smartphones (Apple iOS iPhone and Android) physically record high-resolution photos in landscape sensor arrays (e.g., `5712×4284px`) and append an EXIF metadata orientation tag (`Orientation: 6` = Rotate 90° CW).
-2. **Missing Sharp EXIF Auto-Orientation:**
-   The backend upload pipelines (`/api/uploads` and `/api/upload`) previously fed raw image buffers directly to Sharp without calling `.rotate()`. Sharp omitted EXIF orientation transformation, outputting raw landscape pixel buffers.
-3. **No 3:4 Portrait Aspect Ratio Enforcement on Ingestion:**
-   The upload endpoints previously used `sharp.resize({ width: maxWidth, fit: "inside" })`. For landscape uploads, this preserved horizontal bounding boxes (e.g. 1000×750px) rather than normalizing product catalog photos to portrait standards.
-4. **Card Framing Deficiencies:**
-   Storefront cards lacked explicit top-anchored framing (`object-top`), which is crucial for modest fashion apparel (abayas, kaftans, and hijabs) so headwear, necklines, and upper silhouettes remain perfectly framed.
-5. **Absence of Vendor & Admin Upload Guidance:**
-   Neither the Admin product management form nor the Seller Media Uploader provided instructions or aspect ratio recommendations to vendors before file selection.
+This initiative introduces an end-to-end discount pricing workflow:
+1. Enabling sellers in the Seller Panel product form to set regular pricing alongside promotional sale pricing or percentage discounts.
+2. Propagating promotional pricing through to the storefront Product Details page, product cards, cart drawer, and checkout pipeline.
+3. Rendering strikethrough original prices and dynamic percentage-off badges.
 
 ---
 
-## 2. Technical Architecture & Component Changes
+## Analysis & Current Codebase Audit
 
-```mermaid
-flowchart TD
-    A["Raw Photo Upload (Admin / Seller)"] --> B["Upload API Endpoint (/api/uploads)"]
-    B --> C["sharp(inputBuffer).rotate()"]
-    C --> D{"Folder Type?"}
-    D -- "products / variants" --> E["Crop to 3:4 Portrait (1200x1600px)\nfit: 'cover', position: 'top'"]
-    D -- "hero / banners" --> F["Resize (1600px wide, fit: 'inside')"]
-    D -- "misc / brand / avatar" --> G["Resize (1000px wide, fit: 'inside')"]
-    E --> H["Convert to WebP (Quality 82)\nSHA-256 Deduplication"]
-    H --> I["Saved to Disk & URL Returned"]
-    I --> J["Frontend Catalog Display"]
-    J --> K["aspect-[3/4] Container\nw-full h-full object-cover object-top"]
-```
+### 1. Database Schema (`prisma/schema.prisma`)
+* The `products` collection already includes:
+  * `costPrice`: Float? (Wholesale cost to seller)
+  * `sellingPrice`: Float (Currently used as the active price)
+  * `discountPrice`: Float? (Present in schema, partially supported in API routes, but unexposed in Seller Form UI)
+* The `productvariant` collection currently includes:
+  * `price`: Float (Active variant price)
+  * `compareAtPrice`: Float? (Present in schema, but not exposed in the variant editor)
 
-### A. Frontend Catalog Cards (`aspect-[3/4]` & `object-cover object-top`)
-* **[src/components/ProductCard.tsx](file:///home/bishal/BishalHome/Cours/Ecommarce/Gazaarabia/src/components/ProductCard.tsx):**
-  - **Grid View:** Enforced `relative w-full aspect-[3/4] overflow-hidden bg-[#f8f5f0] rounded-2xl shadow-sm hover:shadow-md transition-all duration-300` with inline fallback `style={{ aspectRatio: "3/4" }}`. Removed limiting `max-w-[320px]` constraint so cards stretch uniformly across grid column tracks.
-  - **Image Element:** Configured `<Image fill className="w-full h-full object-cover object-top transition-all duration-500 ...">` on primary and secondary hover swap images.
-  - **List View:** Standardized container to `relative w-full sm:w-56 shrink-0 aspect-[3/4] overflow-hidden bg-[#f8f5f0] rounded-xl` with `object-cover object-top`.
-* **[src/components/SingleImgMultiColorsProductCard.tsx](file:///home/bishal/BishalHome/Cours/Ecommarce/Gazaarabia/src/components/SingleImgMultiColorsProductCard.tsx):**
-  - Added strict `style={{ aspectRatio: "3/4" }}` and `className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"`.
-* **[src/components/SimpleProductCard.tsx](file:///home/bishal/BishalHome/Cours/Ecommarce/Gazaarabia/src/components/SimpleProductCard.tsx):**
-  - Added strict `style={{ aspectRatio: "3/4" }}` and `className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"`.
+### 2. Seller Product Form (`src/app/seller/(dashboard)/products/form/[[...id]]/page.tsx`)
+* Lines 760–788 expose only two text fields: "Selling Price" and "Cost Price".
+* `discountPrice` exists in internal state (`form.discountPrice`) and is mapped in `src/app/api/seller/products/route.ts`, but has zero user-facing inputs or calculation helpers.
+* Sellers cannot currently input a discount percentage or sale price.
+
+### 3. Product Details Page (`src/app/(site)/products/[slug]/ProductDetails.tsx`)
+* Lines 827–839 calculate `displayPrice` and `originalPrice`.
+* If variants exist, `selectedVariant.price` overrides `displayPrice`. Because variants currently lack compare-at pricing or discount association, `originalPrice` resolves to null, rendering a plain single price with no discount badge or strikethrough.
+
+### 4. Product Cards & Search
+* `src/components/ProductCard.tsx` lines 320–335 have basic conditional rendering for `product.discountPrice < product.sellingPrice`, but lack visual discount percentage badges (e.g., `-25%` or `SALE`) on the card image.
 
 ---
 
-### B. Ingestion & Automated Cropping Pipeline
-* **[src/app/api/uploads/route.ts](file:///home/bishal/BishalHome/Cours/Ecommarce/Gazaarabia/src/app/api/uploads/route.ts) & [src/app/api/upload/route.ts](file:///home/bishal/BishalHome/Cours/Ecommarce/Gazaarabia/src/app/api/upload/route.ts):**
-  - Added `sharp(inputBuffer).rotate()` to automatically parse EXIF metadata and orient vertical iPhone/Android photos upright.
-  - Added conditional product cropping:
-    ```typescript
-    if (isProductOrVariant) {
-      webpBuffer = await imageProcessor
-        .resize({
-          width: 1200,
-          height: 1600,
-          fit: "cover",
-          position: "top", // Top-anchored cropping preserves neckline, hijab & garment silhouette
-        })
-        .webp({ quality: 82 })
-        .toBuffer();
-    }
-    ```
-  - Preserved lossless SHA-256 deduplication and high-efficiency WebP conversion.
+## Goals vs. Non-Goals
+
+### In-Scope Goals:
+* **Seller Form Upgrade**: Add intuitive inputs for "Regular Price" (Original Price) and "Sale Price" (Discounted Price), plus a dynamic Discount Percentage toggle/calculator (changing discount % updates sale price, and vice versa).
+* **Variant Consistency**: Ensure variant pricing properly reflects the discount status (either inherited from product-level discount percentage or specified per variant).
+* **Product Details UI**: Display the active discounted price prominently, strikethrough original price, and a styled `% OFF` badge (e.g., `Save 20%`).
+* **Catalog & Cards**: Add badge overlays (`-X% OFF`) and strikethrough prices across ProductCard grids, Trending Now, and Search.
+* **Cart & Checkout Invariant**: Ensure the customer is billed strictly the discounted price, and commission is calculated accurately on the final transaction amount.
+
+### Out-of-Scope Non-Goals:
+* Flash-sale countdown timers with automated expiry schedules (to be handled in a separate campaign engine).
+* Coupon code application engine (coupons are already handled separately via `/api/coupons`).
 
 ---
 
-### C. Admin & Seller UI Upload Guidance
-* **[src/components/seller/MediaUploader.tsx](file:///home/bishal/BishalHome/Cours/Ecommarce/Gazaarabia/src/components/seller/MediaUploader.tsx):**
-  - Rendered a visible guidance banner: `📐 Recommended: 3:4 Portrait (e.g. 1200×1600px). Uploads are automatically auto-oriented and formatted to 3:4 portrait.`
-  - Refactored upload preview cards from `aspect-square` to `aspect-[3/4]` with `object-cover object-top` so vendors see accurate representations of their catalog cards before publishing.
-* **[src/app/admin/(dashboard)/products/form/[[...id]]/page.tsx](file:///home/bishal/BishalHome/Cours/Ecommarce/Gazaarabia/src/app/admin/(dashboard)/products/form/[[...id]]/page.tsx):**
-  - Added banner guidance chip next to the `Images *` header and variant images section.
-  - Adjusted admin thumbnail previews from `w-24 h-24` square to `w-24 h-32 aspect-[3/4]` with `object-cover object-top`.
-* **[src/components/seller/VariantsTikTokStyle.tsx](file:///home/bishal/BishalHome/Cours/Ecommarce/Gazaarabia/src/components/seller/VariantsTikTokStyle.tsx):**
-  - Modernized variant photo upload box from `1:1` square to `3:4` portrait (`w-14 h-[72px] aspect-[3/4] object-top`).
+## Alternatives Weighed
+
+1. **Product-Level Global Discount vs. Variant-Level Compare-At Price**:
+   * *Alternative A*: Purely product-level `discountPrice`. Simple, but breaks if variants have differing prices (e.g., Size XXL costs more than S).
+   * *Alternative B*: Percentage-based discount applied uniformly to all variants, or supporting `compareAtPrice` per variant in `VariantsTikTokStyle.tsx`.
+2. **Field Semantics (`sellingPrice` vs `discountPrice`)**:
+   * *Convention 1*: `sellingPrice` = Original/Regular Price, `discountPrice` = Reduced Sale Price. If `discountPrice` is null/empty, active price is `sellingPrice`.
+   * *Convention 2*: `sellingPrice` = Active Price, `originalPrice` / `compareAtPrice` = Strikethrough Reference.
+   * Currently, existing codebase components (`ProductCard.tsx`, `trendingNow.tsx`, `bestSellers.tsx`) follow Convention 1: `discountPrice` is the reduced price and `sellingPrice` is the regular price.
 
 ---
 
-### D. Existing Image Normalization (In-Place Fix)
-* Normalized all 29 existing raw iPhone images across `uploads/products/` and `uploads/variants/`:
-  - `1782346476887-IMG_5657.jpeg` (*Butter Yellow Embellished Abaya*): Transformed from `5712×4284 (orient: 6, 3.4 MB)` to `1200×1600 (orient: undefined, 163.4 KB)`.
-  - `1782344731149-IMG_5521.jpeg` (*Black and White Polka Dot Abaya*): Transformed from `4032×3024 (orient: 6, 2.2 MB)` to `1200×1600 (orient: undefined, 259.8 KB)`.
-  - `1782345925978-IMG_6178.jpeg`, `1782345951021-IMG_6180.jpeg`, `1782346935973-IMG_5611.jpeg`, `1782346947218-IMG_6293.jpeg`: All standardized to `1200×1600 3:4` portraits.
-  - All original raw camera files safely archived under `uploads/backup_raw_unrotated/`.
-  - Next.js image cache cleared to invalidate stale landscape thumbnail caches.
+## Open Design Questions for Clarification
 
----
-
-## 3. Verification & Results
-
-1. **Orientation Test:** Verified via Sharp metadata that `orientation` is normalized across all product photos; orientation tag 6 is cleared and dimensions are strictly `1200×1600`.
-2. **Aspect Ratio Uniformity:** All card containers strictly enforce `aspect-[3/4]`, and images fill `100%` width and height with `object-cover object-top`, eliminating distorted landscape rows.
-3. **Payload Reduction:** Raw image file sizes dropped from ~3.5MB down to ~160KB (over 95% bandwidth reduction per card).
-4. **Build & Module Integrity:** Components validated and compiled without errors.
+1. How should discounts interact with product variants when variants have different base prices?
+2. Should the seller input be bi-directional (entering either a discounted price in GBP or a discount percentage)?
+3. Should the discount badge display the exact percentage savings (e.g., `25% OFF`) or a general `SALE` badge, or both?

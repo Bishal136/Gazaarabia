@@ -687,8 +687,8 @@ function ProductFormContent() {
             value={form.sellingPrice} onChange={handleInputChange} inputProps={{ required: true }} fullWidth sx={fieldStyle} />
           <TextField label="Commission (%)" name="commissionValue" type="number"
             value={form.commissionValue} onChange={handleInputChange} fullWidth sx={fieldStyle} />
-          {/* <TextField label={<RequiredLabel text="Discount Price" />} name="discountPrice" type="number"
-            value={form.discountPrice} onChange={handleInputChange} inputProps={{ required: true }} fullWidth sx={fieldStyle} /> */}
+          <TextField label="Discount Price (Optional)" name="discountPrice" type="number"
+            value={form.discountPrice} onChange={handleInputChange} fullWidth sx={fieldStyle} helperText="Promotional price customer pays" />
           <TextField label={<RequiredLabel text="Base Qty" />} name="baseQty" type="number"
             value={form.baseQty} onChange={handleInputChange} inputProps={{ required: true }} fullWidth sx={fieldStyle} />
           <TextField label={<RequiredLabel text="Barcode" />} name="barcode"

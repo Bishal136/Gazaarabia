@@ -54,13 +54,17 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, message: `Variant ${item.variantId} not found.` }, { status: 400 });
       }
 
-      // If variant price is 0, fallback to product price
+      // If variant price is 0 or product has active discount
+      const dbProduct = await prisma.products.findUnique({
+        where: { id: dbVariant.productId },
+        select: { sellingPrice: true, discountPrice: true }
+      });
+
       let unitPrice = dbVariant.price;
-      if (unitPrice === 0) {
-        const dbProduct = await prisma.products.findUnique({
-          where: { id: dbVariant.productId },
-          select: { sellingPrice: true }
-        });
+      const hasDiscount = dbProduct?.discountPrice && dbProduct.discountPrice < dbProduct.sellingPrice;
+      if (hasDiscount && (unitPrice === 0 || unitPrice === dbProduct.sellingPrice || (item.price && Math.abs(item.price - dbProduct.discountPrice) < 0.01))) {
+        unitPrice = dbProduct.discountPrice;
+      } else if (unitPrice === 0) {
         unitPrice = dbProduct?.sellingPrice || 0;
       }
 
@@ -259,7 +263,10 @@ export async function POST(req: NextRequest) {
         select: { price: true }
       });
 
-      const unitPrice = dbVariant?.price || product.sellingPrice;
+      const hasDiscount = product.discountPrice && product.discountPrice < product.sellingPrice;
+      const unitPrice = (hasDiscount && (!dbVariant?.price || dbVariant.price === product.sellingPrice || (item.price && Math.abs(item.price - product.discountPrice) < 0.01)))
+        ? product.discountPrice
+        : (dbVariant?.price || product.discountPrice || product.sellingPrice);
       const subtotal = unitPrice * item.quantity;
 
       // ============================

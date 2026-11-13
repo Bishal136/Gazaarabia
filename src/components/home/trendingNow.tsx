@@ -137,6 +137,13 @@ export default function TrendingNow({ products }: TrendingNowProps) {
                       Trending
                     </div>
 
+                    {/* Discount Badge */}
+                    {p.discountPrice && p.discountPrice < p.sellingPrice && (
+                      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 bg-red-600 text-white text-[8px] sm:text-[10px] font-black px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow-md uppercase tracking-wider">
+                        -{Math.round(((p.sellingPrice - p.discountPrice) / p.sellingPrice) * 100)}%
+                      </div>
+                    )}
+
                     <Image
                       src={p.productimage?.[0]?.url || "/placeholder.jpg"}
                       alt={p.title}
@@ -172,15 +179,15 @@ export default function TrendingNow({ products }: TrendingNowProps) {
                       {p.discountPrice && p.discountPrice < p.sellingPrice ? (
                         <>
                           <span className="text-[var(--brand-primary)] font-bold text-[13px] sm:text-[15px]">
-                            £{p.discountPrice}
+                            £{Number(p.discountPrice).toFixed(2)}
                           </span>
                           <span className="text-gray-400 line-through text-[10px] sm:text-xs">
-                            £{p.sellingPrice}
+                            £{Number(p.sellingPrice).toFixed(2)}
                           </span>
                         </>
                       ) : (
                         <span className="text-[var(--brand-primary)] font-bold text-[13px] sm:text-[15px]">
-                          £{p.sellingPrice}
+                          £{Number(p.sellingPrice).toFixed(2)}
                         </span>
                       )}
                     </div>

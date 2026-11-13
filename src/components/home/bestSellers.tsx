@@ -80,6 +80,11 @@ export default function BestSellers({ products }: BestSellersProps) {
                       Best Seller
                     </span>
                   </div>
+                  {p.discountPrice && p.discountPrice < p.sellingPrice && (
+                    <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 bg-red-600 text-white text-[9px] sm:text-xs font-black px-2 sm:px-3 py-0.5 sm:py-1 rounded-full shadow-md uppercase tracking-wider">
+                      -{Math.round(((p.sellingPrice - p.discountPrice) / p.sellingPrice) * 100)}%
+                    </div>
+                  )}
                   <Image
                     src={p.productimage?.[0]?.url || "/placeholder.jpg"}
                     alt={p.title}
@@ -100,11 +105,11 @@ export default function BestSellers({ products }: BestSellersProps) {
                   <div className="flex items-center justify-center gap-1.5 mt-1">
                     {p.discountPrice && p.discountPrice < p.sellingPrice ? (
                       <>
-                        <span className="text-[var(--brand-primary)] font-bold text-sm sm:text-lg">£{p.discountPrice}</span>
-                        <span className="text-gray-400 line-through text-[10px] sm:text-sm">£{p.sellingPrice}</span>
+                        <span className="text-[var(--brand-primary)] font-bold text-sm sm:text-lg">£{Number(p.discountPrice).toFixed(2)}</span>
+                        <span className="text-gray-400 line-through text-[10px] sm:text-sm">£{Number(p.sellingPrice).toFixed(2)}</span>
                       </>
                     ) : (
-                      <span className="text-[var(--brand-primary)] font-bold text-sm sm:text-lg">£{p.sellingPrice}</span>
+                      <span className="text-[var(--brand-primary)] font-bold text-sm sm:text-lg">£{Number(p.sellingPrice).toFixed(2)}</span>
                     )}
                   </div>
                   {p.productvariant && p.productvariant.filter(v => v.color).length > 0 && (
@@ -140,6 +145,11 @@ export default function BestSellers({ products }: BestSellersProps) {
                   <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 w-5 h-5 sm:w-7 sm:h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm">
                     <span className="text-gray-700 text-[9px] sm:text-xs font-bold">#{i + 3}</span>
                   </div>
+                  {p.discountPrice && p.discountPrice < p.sellingPrice && (
+                    <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 bg-red-600 text-white text-[8px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full shadow-md uppercase tracking-wider">
+                      -{Math.round(((p.sellingPrice - p.discountPrice) / p.sellingPrice) * 100)}%
+                    </div>
+                  )}
                   <Image
                     src={p.productimage?.[0]?.url || "/placeholder.jpg"}
                     alt={p.title}
@@ -166,11 +176,11 @@ export default function BestSellers({ products }: BestSellersProps) {
                   <div className="flex items-center justify-center gap-1.5 mt-0.5 sm:mt-1">
                     {p.discountPrice && p.discountPrice < p.sellingPrice ? (
                       <>
-                        <span className="text-[var(--brand-primary)] font-bold text-[13px] sm:text-[15px]">£{p.discountPrice}</span>
-                        <span className="text-gray-400 line-through text-[10px] sm:text-xs">£{p.sellingPrice}</span>
+                        <span className="text-[var(--brand-primary)] font-bold text-[13px] sm:text-[15px]">£{Number(p.discountPrice).toFixed(2)}</span>
+                        <span className="text-gray-400 line-through text-[10px] sm:text-xs">£{Number(p.sellingPrice).toFixed(2)}</span>
                       </>
                     ) : (
-                      <span className="text-[var(--brand-primary)] font-bold text-[13px] sm:text-[15px]">£{p.sellingPrice}</span>
+                      <span className="text-[var(--brand-primary)] font-bold text-[13px] sm:text-[15px]">£{Number(p.sellingPrice).toFixed(2)}</span>
                     )}
                   </div>
                   {p.productvariant && p.productvariant.filter(v => v.color).length > 0 && (

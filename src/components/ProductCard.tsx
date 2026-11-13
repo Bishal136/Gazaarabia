@@ -44,6 +44,22 @@ export default function ProductCard({
   const primaryImg = images[0]?.url || "/images/placeholder.png";
   const secondaryImg = images[1]?.url || null;
 
+  const regPrice = Number(product.sellingPrice || product.price || 0);
+  let salePrice = product.discountPrice ? Number(product.discountPrice) : null;
+  if (!salePrice && regPrice > 0 && Array.isArray(product.productvariant) && product.productvariant.length > 0) {
+    const validPrices = product.productvariant
+      .map((v: any) => Number(v.price))
+      .filter((p: number) => !isNaN(p) && p > 0);
+    if (validPrices.length > 0) {
+      const minVarPrice = Math.min(...validPrices);
+      if (minVarPrice < regPrice) {
+        salePrice = minVarPrice;
+      }
+    }
+  }
+  const hasDiscount = Boolean(salePrice && regPrice > salePrice);
+  const discountPercent = hasDiscount && salePrice ? Math.round(((regPrice - salePrice) / regPrice) * 100) : 0;
+
   // =========================================================================
   // LIST VIEW LAYOUT
   // =========================================================================
@@ -71,12 +87,19 @@ export default function ProductCard({
             />
           </button>
 
-          {/* Sold Badge */}
-          {product.soldCount > 0 && soldDurationLabel && (
-            <div className="absolute top-3 left-3 z-20 bg-black/80 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full shadow-sm">
-              Sold {product.soldCount} in {soldDurationLabel}
-            </div>
-          )}
+          {/* Top-left Badges Container */}
+          <div className="absolute top-3 left-3 z-20 flex flex-col items-start gap-1.5 pointer-events-none">
+            {hasDiscount && salePrice && (
+              <span className="bg-red-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-md uppercase tracking-wider">
+                -{discountPercent}% OFF
+              </span>
+            )}
+            {product.soldCount > 0 && soldDurationLabel && (
+              <span className="bg-black/80 text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-full shadow-sm">
+                Sold {product.soldCount} in {soldDurationLabel}
+              </span>
+            )}
+          </div>
 
           {/* Static Primary + Hover Secondary Image */}
           <div className="relative w-full h-full overflow-hidden">
@@ -190,20 +213,21 @@ export default function ProductCard({
           {/* Bottom Bar: Price + Action Button */}
           <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-baseline gap-2">
-              {product.discountPrice &&
-              Number(product.discountPrice) <
-                Number(product.sellingPrice || product.price) ? (
+              {hasDiscount && salePrice ? (
                 <>
                   <span className="text-lg sm:text-xl font-bold text-[var(--brand-primary)]">
-                    £{Number(product.discountPrice).toFixed(2)}
+                    £{salePrice.toFixed(2)}
                   </span>
                   <span className="text-xs sm:text-sm text-gray-400 line-through">
-                    £{Number(product.sellingPrice || product.price || 0).toFixed(2)}
+                    £{regPrice.toFixed(2)}
+                  </span>
+                  <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-red-50 text-red-600 border border-red-200 uppercase tracking-wider">
+                    -{discountPercent}%
                   </span>
                 </>
               ) : (
                 <span className="text-lg sm:text-xl font-bold text-[var(--brand-primary)]">
-                  £{Number(product.sellingPrice || product.price || 0).toFixed(2)}
+                  £{regPrice.toFixed(2)}
                 </span>
               )}
             </div>
@@ -260,12 +284,19 @@ export default function ProductCard({
           />
         </button>
 
-        {/* Sold Badge - FIXED */}
-        {product.soldCount > 0 && soldDurationLabel && (
-          <div className="absolute top-3 left-3 z-20 bg-black/80 text-white text-[10px] px-3 py-1 rounded-full shadow-sm">
-            Sold {product.soldCount} in {soldDurationLabel}
-          </div>
-        )}
+        {/* Top-left Badges Container */}
+        <div className="absolute top-3 left-3 z-20 flex flex-col items-start gap-1.5 pointer-events-none">
+          {hasDiscount && salePrice && (
+            <span className="bg-red-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-md uppercase tracking-wider">
+              -{discountPercent}% OFF
+            </span>
+          )}
+          {product.soldCount > 0 && soldDurationLabel && (
+            <span className="bg-black/80 text-white text-[10px] px-2.5 py-0.5 rounded-full shadow-sm">
+              Sold {product.soldCount} in {soldDurationLabel}
+            </span>
+          )}
+        </div>
 
         {/* Static Primary + Hover Secondary Image */}
         <div className="relative w-full h-full overflow-hidden">
@@ -318,18 +349,18 @@ export default function ProductCard({
         <div className="mt-2 flex items-center justify-center gap-3">
           {/* Price with .toFixed(2) */}
           <div className="flex items-center gap-2">
-            {product.discountPrice && Number(product.discountPrice) < Number(product.sellingPrice || product.price) ? (
+            {hasDiscount && salePrice ? (
               <>
                 <p className="text-[var(--brand-primary)] font-semibold text-[15px]">
-                  £{Number(product.discountPrice).toFixed(2)}
+                  £{salePrice.toFixed(2)}
                 </p>
                 <p className="text-gray-400 line-through text-[13px]">
-                  £{Number(product.sellingPrice || product.price || 0).toFixed(2)}
+                  £{regPrice.toFixed(2)}
                 </p>
               </>
             ) : (
               <p className="text-[var(--brand-primary)] font-semibold text-[15px]">
-                £{Number(product.sellingPrice || product.price || 0).toFixed(2)}
+                £{regPrice.toFixed(2)}
               </p>
             )}
           </div>

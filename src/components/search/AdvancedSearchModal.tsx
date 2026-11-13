@@ -331,9 +331,9 @@ export default function AdvancedSearchModal({
                                   Out of Stock
                                 </span>
                               )}
-                              {product.discountPrice && (
-                                <span className="absolute top-2 left-2 bg-[var(--brand-primary)] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
-                                  Sale
+                              {product.discountPrice && Number(product.discountPrice) < Number(product.sellingPrice) && (
+                                <span className="absolute top-2 left-2 bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                                  -{Math.round(((Number(product.sellingPrice) - Number(product.discountPrice)) / Number(product.sellingPrice)) * 100)}%
                                 </span>
                               )}
                             </div>
@@ -543,9 +543,9 @@ export default function AdvancedSearchModal({
                                 }
                               }}
                             />
-                            {p.discountPrice && (
-                              <span className="absolute top-2 left-2 bg-[var(--brand-primary)] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
-                                Sale
+                            {p.discountPrice && Number(p.discountPrice) < Number(p.sellingPrice) && (
+                              <span className="absolute top-2 left-2 bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                                -{Math.round(((Number(p.sellingPrice) - Number(p.discountPrice)) / Number(p.sellingPrice)) * 100)}%
                               </span>
                             )}
                           </div>

@@ -20,7 +20,6 @@ export default function SellerHeader({ onMenuToggle }: { onMenuToggle: () => voi
     "/seller/products": {
       title: "Products",
       subtitle: "Manage the available products.",
-      action: { label: "Add Product", href: "/seller/products/form" },
     },
 
     "/seller/delivery-options": {

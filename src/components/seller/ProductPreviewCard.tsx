@@ -19,7 +19,11 @@ export const ProductPreviewCard = ({
   costPrice,
   discountPrice,
 }: ProductPreviewCardProps) => {
-  const displayPrice = sellingPrice || price || "0";
+  const regularVal = Number(sellingPrice || price || 0);
+  const discountVal = discountPrice ? Number(discountPrice) : 0;
+  const hasDiscount = discountVal > 0 && discountVal < regularVal;
+  const activePrice = hasDiscount ? discountVal : regularVal;
+  const discountPct = hasDiscount ? Math.round(((regularVal - discountVal) / regularVal) * 100) : 0;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow sticky top-6">
@@ -70,20 +74,25 @@ export const ProductPreviewCard = ({
 
         {/* Price Section */}
         <div className="space-y-2 py-2 border-t border-gray-100">
-          <div className="flex items-baseline gap-2">
+          <div className="flex flex-wrap items-baseline gap-2">
             <span className="text-2xl font-bold text-gray-900">
-              {displayPrice ? `$${Number(displayPrice).toFixed(2)}` : "Price"}
+              {activePrice ? `£${activePrice.toFixed(2)}` : "£0.00"}
             </span>
-            {discountPrice && Number(discountPrice) > 0 && (
-              <span className="text-sm text-gray-500 line-through">
-                ${Number(sellingPrice || price).toFixed(2)}
+            {hasDiscount && (
+              <span className="text-sm text-gray-400 line-through">
+                £{regularVal.toFixed(2)}
+              </span>
+            )}
+            {hasDiscount && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-50 text-red-600 border border-red-200 uppercase">
+                {discountPct}% OFF
               </span>
             )}
           </div>
 
           {costPrice && Number(costPrice) > 0 && (
             <div className="text-xs text-gray-500">
-              Cost: ${Number(costPrice).toFixed(2)}
+              Cost: £{Number(costPrice).toFixed(2)}
             </div>
           )}
         </div>

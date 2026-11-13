@@ -99,21 +99,10 @@ export const VariantVideoUploader = ({
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <label className="block text-sm font-semibold text-gray-700">
-          {variantLabel} Video <span className="text-gray-500 font-normal">(Optional)</span>
-        </label>
-        {videoUrl && (
-          <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
-            {videoUrl.startsWith("/uploads") ? "Uploaded File (1GB Limit)" : "Video Link Active"}
-          </span>
-        )}
-      </div>
-
+    <div className="space-y-4 w-full">
       {videoUrl ? (
         <div className="space-y-3">
-          <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-900 w-full max-w-md shadow-sm group">
+          <div className="relative rounded-2xl overflow-hidden border border-gray-200 bg-black w-full max-w-xl shadow-sm group">
             {isEmbeddable && embedUrl ? (
               <iframe
                 src={embedUrl}
@@ -133,37 +122,40 @@ export const VariantVideoUploader = ({
             <button
               type="button"
               onClick={handleRemove}
-              className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition shadow-lg z-10"
+              className="absolute top-3 right-3 p-2 bg-red-600/90 text-white rounded-full hover:bg-red-700 transition shadow-lg z-10"
               title="Delete video"
             >
               <Trash2 size={16} />
             </button>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-gray-500 max-w-md bg-gray-50 p-2.5 rounded-lg border border-gray-200">
-            <span className="truncate pr-2 font-mono">
-              {videoUrl}
-            </span>
+          <div className="flex items-center justify-between text-xs text-gray-600 max-w-xl bg-gray-50 px-4 py-3 rounded-xl border border-gray-200">
+            <div className="flex items-center gap-2 truncate">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+              <span className="truncate font-mono">
+                {videoUrl}
+              </span>
+            </div>
             <button
               type="button"
               onClick={handleRemove}
-              className="text-red-600 hover:text-red-700 font-medium shrink-0 ml-2"
+              className="text-red-600 hover:text-red-700 font-semibold shrink-0 ml-3 transition"
             >
               Change Video
             </button>
           </div>
         </div>
       ) : (
-        <div className="space-y-3 max-w-md">
+        <div className="space-y-3 w-full">
           {/* Tab Selector */}
-          <div className="inline-flex p-1 bg-gray-100 rounded-lg text-xs font-medium text-gray-600 border border-gray-200">
+          <div className="inline-flex p-1 bg-gray-100/80 rounded-xl text-xs font-semibold text-gray-600 border border-gray-200">
             <button
               type="button"
               onClick={() => setActiveTab("upload")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
                 activeTab === "upload"
-                  ? "bg-white text-gray-900 shadow-sm font-semibold"
-                  : "hover:text-gray-900"
+                  ? "bg-white text-gray-900 shadow-xs font-bold"
+                  : "text-gray-500 hover:text-gray-900"
               }`}
             >
               <Upload size={14} />
@@ -172,10 +164,10 @@ export const VariantVideoUploader = ({
             <button
               type="button"
               onClick={() => setActiveTab("link")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
                 activeTab === "link"
-                  ? "bg-white text-gray-900 shadow-sm font-semibold"
-                  : "hover:text-gray-900"
+                  ? "bg-white text-gray-900 shadow-xs font-bold"
+                  : "text-gray-500 hover:text-gray-900"
               }`}
             >
               <LinkIcon size={14} />
@@ -186,36 +178,39 @@ export const VariantVideoUploader = ({
           {activeTab === "upload" ? (
             <div
               onClick={() => !isUploading && fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
                 isUploading
                   ? "bg-blue-50/50 border-blue-300 pointer-events-none"
-                  : "border-gray-300 hover:border-blue-500 hover:bg-blue-50/30"
+                  : "border-gray-300 hover:border-blue-500 bg-gray-50/50 hover:bg-blue-50/20"
               }`}
             >
-              <PlayCircle className="mx-auto mb-2 text-blue-500" size={36} />
-              <p className="text-sm font-medium text-gray-800">
+              <PlayCircle className="mx-auto mb-2 text-blue-600" size={36} />
+              <p className="font-semibold text-gray-800 text-sm">
                 Click or drag & drop video to upload
               </p>
               <p className="text-xs text-gray-500 mt-1">
                 Supported formats: MP4, WebM, MOV, OGG (Max 1GB)
               </p>
+              <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50/70 border border-blue-100 rounded-full text-xs text-blue-700 font-medium">
+                <span>🎥 Showcase your product in motion to increase customer trust and conversions</span>
+              </div>
               {isUploading && (
                 <div className="mt-3 flex items-center justify-center gap-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                  <span className="text-xs font-medium text-blue-600">
+                  <span className="text-xs font-semibold text-blue-600">
                     Uploading video... (up to 1GB allowed)
                   </span>
                 </div>
               )}
             </div>
           ) : (
-            <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 space-y-3">
-              <label className="block text-xs font-medium text-gray-700">
-                Paste Video Link (YouTube, Vimeo, CDN, or MP4 URL)
+            <div className="border border-gray-200 rounded-xl p-5 bg-gray-50/50 space-y-3">
+              <label className="block text-xs font-semibold text-gray-700">
+                Paste Video Link (YouTube, Vimeo, CDN, or Direct MP4 URL)
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
-                  <LinkIcon className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                  <LinkIcon className="absolute left-3.5 top-3 text-gray-400" size={16} />
                   <input
                     type="url"
                     placeholder="https://www.youtube.com/watch?v=... or direct MP4 link"
@@ -227,13 +222,13 @@ export const VariantVideoUploader = ({
                         handleApplyLink();
                       }
                     }}
-                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                    className="w-full pl-10 pr-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={handleApplyLink}
-                  className="px-4 py-2 bg-[var(--brand-primary)] text-white text-sm font-medium rounded-lg hover:bg-[var(--brand-secondary)] transition shrink-0"
+                  className="px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition shrink-0 shadow-xs"
                 >
                   Apply Link
                 </button>

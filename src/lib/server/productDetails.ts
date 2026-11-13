@@ -10,6 +10,14 @@ import { connectToDatabase } from "@/lib/mongoose";
 const productCache = new Map<string, { data: any; expiry: number }>();
 const PRODUCT_CACHE_TTL_MS = 60 * 1000;
 
+export function invalidateProductCache(slug?: string) {
+  if (slug) {
+    productCache.delete(slug);
+  } else {
+    productCache.clear();
+  }
+}
+
 export async function fetchProductBySlug(slug: string, userId: number | null = null) {
   if (!userId) {
     const cached = productCache.get(slug);

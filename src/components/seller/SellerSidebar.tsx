@@ -67,7 +67,6 @@ const links = [
     label: "Products",
     icon: Boxes,
     children: [
-      { href: "/seller/products/form", label: "Add Product", icon: Plus },
       { href: "/seller/products", label: "Manage Products", icon: Boxes },
       { href: "/seller/integrations", label: "Integrations", icon: Package },
     ],

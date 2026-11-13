@@ -2,450 +2,307 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ShoppingBag,
-  Users as UsersIcon,
-  ClipboardCheck,
-  TrendingUp,
-  DollarSign,
-  Package,
-  Star,
-  AlertTriangle,
-  ArrowUpRight,
-  ArrowDownRight,
-  Clock,
-  Eye,
-  ChevronRight,
-  Truck
-} from "lucide-react";
 import { useSession } from "next-auth/react";
-import Loader from "@/components/Loader";
+import Link from "next/link";
 import SellerLoader from "@/components/seller/SellerLoader";
 import { ROUTES } from "@/constants/routes";
-import { dashboardService } from "@/lib/services/seller/dashboardService";
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  Cell,
-} from "recharts";
+  dashboardService,
+  SellerDashboardData,
+} from "@/lib/services/seller/dashboardService";
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
+function formatGBP(amount: number): string {
+  const num = Number(amount || 0);
+  return num.toLocaleString("en-GB", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
 
-export default function DashboardPage() {
+function formatRelativeTime(dateString: string | null | undefined): string {
+  if (!dateString) return "Never synced";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "Recently";
+
+  const now = new Date();
+  const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffSec < 60) return "Just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} ${diffMin === 1 ? "minute" : "minutes"} ago`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? "hour" : "hours"} ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return "Yesterday";
+  return `${diffDays} days ago`;
+}
+
+export default function SellerDashboardPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [data, setData] = useState<SellerDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const ordersChartData = dashboardData?.charts?.ordersOverTime
-    ? Object.entries(dashboardData.charts.ordersOverTime).map(
-      ([date, count]: any) => ({
-        name: date,
-        orders: count,
-      })
-    )
-    : [];
-
-  const revenueChartData = dashboardData?.charts?.revenueOverTime
-    ? Object.entries(dashboardData.charts.revenueOverTime).map(
-      ([date, amount]: any) => ({
-        name: date,
-        revenue: amount,
-      })
-    )
-    : [];
-
-  const [isFetched, setIsFetched] = useState(false);
-
+  // Authentication & authorization redirect
   useEffect(() => {
     if (status === "loading") return;
     if (status === "unauthenticated") {
       router.replace(ROUTES.SELLER.LOGIN);
     } else if (status === "authenticated" && session?.user?.role !== "seller") {
-      router.push(ROUTES.HOME);
+      router.replace(ROUTES.HOME);
     }
   }, [status, session?.user?.role, router]);
 
+  // Fetch real seller dashboard data from backend
   useEffect(() => {
-    if (status !== "authenticated" || !session?.user?.token || isFetched) return;
+    if (status !== "authenticated" || !session?.user?.token) return;
 
-    const fetchData = async () => {
+    const fetchDashboard = async () => {
       try {
-        const data = await dashboardService.getDashboard(session.user.token);
-        setDashboardData(data);
-        setIsFetched(true);
+        setLoading(true);
+        const result = await dashboardService.getDashboard(session.user.token);
+        setData(result);
       } catch (err) {
-        console.error("Dashboard load error:", err);
+        console.error("Seller dashboard fetch error:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
-  }, [status, session?.user?.token, isFetched]);
+    fetchDashboard();
+  }, [status, session?.user?.token]);
 
   if (loading) {
     return <SellerLoader />;
   }
 
-  if (!dashboardData) {
+  if (!data) {
     return (
-      <div className="p-10 text-center bg-white rounded-2xl border border-red-100 shadow-sm">
-        <AlertTriangle className="mx-auto text-red-500 mb-4" size={48} />
-        <h2 className="text-xl font-bold text-gray-800 mb-2">Data Unavailable</h2>
-        <p className="text-gray-500">We couldn't load your dashboard data right now.</p>
+      <div className="p-8 max-w-4xl mx-auto my-12 bg-white rounded-2xl border border-gray-200 text-center shadow-xs">
+        <h2 className="text-lg font-semibold text-gray-800 mb-2">Unable to load dashboard</h2>
+        <p className="text-sm text-gray-500 mb-6">
+          There was an issue fetching your store metrics. Please refresh or try again later.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-5 py-2 bg-[var(--brand-primary)] text-white text-xs font-semibold rounded-lg hover:bg-[var(--brand-secondary)] transition"
+        >
+          Reload Dashboard
+        </button>
       </div>
     );
   }
 
+  const liveCount = data.products?.live ?? 0;
+  const draftCount = data.products?.drafts ?? 0;
+  const totalProducts = data.products?.total ?? (liveCount + draftCount);
+
+  const reviewsCount = data.reviews?.count ?? 0;
+  const avgRating = data.reviews?.avgRating ?? 0;
+
+  const netSales = data.netSales ?? 0;
+  const paidOrdersCount = data.paidOrdersCount ?? 0;
+
+  const ordersCount = data.orders ?? 0;
+  const ordersSubtitle = data.ordersSubtitle || (data.ordersPendingPayment > 0 ? "Payment pending" : "All fulfilled");
+
+  const availableBalance = data.balances?.available ?? 0;
+  const pendingBalance = data.balances?.pending ?? 0;
+  const paidOutBalance = data.balances?.paidOut ?? 0;
+
+  const storeConnection = data.storeConnection;
+  const isStoreConnected = storeConnection?.connected ?? false;
+  const storeTypeDisplay = storeConnection?.storeType
+    ? storeConnection.storeType === "woocommerce"
+      ? "WooCommerce connected"
+      : storeConnection.storeType === "shopify"
+      ? "Shopify connected"
+      : `${storeConnection.storeType} connected`
+    : "No store connected";
+
+  const attentionTasks = data.attentionTasks ?? [];
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Store Overview</h1>
-          <p className="text-sm sm:text-base text-gray-500">Welcome back! Here's what's happening with your store today.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="bg-white px-3 sm:px-4 py-2 rounded-xl border border-gray-200 shadow-sm flex items-center gap-2">
-            <Clock size={16} className="text-gray-400" />
-            <span className="text-xs sm:text-sm font-medium text-gray-600">
-              {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </span>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto w-full space-y-6">
+      {/* ── TOP STATS ROW (4 Cards) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        {/* 1. Net Sales Card */}
+        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-800 tracking-tight">Net sales</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-950 tracking-tight mt-1.5 mb-1">
+              GBP {formatGBP(netSales)}
+            </p>
           </div>
-        </div>
-      </div>
-
-      {/* Primary Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatsCard
-          title="Total Revenue"
-          value={`£${dashboardData.revenue?.toLocaleString() || 0}`}
-          icon={<DollarSign size={24} />}
-          trend="+12.5%"
-          trendType="up"
-          color="bg-blue-500"
-          gradient="from-blue-600 to-blue-400"
-        />
-        <StatsCard
-          title="Total Orders"
-          value={dashboardData.orders || 0}
-          icon={<ClipboardCheck size={24} />}
-          trend="+8.2%"
-          trendType="up"
-          color="bg-emerald-500"
-          gradient="from-emerald-600 to-emerald-400"
-        />
-        <StatsCard
-          title="Avg. Ratings"
-          value={`${dashboardData.avgRating || 0} / 5`}
-          icon={<Star size={24} />}
-          trend="Based on reviews"
-          trendType="up"
-          color="bg-violet-500"
-          gradient="from-violet-600 to-violet-400"
-        />
-        <StatsCard
-          title="Total Products"
-          value={dashboardData.products || 0}
-          icon={<Package size={24} />}
-          trend={dashboardData.lowStock > 0 ? `${dashboardData.lowStock} Low Stock` : "All in stock"}
-          trendType={dashboardData.lowStock > 0 ? "down" : "up"}
-          color="bg-amber-500"
-          gradient="from-amber-600 to-amber-400"
-        />
-      </div>
-
-      {/* Store Balances & Quick Links */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Wallet Balance */}
-        <div className="lg:col-span-1 bg-gradient-to-br from-[#1e2a4a] to-[#2d3b5d] rounded-2xl sm:rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden group">
-          <div className="absolute -right-10 -top-10 bg-white/10 w-40 h-40 rounded-full blur-3xl group-hover:bg-white/20 transition-all duration-700"></div>
-          <h3 className="text-white/70 font-medium mb-4 sm:mb-6 flex items-center gap-2">
-            <DollarSign size={20} />
-            Available Balance
-          </h3>
-          <div className="text-3xl sm:text-4xl font-bold mb-6 sm:mb-8">
-            £{dashboardData.balances?.available?.toLocaleString() || '0.00'}
-          </div>
-          <div className="grid grid-cols-2 gap-4 pt-6 border-t border-white/10">
-            <div>
-              <p className="text-white/50 text-[10px] sm:text-xs mb-1 uppercase tracking-wider">Pending</p>
-              <p className="font-semibold text-base sm:text-lg">£{dashboardData.balances?.pending?.toLocaleString() || '0.00'}</p>
-            </div>
-            <div>
-              <p className="text-white/50 text-[10px] sm:text-xs mb-1 uppercase tracking-wider">Total Earned</p>
-              <p className="font-semibold text-base sm:text-lg">£{dashboardData.balances?.totalEarned?.toLocaleString() || '0.00'}</p>
-            </div>
-          </div>
-          <button
-            onClick={() => router.push('/seller/payouts')}
-            className="w-full mt-6 sm:mt-8 bg-white text-[#1e2a4a] py-3 rounded-xl font-bold hover:bg-gray-100 transition shadow-lg text-sm sm:text-base"
-          >
-            Withdraw Funds
-          </button>
+          <p className="text-xs text-gray-400 font-normal">
+            {netSales > 0
+              ? `From ${paidOrdersCount} paid ${paidOrdersCount === 1 ? "order" : "orders"}`
+              : "No paid sales yet"}
+          </p>
         </div>
 
-        {/* Quick Access */}
-        <div className="lg:col-span-2 bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-            Quick Actions
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            <QuickLink
-              icon={<ShoppingBag size={24} />}
-              label="Add Product"
-              path="/seller/products/form"
-              color="bg-blue-50 text-blue-600"
-            />
-            <QuickLink
-              icon={<ClipboardCheck size={24} />}
-              label="Orders"
-              path="/seller/orders"
-              color="bg-emerald-50 text-emerald-600"
-            />
-            <QuickLink
-              icon={<Star size={24} />}
-              label="Reviews"
-              path="/seller/reviews"
-              color="bg-amber-50 text-amber-600"
-            />
-            <QuickLink
-              icon={<Truck size={24} />}
-              label="Logistics"
-              path="/seller/delivery-settings"
-              color="bg-purple-50 text-purple-600"
-            />
+        {/* 2. Orders Card */}
+        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-800 tracking-tight">Orders</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-950 tracking-tight mt-1.5 mb-1">
+              {ordersCount}
+            </p>
           </div>
+          <p className="text-xs text-gray-400 font-normal">{ordersSubtitle}</p>
+        </div>
 
-          <div className="mt-6 sm:mt-8 p-4 sm:p-5 bg-amber-50 border border-amber-100 rounded-xl sm:rounded-2xl flex items-start gap-3 sm:gap-4">
-            <div className="bg-amber-500 p-2 rounded-lg text-white">
-              <AlertTriangle size={20} />
-            </div>
-            <div>
-              <h4 className="font-bold text-amber-900 text-sm sm:text-base">Inventory Alert</h4>
-              <p className="text-amber-800 text-xs sm:text-sm">
-                You have {dashboardData.lowStock} products running low on stock. Update them now to avoid losing sales.
-              </p>
-              <button
-                onClick={() => router.push('/seller/products')}
-                className="mt-2 text-amber-900 font-bold text-xs sm:text-sm underline flex items-center gap-1"
-              >
-                View Products <ChevronRight size={14} />
-              </button>
-            </div>
+        {/* 3. Products Card */}
+        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-800 tracking-tight">Products</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-950 tracking-tight mt-1.5 mb-1">
+              {totalProducts}
+            </p>
           </div>
+          <p className="text-xs text-gray-400 font-normal">
+            {liveCount} live / {draftCount} {draftCount === 1 ? "draft" : "drafts"}
+          </p>
+        </div>
+
+        {/* 4. Reviews Card */}
+        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-800 tracking-tight">Reviews</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-950 tracking-tight mt-1.5 mb-1">
+              {reviewsCount > 0 ? `${avgRating} ★ (${reviewsCount})` : "No reviews"}
+            </p>
+          </div>
+          <p className="text-xs text-gray-400 font-normal">
+            {reviewsCount > 0
+              ? `Based on ${reviewsCount} customer ${reviewsCount === 1 ? "review" : "reviews"}`
+              : "Your first review appears here"}
+          </p>
         </div>
       </div>
 
-      {/* Analytics Charts */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        {/* Revenue Chart */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-6 sm:mb-8">
-            <h3 className="text-base sm:text-lg font-bold text-gray-900">Revenue Performance</h3>
-            <select className="bg-gray-50 border border-gray-200 rounded-lg px-2 sm:px-3 py-1 text-xs sm:text-sm outline-none">
-              <option>Last 30 Days</option>
-              <option>Last 7 Days</option>
-            </select>
-          </div>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-              <AreaChart data={revenueChartData}>
-                <defs>
-                  <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--brand-primary)" stopOpacity={0.1} />
-                    <stop offset="95%" stopColor="var(--brand-primary)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: '#94a3b8' }}
-                  dy={10}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: '#94a3b8' }}
-                />
-                <Tooltip
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="var(--brand-primary)"
-                  strokeWidth={3}
-                  fillOpacity={1}
-                  fill="url(#colorRev)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      {/* ── MIDDLE ROW: Needs your attention & Available balance ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Left: Needs your attention (2 Columns Wide on Desktop) */}
+        <div className="lg:col-span-2 bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-gray-900 tracking-tight mb-4">
+              Needs your attention
+            </h3>
 
-        {/* Orders Bar Chart */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-6 sm:mb-8">
-            <h3 className="text-base sm:text-lg font-bold text-gray-900">Orders Overview</h3>
-            <div className="flex items-center gap-2">
-              <span className="w-2 sm:w-3 h-2 sm:h-3 rounded-full bg-emerald-500"></span>
-              <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Daily Orders</span>
+            {/* Table Header */}
+            <div className="bg-[#f0f3f8] rounded-md px-4 py-2 flex items-center justify-between text-xs font-semibold text-gray-500">
+              <span>Task</span>
+              <span>Action</span>
+            </div>
+
+            {/* Tasks List */}
+            <div className="divide-y divide-gray-100">
+              {attentionTasks.length > 0 ? (
+                attentionTasks.map((t) => (
+                  <div
+                    key={t.id}
+                    className="py-3.5 px-2 sm:px-4 flex items-center justify-between gap-4 text-xs sm:text-sm"
+                  >
+                    <span className="font-medium text-gray-900 leading-snug">{t.task}</span>
+                    <Link
+                      href={t.href}
+                      className="font-semibold text-gray-900 hover:text-[var(--brand-primary)] hover:underline transition-colors shrink-0"
+                    >
+                      {t.action}
+                    </Link>
+                  </div>
+                ))
+              ) : (
+                <div className="py-8 text-center text-xs text-gray-400">
+                  All caught up! No urgent tasks require your attention.
+                </div>
+              )}
             </div>
           </div>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-              <BarChart data={ordersChartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: '#94a3b8' }}
-                  dy={10}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: '#94a3b8' }}
-                />
-                <Tooltip
-                  cursor={{ fill: '#f8fafc' }}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                />
-                <Bar dataKey="orders" fill="#10b981" radius={[6, 6, 0, 0]} barSize={30} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
         </div>
-      </div>
 
-      {/* Recent Activity Table & Top Products */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-10">
-        {/* Recent Orders */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="p-5 sm:p-6 border-b border-gray-50 flex items-center justify-between">
-            <h3 className="text-base sm:text-lg font-bold text-gray-900">Recent Orders</h3>
+        {/* Right: Available balance (1 Column Wide) */}
+        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-gray-900 tracking-tight">Available balance</h3>
+            <p className="text-3xl sm:text-4xl font-bold text-gray-950 tracking-tight my-2">
+              GBP {formatGBP(availableBalance)}
+            </p>
+            <p className="text-xs text-gray-400 font-normal">
+              Pending GBP {formatGBP(pendingBalance)} / Paid out GBP {formatGBP(paidOutBalance)}
+            </p>
+          </div>
+
+          <div className="mt-8 pt-2">
             <button
-              onClick={() => router.push('/seller/orders')}
-              className="text-xs sm:text-sm font-bold text-[var(--brand-primary)] hover:underline"
+              onClick={() => router.push("/seller/earnings")}
+              className="w-full sm:w-auto inline-block text-center border border-gray-300 rounded-lg px-6 py-2.5 text-xs sm:text-sm font-semibold text-gray-800 hover:bg-gray-50 hover:border-gray-400 transition shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
             >
-              View All
+              View earnings
             </button>
           </div>
-          <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200">
-            <table className="w-full text-left min-w-[500px] whitespace-nowrap">
-              <thead>
-                <tr className="bg-gray-50/50 text-gray-500 text-[10px] sm:text-xs uppercase tracking-wider">
-                  <th className="px-4 sm:px-6 py-4 font-semibold">Order ID</th>
-                  <th className="px-4 sm:px-6 py-4 font-semibold">Customer</th>
-                  <th className="px-4 sm:px-6 py-4 font-semibold">Amount</th>
-                  <th className="px-4 sm:px-6 py-4 font-semibold text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {dashboardData.recentOrders?.map((order: any) => (
-                  <tr key={order.id} className="hover:bg-gray-50/50 transition">
-                    <td className="px-4 sm:px-6 py-4">
-                      <span className="font-bold text-gray-900 text-sm sm:text-base">#{order.id}</span>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4">
-                      <div className="text-xs sm:text-sm font-medium text-gray-900 truncate max-w-[120px]">{order.customer}</div>
-                      <div className="text-[10px] sm:text-xs text-gray-400">{new Date(order.createdAt).toLocaleDateString()}</div>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4">
-                      <span className="font-bold text-gray-900 text-sm sm:text-base">£{order.total.toFixed(2)}</span>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 text-right">
-                      <span className={`px-2 sm:px-3 py-1 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${order.status === 'paid' || order.status === 'delivered'
-                        ? 'bg-emerald-50 text-emerald-600'
-                        : 'bg-amber-50 text-amber-600'
-                        }`}>
-                        {order.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        </div>
+      </div>
+
+      {/* ── BOTTOM ROW: Store connection & Grow your store ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Left: Store connection (2 Columns Wide on Desktop) */}
+        <div className="lg:col-span-2 bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-gray-900 tracking-tight mb-3">
+              Store connection
+            </h3>
+
+            {/* Connection Status Pill Badge */}
+            <div className="mb-4">
+              <span
+                className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium border ${
+                  isStoreConnected
+                    ? "bg-[#eaf5ea] text-[#1e7e34] border-[#c8e6c9]"
+                    : "bg-gray-100 text-gray-600 border-gray-200"
+                }`}
+              >
+                {storeTypeDisplay}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+            <p className="text-xs text-gray-500 font-normal">
+              Last success: {formatRelativeTime(storeConnection?.lastSyncedAt)} |{" "}
+              {storeConnection?.itemsNeedingReview && storeConnection.itemsNeedingReview > 0
+                ? `${storeConnection.itemsNeedingReview} item needs review`
+                : "Catalog synchronized"}
+            </p>
+
+            <button
+              onClick={() => router.push("/seller/integrations")}
+              className="border border-gray-300 rounded-lg px-5 py-2 text-xs sm:text-sm font-semibold text-gray-800 hover:bg-gray-50 hover:border-gray-400 transition shadow-xs self-start sm:self-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+            >
+              Review sync
+            </button>
           </div>
         </div>
 
-        {/* Top Selling Products */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="p-5 sm:p-6 border-b border-gray-50">
-            <h3 className="text-base sm:text-lg font-bold text-gray-900">Top Products</h3>
+        {/* Right: Grow your store (1 Column Wide) */}
+        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-gray-900 tracking-tight mb-4">
+              Grow your store
+            </h3>
           </div>
-          <div className="p-5 sm:p-6 space-y-5 sm:y-6">
-            {dashboardData.topProducts?.map((product: any, idx: number) => (
-              <div key={product.id} className="flex items-center gap-3 sm:gap-4">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gray-50 flex items-center justify-center font-bold text-gray-400 text-xs sm:text-sm">
-                  {idx + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-xs sm:text-sm font-bold text-gray-900 truncate">{product.title}</h4>
-                  <p className="text-[10px] sm:text-xs text-gray-500">£{product.price} • {product.salesCount} sales</p>
-                </div>
-                <div className="flex items-center gap-1 text-emerald-600 font-bold text-[10px] sm:text-sm shrink-0">
-                  <ArrowUpRight size={14} className="sm:size-[16px]" />
-                  Top
-                </div>
-              </div>
-            ))}
-            {(!dashboardData.topProducts || dashboardData.topProducts.length === 0) && (
-              <div className="py-10 text-center text-gray-400 text-sm">
-                No sales data yet.
-              </div>
-            )}
+
+          <div className="mt-4 pt-2">
+            <button
+              onClick={() => router.push("/seller/products")}
+              className="w-full sm:w-auto inline-block text-center bg-[#e62e43] hover:bg-[#cf2337] text-white rounded-lg px-6 py-2.5 text-xs sm:text-sm font-semibold shadow-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+            >
+              Create promotion
+            </button>
           </div>
         </div>
       </div>
     </div>
-  );
-}
-
-function StatsCard({ title, value, icon, trend, trendType, color, gradient }: any) {
-  return (
-    <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition group overflow-hidden relative">
-      <div className={`absolute -right-4 -top-4 w-20 h-20 rounded-full bg-gradient-to-br ${gradient} opacity-5 group-hover:scale-150 transition-transform duration-700`}></div>
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-3 rounded-2xl ${color} text-white shadow-lg`}>
-          {icon}
-        </div>
-        <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${trendType === 'up' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-          {trendType === 'up' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-          {trend}
-        </div>
-      </div>
-      <div>
-        <p className="text-gray-500 text-sm font-medium mb-1">{title}</p>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-function QuickLink({ icon, label, path, color }: any) {
-  const router = useRouter();
-  return (
-    <button
-      onClick={() => router.push(path)}
-      className="flex flex-col items-center gap-3 p-4 rounded-2xl hover:bg-gray-50 transition border border-transparent hover:border-gray-100"
-    >
-      <div className={`p-4 rounded-2xl ${color} shadow-sm group-hover:scale-110 transition`}>
-        {icon}
-      </div>
-      <span className="text-xs font-bold text-gray-700">{label}</span>
-    </button>
   );
 }

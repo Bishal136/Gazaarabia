@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useState, useEffect } from "react";
-import { Check, ImageIcon, Info, DollarSign, Shirt, Eye, AlertCircle, ShoppingBag, ChevronRight, ChevronLeft } from "lucide-react";
+import { Check, ImageIcon, Info, DollarSign, Shirt, Eye, AlertCircle, ShoppingBag, ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
 import PopupAlert from "@/components/PopupAlert";
 import AlertMessage from "@/components/AlertMessage";
 import { PopUpInterface, AlertInterface } from "@/lib/types";
@@ -24,7 +24,7 @@ import RichTextEditor from "@/components/RichTextEditor";
 import { MediaUploader } from "@/components/seller/MediaUploader";
 import { VariantVideoUploader } from "@/components/seller/VariantVideoUploader";
 import { VariantsTikTokStyle } from "@/components/seller/VariantsTikTokStyle";
-import { ProductPreviewCard } from "@/components/seller/ProductPreviewCard";
+// import { ProductPreviewCard } from "@/components/seller/ProductPreviewCard";
 
 function ProductFormContent() {
   const router = useRouter();
@@ -169,6 +169,7 @@ function ProductFormContent() {
         subcategoryId: data.subcategoryId?.toString() || "",
         active: data.active ?? true,
       });
+
       setImages(data.productimage || []);
       setProductVideo({
         url: data.videoUrl || "",
@@ -219,11 +220,57 @@ function ProductFormContent() {
     }
   };
 
-  // Calculate total quantity from all variants
+  // Pricing handlers
+  const handleRegularPriceChange = (val: string) => {
+    setForm((prev) => {
+      const updated = { ...prev, sellingPrice: val };
+      if (variants.length > 0) {
+        setVariants((vList) =>
+          vList.map((v) => ({
+            ...v,
+            compareAtPrice: prev.discountPrice && Number(prev.discountPrice) < Number(val) ? val : undefined,
+          }))
+        );
+      }
+      return updated;
+    });
+  };
+
+  const handleDiscountPriceChange = (val: string) => {
+    setForm((prev) => {
+      const updated = { ...prev, discountPrice: val };
+      const reg = parseFloat(prev.sellingPrice);
+      const disc = parseFloat(val);
+      if (variants.length > 0) {
+        if (!isNaN(reg) && reg > 0 && !isNaN(disc) && disc > 0 && disc < reg) {
+          setVariants((vList) =>
+            vList.map((v) => ({
+              ...v,
+              price: val,
+              compareAtPrice: prev.sellingPrice,
+            }))
+          );
+        } else if (!val || isNaN(disc) || disc <= 0) {
+          setVariants((vList) =>
+            vList.map((v) => ({
+              ...v,
+              price: prev.sellingPrice,
+              compareAtPrice: undefined,
+            }))
+          );
+        }
+      }
+      return updated;
+    });
+  };
+
+  // Calculate total quantity from all variants (supports multi-color and multi-size variants)
   const calculateTotalVariantQuantity = () => {
     return variants.reduce((total, v) => {
       const qty = parseInt(String(v.stock)) || 0;
-      return total + qty;
+      const cCount = (v.colorName || "").split(",").map((c: string) => c.trim()).filter(Boolean).length || 1;
+      const sCount = (v.sizeName || "").split(",").map((s: string) => s.trim()).filter(Boolean).length || 1;
+      return total + (qty * cCount * sCount);
     }, 0);
   };
 
@@ -323,10 +370,55 @@ function ProductFormContent() {
 
     try {
       setSubmitting(true);
+
+      // Expand any variant with multiple comma-separated colors or sizes into individual SKU combinations
+      const expandedVariants: any[] = [];
+      for (const v of variants) {
+        const colorNames = (v.colorName || "")
+          .split(",")
+          .map((c: string) => c.trim())
+          .filter(Boolean);
+        const sizeNames = (v.sizeName || "")
+          .split(",")
+          .map((s: string) => s.trim())
+          .filter(Boolean);
+
+        const effectiveColors = colorNames.length > 0 ? colorNames : [v.colorName || ""];
+        const effectiveSizes = sizeNames.length > 0 ? sizeNames : [v.sizeName || ""];
+
+        for (const cName of effectiveColors) {
+          for (const sName of effectiveSizes) {
+            const cleanTitle = (form.title || "GZ")
+              .split(" ")
+              .slice(0, 2)
+              .map((w: string) => w.replace(/[^a-zA-Z0-9]/g, "").slice(0, 3).toUpperCase())
+              .join("-") || "GZ";
+            const cleanColor = cName ? cName.replace(/[^a-zA-Z0-9]/g, "").slice(0, 3).toUpperCase() : "";
+            const cleanSize = sName ? sName.replace(/[^a-zA-Z0-9]/g, "").toUpperCase() : "";
+            const autoSku = [cleanTitle, cleanColor, cleanSize].filter(Boolean).join("-");
+
+            const regPrice = parseFloat(form.sellingPrice || "0");
+            const discPrice = parseFloat(form.discountPrice || "0");
+            const hasPromo = discPrice > 0 && regPrice > discPrice;
+
+            expandedVariants.push({
+              ...v,
+              price: v.price || (hasPromo ? form.discountPrice : form.sellingPrice),
+              compareAtPrice: v.compareAtPrice || (hasPromo ? form.sellingPrice : undefined),
+              colorId: colorNames.length > 1 ? "" : v.colorId,
+              colorName: cName,
+              sizeId: sizeNames.length > 1 ? "" : v.sizeId,
+              sizeName: sName,
+              sku: effectiveColors.length === 1 && effectiveSizes.length === 1 && v.sku ? v.sku : autoSku,
+            });
+          }
+        }
+      }
+
       const payload = {
         ...form,
         images,
-        variants,
+        variants: expandedVariants,
         wearWith: wearWith.map((w) => w.id),
         videoUrl: productVideo?.url || "",
         videoThumbnail: productVideo?.thumbnail || "",
@@ -436,10 +528,8 @@ function ProductFormContent() {
           />
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left: Form */}
-          <div className="lg:col-span-8 space-y-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="w-full max-w-5xl mx-auto space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
 
               {/* MEDIA */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
@@ -696,7 +786,7 @@ function ProductFormContent() {
                   onVariantsChange={setVariants}
                   colors={colors}
                   sizes={sizes}
-                  basePrice={form.sellingPrice}
+                  basePrice={form.discountPrice && Number(form.discountPrice) < Number(form.sellingPrice) ? form.discountPrice : form.sellingPrice}
                   productTitle={form.title}
                   onError={(msg) =>
                     setAlertMessage({
@@ -715,40 +805,77 @@ function ProductFormContent() {
                     <DollarSign className="text-blue-600" size={24} />
                     Pricing & Inventory
                   </h2>
-                  <p className="text-gray-500 mt-1">Set your base product pricing and tracking information.</p>
+                  <p className="text-gray-500 mt-1">Set your base product pricing, promotional discounts, and tracking information.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 1. Base Pricing */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <TextField
-                    label={<RequiredLabel text="Selling Price" />}
+                    label={<RequiredLabel text="Regular Price (RRP)" />}
                     name="sellingPrice"
                     type="number"
                     value={form.sellingPrice}
-                    onChange={handleInputChange}
+                    onChange={(e) => handleRegularPriceChange(e.target.value)}
                     inputProps={{ step: "0.01", min: "0" }}
                     fullWidth
                     sx={fieldStyle}
+                    helperText="Original retail price (shown strikethrough when discounted)"
                     InputProps={{
-                      startAdornment: <span className="text-gray-500 mr-2">£</span>,
+                      startAdornment: <span className="text-gray-500 mr-2 font-semibold">£</span>,
                     }}
                   />
+
                   <TextField
-                    label={<RequiredLabel text="Cost Price" />}
-                    name="costPrice"
+                    label="Sale / Discount Price (Optional)"
+                    name="discountPrice"
                     type="number"
-                    value={form.costPrice}
-                    onChange={handleInputChange}
+                    value={form.discountPrice}
+                    onChange={(e) => handleDiscountPriceChange(e.target.value)}
                     inputProps={{ step: "0.01", min: "0" }}
                     fullWidth
                     sx={fieldStyle}
+                    helperText="Promotional price customer pays"
                     InputProps={{
-                      startAdornment: <span className="text-gray-500 mr-2">£</span>,
+                      startAdornment: <span className="text-gray-500 mr-2 font-semibold">£</span>,
                     }}
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-gray-100">
+                {/* 2. Cost Price & Barcode */}
+                <div className="pt-6 mt-6 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
+                    <TextField
+                      label={<RequiredLabel text="Cost Price" />}
+                      name="costPrice"
+                      type="number"
+                      value={form.costPrice}
+                      onChange={handleInputChange}
+                      inputProps={{ step: "0.01", min: "0" }}
+                      fullWidth
+                      sx={fieldStyle}
+                      helperText="Your wholesale / production cost (private to you)"
+                      InputProps={{
+                        startAdornment: <span className="text-gray-500 mr-2 font-semibold">£</span>,
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <TextField
+                      label="Barcode (EAN/UPC)"
+                      name="barcode"
+                      value={form.barcode}
+                      onChange={handleInputChange}
+                      fullWidth
+                      sx={fieldStyle}
+                      helperText="Optional inventory barcode or UPC number"
+                    />
+                  </div>
+                </div>
+
+                {/* 4. Base Inventory & Variant Quantities */}
+                <div className="pt-6 mt-6 border-t border-gray-100">
+                  <div className="max-w-md">
                     <div className="flex items-end gap-2 mb-2">
                       <div className="flex-1">
                         <TextField
@@ -788,15 +915,26 @@ function ProductFormContent() {
                         <p className="text-xs font-semibold text-blue-900 mb-2">
                           Variant Quantities: {calculateTotalVariantQuantity()} total
                         </p>
-                        <div className="text-xs text-blue-800 space-y-1 max-h-24 overflow-y-auto">
+                        <div className="text-xs text-blue-800 space-y-1.5 max-h-32 overflow-y-auto">
                           {variants.map((v, idx) => {
-                            const colorName = colors.find((c) => String(c.id) === String(v.colorId))?.name || "N/A";
-                            const sizeName = sizes.find((s) => String(s.id) === String(v.sizeId))?.name || "N/A";
-                            const qty = v.stock || 0;
+                            const colorName = v.colorName || colors.find((c) => String(c.id) === String(v.colorId))?.name || "Universal";
+                            const sizeName = v.sizeName || sizes.find((s) => String(s.id) === String(v.sizeId))?.name || "Universal";
+                            const qty = parseInt(String(v.stock)) || 0;
+                            const cCount = (v.colorName || "").split(",").map((c: string) => c.trim()).filter(Boolean).length || 1;
+                            const sCount = (v.sizeName || "").split(",").map((s: string) => s.trim()).filter(Boolean).length || 1;
+                            const totalCombos = cCount * sCount;
+                            const totalQty = qty * totalCombos;
                             return (
-                              <div key={idx} className="flex justify-between">
-                                <span>{colorName} - {sizeName}:</span>
-                                <span className="font-medium">{qty}</span>
+                              <div key={idx} className="flex justify-between items-center text-xs py-0.5 border-b border-blue-100 last:border-0">
+                                <span>
+                                  {colorName} - {sizeName}
+                                  {totalCombos > 1 && (
+                                    <span className="text-[10px] text-blue-600 font-bold ml-1.5">
+                                      ({totalCombos} combos × {qty})
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="font-bold">{totalQty}</span>
                               </div>
                             );
                           })}
@@ -804,14 +942,6 @@ function ProductFormContent() {
                       </div>
                     )}
                   </div>
-                  <TextField
-                    label="Barcode (EAN/UPC)"
-                    name="barcode"
-                    value={form.barcode}
-                    onChange={handleInputChange}
-                    fullWidth
-                    sx={fieldStyle}
-                  />
                 </div>
               </div>
 
@@ -855,34 +985,6 @@ function ProductFormContent() {
               </div>
 
             </form>
-          </div>
-
-          {/* Right: Live Preview Panel */}
-          <div className="lg:col-span-4 hidden lg:block">
-            <div className="sticky top-24">
-              <ProductPreviewCard
-                title={form.title}
-                price={form.sellingPrice}
-                imageUrl={images[0]?.url}
-                sellingPrice={form.sellingPrice}
-                costPrice={form.costPrice}
-                discountPrice={form.discountPrice}
-              />
-
-              {/* Contextual Tips */}
-              <div className="mt-6 bg-blue-50/50 rounded-xl p-5 border border-blue-100">
-                <div className="flex items-center gap-2 mb-3">
-                  <Info className="text-blue-500" size={18} />
-                  <h4 className="font-semibold text-blue-900 text-sm">Best Practices</h4>
-                </div>
-                <ul className="text-sm text-blue-800 space-y-2 list-disc pl-4">
-                  <li>Products with a video and 4+ high-quality images convert 30% better.</li>
-                  <li>A catchy title and detailed description improve search visibility.</li>
-                  <li>Adding complete variations (colors & sizes) reduces customer questions.</li>
-                </ul>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 

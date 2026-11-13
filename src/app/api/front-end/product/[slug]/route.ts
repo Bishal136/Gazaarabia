@@ -23,11 +23,7 @@ export async function GET(
     }
 
     const res = NextResponse.json(data);
-    if (!userId) {
-      res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
-    } else {
-      res.headers.set("Cache-Control", "private, no-cache");
-    }
+    res.headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
 
     return res;
   } catch (error: any) {

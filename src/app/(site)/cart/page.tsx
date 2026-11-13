@@ -273,8 +273,22 @@ export default function CartPage() {
                         <h3 className="font-semibold text-[var(--text-primary)] text-lg leading-snug">
                           {item.product.title}
                         </h3>
-                        <div className="text-[var(--brand-primary)] font-bold text-lg tracking-wide">
-                          £{(item.selectedVariantData?.price * item.quantity).toFixed(2)}
+                        <div className="flex flex-col sm:items-end">
+                          <div className="text-[var(--brand-primary)] font-bold text-lg tracking-wide">
+                            £{((item.selectedVariantData?.price ?? item.product?.discountPrice ?? item.product?.sellingPrice ?? 0) * item.quantity).toFixed(2)}
+                          </div>
+                          {(() => {
+                            const compareAt = item.selectedVariantData?.compareAtPrice ?? (item.product?.discountPrice && item.product.discountPrice < item.product.sellingPrice ? item.product.sellingPrice : null);
+                            const current = item.selectedVariantData?.price ?? item.product?.discountPrice ?? item.product?.sellingPrice ?? 0;
+                            if (compareAt && compareAt > current) {
+                              return (
+                                <div className="text-xs text-gray-400 line-through">
+                                  £{(compareAt * item.quantity).toFixed(2)}
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       </div>
 

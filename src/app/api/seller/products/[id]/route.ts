@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getAuthenticatedUser } from "@/lib/authToken";
 import { connectToDatabase, mongoose } from "@/lib/mongoose";
+import { invalidateProductCache } from "@/lib/server/productDetails";
 import crypto from "crypto";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -195,10 +197,38 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         const lastVarImg = await db.collection("variant_images").find().sort({ id: -1 }).limit(1).toArray();
         let varImgId = (lastVarImg[0]?.id || 0) + 1;
 
+        // Flatten any variants with multiple comma-separated colors or sizes
+        const flattenedVariants: any[] = [];
+        for (const v of body.variants) {
+          const cNames = String(v.colorName || "")
+            .split(",")
+            .map((c) => c.trim())
+            .filter(Boolean);
+          const sNames = String(v.sizeName || "")
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+          const effColors = cNames.length > 0 ? cNames : [v.colorName || ""];
+          const effSizes = sNames.length > 0 ? sNames : [v.sizeName || ""];
+
+          for (const c of effColors) {
+            for (const s of effSizes) {
+              flattenedVariants.push({
+                ...v,
+                colorName: c,
+                sizeName: s,
+                colorId: cNames.length > 1 ? null : v.colorId,
+                sizeId: sNames.length > 1 ? null : v.sizeId,
+              });
+            }
+          }
+        }
+
         const variantDocs = [];
         const variantImageDocs = [];
 
-        for (const v of body.variants) {
+        for (const v of flattenedVariants) {
           const currentVarId = varId++;
           const variantImages = Array.isArray(v.images)
             ? v.images
@@ -258,11 +288,18 @@ export async function PUT(req: NextRequest, context: RouteContext) {
             }
           }
 
+          const compareAt = v.compareAtPrice
+            ? parseFloat(v.compareAtPrice)
+            : (body.discountPrice && parseFloat(body.discountPrice) < parseFloat(body.sellingPrice || "0")
+              ? parseFloat(body.sellingPrice)
+              : null);
+
           variantDocs.push({
             id: currentVarId,
             productId,
             sku: v.sku || "",
             price: parseFloat(v.price || "0"),
+            compareAtPrice: compareAt,
             stock: parseInt(v.stock || "0"),
             isActive: v.isActive ?? true,
             colorId: resolvedColorId,
@@ -298,6 +335,18 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     }
 
     const updatedProduct = await db.collection("products").findOne({ id: productId });
+
+    if (updatedProduct?.slug) {
+      invalidateProductCache(updatedProduct.slug);
+      try {
+        revalidatePath(`/products/${updatedProduct.slug}`);
+        revalidatePath("/shop");
+        revalidatePath("/");
+      } catch (revErr) {
+        // Non-fatal if outside request context
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: "Product updated successfully",

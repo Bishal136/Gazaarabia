@@ -131,13 +131,46 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
 
   const colors: any[] = Array.from(
     new Map(
-      variants.filter((v) => v.color).map((v) => [v.color.id, v.color])
+      variants
+        .map((v) => {
+          if (v.color && (v.color.id || v.color.name)) {
+            return [v.color.id ?? v.color.name, v.color];
+          }
+          if (v.colorName || v.colorId) {
+            return [
+              v.colorId ?? v.colorName,
+              {
+                id: v.colorId ?? v.colorName,
+                name: v.colorName || `Color ${v.colorId}`,
+                hexCode: v.hexCode || "#000000",
+              },
+            ];
+          }
+          return null;
+        })
+        .filter(Boolean) as [any, any][]
     ).values()
   );
 
   const sizes: any[] = Array.from(
     new Map(
-      variants.filter((v) => v.size).map((v) => [v.size.id, v.size])
+      variants
+        .map((v) => {
+          if (v.size && (v.size.id || v.size.name)) {
+            return [v.size.id ?? v.size.name, v.size];
+          }
+          if (v.sizeName || v.sizeId) {
+            return [
+              v.sizeId ?? v.sizeName,
+              {
+                id: v.sizeId ?? v.sizeName,
+                name: v.sizeName || `Size ${v.sizeId}`,
+              },
+            ];
+          }
+          return null;
+        })
+        .filter(Boolean) as [any, any][]
     ).values()
   );
 
@@ -148,7 +181,9 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
         colors.find((c: any) =>
           variants.some(
             (v: any) =>
-              (v.color?.id === c.id || v.colorId === c.id) &&
+              (v.color?.id === c.id ||
+                v.colorId === c.id ||
+                (c.name && (v.color?.name?.toLowerCase() === c.name.toLowerCase() || v.colorName?.toLowerCase() === c.name.toLowerCase()))) &&
               ((v.availableStock ?? v.stock ?? 0) > 0)
           )
         ) || colors[0];
@@ -156,15 +191,19 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
       setSelectedColor(inStockColor);
 
       const colorVariants = variants.filter(
-        (v) => v.color?.id === inStockColor.id || v.colorId === inStockColor.id
+        (v) =>
+          v.color?.id === inStockColor.id ||
+          v.colorId === inStockColor.id ||
+          (inStockColor.name && (v.color?.name?.toLowerCase() === inStockColor.name.toLowerCase() || v.colorName?.toLowerCase() === inStockColor.name.toLowerCase()))
       );
 
       const firstVariantForColor =
-        colorVariants.find((v) => ((v.availableStock ?? v.stock ?? 0) > 0) && v.size) ||
+        colorVariants.find((v) => ((v.availableStock ?? v.stock ?? 0) > 0) && (v.size || v.sizeName)) ||
         colorVariants[0];
 
-      if (firstVariantForColor?.size) {
-        setSelectedSize(firstVariantForColor.size);
+      const foundSize = firstVariantForColor?.size || (firstVariantForColor?.sizeName ? { id: firstVariantForColor.sizeId || firstVariantForColor.sizeName, name: firstVariantForColor.sizeName } : null);
+      if (foundSize) {
+        setSelectedSize(foundSize);
       }
     }
     // Size-only products (no colours) — auto-select the first size so a variant resolves.
@@ -173,7 +212,9 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
         sizes.find((s: any) =>
           variants.some(
             (v: any) =>
-              (v.size?.id === s.id || v.sizeId === s.id) &&
+              (v.size?.id === s.id ||
+                v.sizeId === s.id ||
+                (s.name && (v.size?.name?.toLowerCase() === s.name.toLowerCase() || v.sizeName?.toLowerCase() === s.name.toLowerCase()))) &&
               ((v.availableStock ?? v.stock ?? 0) > 0)
           )
         ) || sizes[0];
@@ -189,11 +230,23 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
   // Match only the dimensions the product actually exposes: colour+size, colour-only,
   // size-only, or (Shopify) neither → single/default variant.
   const selectedVariant: any = hasVariantOptions
-    ? variants.find(
-        (v) =>
-          (colors.length === 0 || v.color?.id === selectedColor?.id || v.colorId === selectedColor?.id) &&
-          (sizes.length === 0 || v.size?.id === selectedSize?.id || v.sizeId === selectedSize?.id)
-      ) || null
+    ? variants.find((v) => {
+        const colorMatches =
+          colors.length === 0 ||
+          (selectedColor?.id != null && (String(v.color?.id) === String(selectedColor.id) || String(v.colorId) === String(selectedColor.id))) ||
+          (selectedColor?.name &&
+            ((v.color?.name && v.color.name.toLowerCase() === selectedColor.name.toLowerCase()) ||
+              (v.colorName && v.colorName.toLowerCase() === selectedColor.name.toLowerCase())));
+
+        const sizeMatches =
+          sizes.length === 0 ||
+          (selectedSize?.id != null && (String(v.size?.id) === String(selectedSize.id) || String(v.sizeId) === String(selectedSize.id))) ||
+          (selectedSize?.name &&
+            ((v.size?.name && v.size.name.toLowerCase() === selectedSize.name.toLowerCase()) ||
+              (v.sizeName && v.sizeName.toLowerCase() === selectedSize.name.toLowerCase())));
+
+        return colorMatches && sizeMatches;
+      }) || null
     : variants[0] || null;
 
   // Never collapse to 0 simply because no colour/size is selected. Use the selected
@@ -490,7 +543,10 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
   const getColorThumbnail = (color: any): string => {
     if (!color) return "";
     const colorVariants = variants.filter(
-      (v) => v.color?.id === color.id || v.colorId === color.id
+      (v) =>
+        v.color?.id === color.id ||
+        v.colorId === color.id ||
+        (color.name && (v.color?.name?.toLowerCase() === color.name.toLowerCase() || v.colorName?.toLowerCase() === color.name.toLowerCase()))
     );
     for (const v of colorVariants) {
       if (Array.isArray(v.variantImages) && v.variantImages.length > 0) {
@@ -506,7 +562,11 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
       if (v.imageUrl) return v.imageUrl;
     }
     if (Array.isArray(product?.productimage)) {
-      const match = product.productimage.find((img: any) => img.colorId === color.id);
+      const match = product.productimage.find(
+        (img: any) =>
+          img.colorId === color.id ||
+          (color.name && img.alt?.toLowerCase()?.includes(color.name.toLowerCase()))
+      );
       if (match) {
         const url = typeof match === "string" ? match : match?.url;
         if (url) return url;
@@ -523,9 +583,12 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
   const isColorInStock = (color: any): boolean => {
     if (!color) return false;
     const colorVariants = variants.filter(
-      (v) => v.color?.id === color.id || v.colorId === color.id
+      (v) =>
+        v.color?.id === color.id ||
+        v.colorId === color.id ||
+        (color.name && (v.color?.name?.toLowerCase() === color.name.toLowerCase() || v.colorName?.toLowerCase() === color.name.toLowerCase()))
     );
-    if (colorVariants.length === 0) return false;
+    if (colorVariants.length === 0) return true;
     return colorVariants.some(
       (v) => ((v.availableStock ?? v.stock ?? 0) > 0)
     );
@@ -535,23 +598,40 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
     if (!size) return false;
     if (colors.length === 0) {
       const v = variants.find(
-        (item) => item.size?.id === size.id || item.sizeId === size.id
+        (item) =>
+          (size.id != null && (String(item.size?.id) === String(size.id) || String(item.sizeId) === String(size.id))) ||
+          (size.name && (item.size?.name?.toLowerCase() === size.name.toLowerCase() || item.sizeName?.toLowerCase() === size.name.toLowerCase()))
       );
       return (v?.availableStock ?? v?.stock ?? 0) > 0;
     }
     const v = variants.find(
       (item) =>
-        (item.color?.id === selectedColor?.id || item.colorId === selectedColor?.id) &&
-        (item.size?.id === size.id || item.sizeId === size.id)
+        ((selectedColor?.id != null && (String(item.color?.id) === String(selectedColor.id) || String(item.colorId) === String(selectedColor.id))) ||
+          (selectedColor?.name && (item.color?.name?.toLowerCase() === selectedColor.name.toLowerCase() || item.colorName?.toLowerCase() === selectedColor.name.toLowerCase()))) &&
+        ((size.id != null && (String(item.size?.id) === String(size.id) || String(item.sizeId) === String(size.id))) ||
+          (size.name && (item.size?.name?.toLowerCase() === size.name.toLowerCase() || item.sizeName?.toLowerCase() === size.name.toLowerCase())))
     );
     return (v?.availableStock ?? v?.stock ?? 0) > 0;
   };
 
+  const isSizeInStockAnywhere = (size: any): boolean => {
+    if (!size) return false;
+    return variants.some(
+      (v) =>
+        ((size.id != null && (String(v.size?.id) === String(size.id) || String(v.sizeId) === String(size.id))) ||
+          (size.name && (v.size?.name?.toLowerCase() === size.name.toLowerCase() || v.sizeName?.toLowerCase() === size.name.toLowerCase()))) &&
+        ((v.availableStock ?? v.stock ?? 0) > 0)
+    );
+  };
+
   //  Color change → update images + size
-  const handleColorChange = (color: any) => {
+  const handleColorChange = (color: any, preferredSize?: any) => {
     setSelectedColor(color);
     const colorVariants = variants.filter(
-      (v) => v.color?.id === color.id || v.colorId === color.id
+      (v) =>
+        v.color?.id === color.id ||
+        v.colorId === color.id ||
+        (color.name && (v.color?.name?.toLowerCase() === color.name.toLowerCase() || v.colorName?.toLowerCase() === color.name.toLowerCase()))
     );
 
     // If this color has a specific image in the gallery, switch active thumbnail to show it
@@ -568,9 +648,7 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
       (Array.isArray(variantWithImages?.images) && variantWithImages.images[0]?.url);
 
     if (targetUrl) {
-      // 1. Exact match
       let targetIdx = mediaList.findIndex((m) => m.url === targetUrl);
-      // 2. Base filename match (ignoring upload timestamp prefixes)
       if (targetIdx === -1) {
         const targetBase = getBaseFilename(targetUrl);
         targetIdx = mediaList.findIndex((m) => getBaseFilename(m.url) === targetBase);
@@ -589,23 +667,33 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
       }
     }
 
-    // Preserve size if available in new color, otherwise choose first in-stock size
+    const targetSize = preferredSize || selectedSize;
+
+    // Preserve target size if available in new color, otherwise choose first in-stock size
     const currentSizeAvailable =
-      selectedSize &&
+      targetSize &&
       colorVariants.some(
         (v) =>
-          (v.size?.id === selectedSize.id || v.sizeId === selectedSize.id) &&
+          (v.size?.id === targetSize.id ||
+            v.sizeId === targetSize.id ||
+            (targetSize.name && (v.size?.name?.toLowerCase() === targetSize.name.toLowerCase() || v.sizeName?.toLowerCase() === targetSize.name.toLowerCase()))) &&
           ((v.availableStock ?? v.stock ?? 0) > 0)
       );
 
-    if (!currentSizeAvailable) {
+    if (preferredSize) {
+      setSelectedSize(preferredSize);
+    } else if (!currentSizeAvailable) {
       const firstAvailableVariant = colorVariants.find(
-        (v) => ((v.availableStock ?? v.stock ?? 0) > 0) && v.size
+        (v) => ((v.availableStock ?? v.stock ?? 0) > 0) && (v.size || v.sizeName)
       );
       if (firstAvailableVariant?.size) {
         setSelectedSize(firstAvailableVariant.size);
+      } else if (firstAvailableVariant?.sizeName) {
+        setSelectedSize({ id: firstAvailableVariant.sizeId || firstAvailableVariant.sizeName, name: firstAvailableVariant.sizeName });
       } else if (colorVariants[0]?.size) {
         setSelectedSize(colorVariants[0].size);
+      } else if (colorVariants[0]?.sizeName) {
+        setSelectedSize({ id: colorVariants[0].sizeId || colorVariants[0].sizeName, name: colorVariants[0].sizeName });
       }
     }
     setQuantity(1);
@@ -613,6 +701,26 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
 
   const handleSizeChange = (size: any) => {
     setSelectedSize(size);
+    // If the currently selected color doesn't have this size in stock, automatically switch to a color that has it
+    if (selectedColor && !isSizeInStockForSelectedColor(size)) {
+      const matchVariant = variants.find(
+        (v) =>
+          ((size.id != null && (String(v.size?.id) === String(size.id) || String(v.sizeId) === String(size.id))) ||
+            (size.name && (v.size?.name?.toLowerCase() === size.name.toLowerCase() || v.sizeName?.toLowerCase() === size.name.toLowerCase()))) &&
+          (v.availableStock ?? v.stock ?? 0) > 0
+      );
+      if (matchVariant) {
+        const matchedColor = colors.find(
+          (c) =>
+            (c.id != null && (String(c.id) === String(matchVariant.color?.id) || String(c.id) === String(matchVariant.colorId))) ||
+            (c.name && (c.name.toLowerCase() === matchVariant.color?.name?.toLowerCase() || c.name.toLowerCase() === matchVariant.colorName?.toLowerCase()))
+        );
+        if (matchedColor) {
+          handleColorChange(matchedColor, size);
+          return;
+        }
+      }
+    }
     setQuantity(1);
   };
 
@@ -672,7 +780,9 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
         title: product.title,
         slug: product.slug,
         availableStock: product.availableStock,
-        sellingPrice: product.sellingPrice,
+        sellingPrice: displayPrice,
+        originalPrice: originalPrice || product.sellingPrice,
+        discountPrice: displayPrice < (originalPrice || product.sellingPrice) ? displayPrice : undefined,
         productimage: product.productimage || [],
       };
 
@@ -683,7 +793,8 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
         sizeName: selectedSize?.name ?? null,
         colorName: selectedColor?.name ?? null,
         hexCode: selectedColor?.hexCode ?? null,
-        price: selectedVariant.price,
+        price: displayPrice,
+        compareAtPrice: originalPrice,
         availableStock: selectedVariant.availableStock,
         variantImages: selectedVariant.variantImages || [],
       };
@@ -746,7 +857,9 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
         title: product.title,
         slug: product.slug,
         availableStock: product.availableStock,
-        sellingPrice: product.sellingPrice,
+        sellingPrice: displayPrice,
+        originalPrice: originalPrice || product.sellingPrice,
+        discountPrice: displayPrice < (originalPrice || product.sellingPrice) ? displayPrice : undefined,
         productimage: product.productimage || [],
       };
 
@@ -757,7 +870,8 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
         sizeName: selectedSize?.name ?? null,
         colorName: selectedColor?.name ?? null,
         hexCode: selectedColor?.hexCode ?? null,
-        price: selectedVariant.price,
+        price: displayPrice,
+        compareAtPrice: originalPrice,
         availableStock: selectedVariant.availableStock,
         variantImages: selectedVariant.variantImages || [],
       };
@@ -824,19 +938,41 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
   };
 
   // Computed Metadata & Pricing
-  const displayPrice = Number(
-    selectedVariant?.price || product?.discountPrice || product?.sellingPrice || 0
-  );
-  const originalPrice = product?.discountPrice
-    ? Number(product?.sellingPrice)
-    : product?.originalPrice
-    ? Number(product?.originalPrice)
-    : null;
+  const regularPrice = Number(product?.sellingPrice || 0);
+  const salePrice = product?.discountPrice ? Number(product.discountPrice) : null;
+
+  // Variant-level price takes priority whenever a specific variant is selected
+  const variantPrice =
+    selectedVariant?.price != null && !isNaN(Number(selectedVariant.price)) && Number(selectedVariant.price) > 0
+      ? Number(selectedVariant.price)
+      : null;
+
+  const variantCompareAt =
+    selectedVariant?.compareAtPrice != null &&
+    !isNaN(Number(selectedVariant.compareAtPrice)) &&
+    Number(selectedVariant.compareAtPrice) > 0
+      ? Number(selectedVariant.compareAtPrice)
+      : null;
+
+  // Active display price customer pays
+  const displayPrice: number =
+    variantPrice ??
+    (salePrice && salePrice > 0 ? salePrice : regularPrice);
+
+  // Original strikethrough price when discounted
+  let originalPrice: number | null = null;
+  if (variantCompareAt && variantCompareAt > displayPrice) {
+    originalPrice = variantCompareAt;
+  } else if (regularPrice && regularPrice > displayPrice) {
+    originalPrice = regularPrice;
+  }
 
   const discountPercent =
     originalPrice && originalPrice > displayPrice
       ? Math.round(((originalPrice - displayPrice) / originalPrice) * 100)
       : 0;
+
+  const savingsAmount = originalPrice && originalPrice > displayPrice ? originalPrice - displayPrice : 0;
 
   const avgRating = Number(
     product?.reviewsData?.averageRating || product?.averageRating || 4.0
@@ -1126,20 +1262,20 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
                     )}
                   </div>
 
-                  {/* 4. PRICING ROW */}
-                  <div className="flex flex-wrap items-baseline gap-3 mb-2">
-                    <span className="text-3xl sm:text-4xl font-extrabold text-[#0a0808] tracking-tight">
+                  {/* 4. PRICING ROW (matches requested 2-tier layout) */}
+                  <div className="mb-4">
+                    <div className="text-3xl sm:text-4xl font-bold text-[#f85606] tracking-tight">
                       {formatGBP(displayPrice)}
-                    </span>
+                    </div>
                     {originalPrice && originalPrice > displayPrice && (
-                      <span className="text-xl sm:text-2xl text-gray-400 line-through font-normal">
-                        {formatGBP(originalPrice)}
-                      </span>
-                    )}
-                    {discountPercent > 0 && (
-                      <span className="px-2.5 py-0.5 rounded-md bg-[#ffebee] text-[#e53935] text-xs font-bold uppercase tracking-wider">
-                        Save {discountPercent}%
-                      </span>
+                      <div className="flex items-center gap-2 mt-1 text-sm sm:text-base">
+                        <span className="text-gray-400 line-through font-normal">
+                          {formatGBP(originalPrice)}
+                        </span>
+                        <span className="text-gray-900 font-semibold">
+                          -{discountPercent}%
+                        </span>
+                      </div>
                     )}
                   </div>
 
@@ -1169,7 +1305,9 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
                       </div>
                       <div className="flex flex-wrap gap-2.5">
                         {colors.map((c: any) => {
-                          const isSelected = selectedColor?.id === c.id;
+                          const isSelected =
+                            (selectedColor?.id != null && String(selectedColor.id) === String(c.id)) ||
+                            (selectedColor?.name && c.name && selectedColor.name.toLowerCase() === c.name.toLowerCase());
                           const inStock = isColorInStock(c);
                           const thumbnail = getColorThumbnail(c);
 
@@ -1257,23 +1395,34 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
 
                       <div className="flex flex-wrap gap-2.5">
                         {sizes.map((s: any) => {
-                          const isAvailable = isSizeInStockForSelectedColor(s);
-                          const isSelected = selectedSize?.id === s.id;
+                          const isInCurrentColor = isSizeInStockForSelectedColor(s);
+                          const isInAnyColor = isSizeInStockAnywhere(s);
+                          const isSelected =
+                            (selectedSize?.id != null && String(selectedSize.id) === String(s.id)) ||
+                            (selectedSize?.name && s.name && selectedSize.name.toLowerCase() === s.name.toLowerCase());
 
                           return (
                             <button
                               key={s.id}
                               type="button"
-                              onClick={() => isAvailable && handleSizeChange(s)}
-                              disabled={!isAvailable}
-                              className={`min-w-[44px] h-[36px] px-3.5 text-xs sm:text-sm rounded-[2px] transition flex items-center justify-center ${
+                              onClick={() => isInAnyColor && handleSizeChange(s)}
+                              disabled={!isInAnyColor}
+                              className={`min-w-[44px] h-[36px] px-3.5 text-xs sm:text-sm rounded-[2px] transition flex items-center justify-center cursor-pointer ${
                                 isSelected
-                                  ? "border border-[#f85606] text-[#f85606] font-semibold bg-white shadow-2xs"
-                                  : isAvailable
-                                  ? "border border-gray-300 bg-white hover:border-gray-500 text-gray-800 font-normal"
+                                  ? "border-2 border-[#f85606] text-[#f85606] font-bold bg-white shadow-2xs"
+                                  : isInCurrentColor
+                                  ? "border border-gray-300 bg-white hover:border-[#f85606] text-gray-800 font-medium"
+                                  : isInAnyColor
+                                  ? "border border-gray-200 bg-gray-50/80 hover:border-[#f85606] hover:bg-orange-50/20 text-gray-700 font-normal"
                                   : "border border-dashed border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed line-through font-normal"
                               }`}
-                              title={isAvailable ? s.name : `${s.name} (Out of stock)`}
+                              title={
+                                isInCurrentColor
+                                  ? s.name
+                                  : isInAnyColor
+                                  ? `${s.name} (Switch to available color)`
+                                  : `${s.name} (Out of stock)`
+                              }
                             >
                               {s.name}
                             </button>

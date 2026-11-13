@@ -26,7 +26,12 @@ async function calculateSubtotal(userId: number) {
   const subtotal = items.reduce((sum: number, item: any) => {
     const v = item.variantId ? variantMap.get(item.variantId) : null;
     const p = item.productId ? productMap.get(item.productId) : null;
-    const price = v?.price ?? p?.sellingPrice ?? 0;
+    const hasDiscount = p?.discountPrice && p.discountPrice < (p?.sellingPrice || Infinity);
+    const itemDiscountPrice = hasDiscount ? p.discountPrice : null;
+    let price = v?.price ?? (itemDiscountPrice || p?.sellingPrice || 0);
+    if (itemDiscountPrice && price === p?.sellingPrice) {
+      price = itemDiscountPrice;
+    }
     return sum + price * (item.quantity || 1);
   }, 0);
 
@@ -88,6 +93,13 @@ async function getUpdatedCartData(userId: number) {
       );
 
       const selectedVariant = variantsWithStock.find((v: any) => v.id === item.variantId);
+      const hasDiscount = product?.discountPrice && product.discountPrice < product.sellingPrice;
+      const effectiveVariantPrice = selectedVariant
+        ? (hasDiscount && selectedVariant.price === product.sellingPrice
+            ? product.discountPrice
+            : selectedVariant.price)
+        : null;
+
       const selectedVariantData = selectedVariant
         ? {
             id: selectedVariant.id,
@@ -96,7 +108,8 @@ async function getUpdatedCartData(userId: number) {
             sizeName: selectedVariant.size?.name || null,
             colorName: selectedVariant.color?.name || null,
             hexCode: selectedVariant.color?.hexCode || null,
-            price: selectedVariant.price,
+            price: effectiveVariantPrice,
+            compareAtPrice: selectedVariant.compareAtPrice || (hasDiscount ? product.sellingPrice : null),
             availableStock: selectedVariant.availableStock,
             variantImages: [],
           }

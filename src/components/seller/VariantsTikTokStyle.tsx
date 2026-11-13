@@ -8,9 +8,6 @@ import {
   Copy,
   Eye,
   EyeOff,
-  Sparkles,
-  Image as ImageIcon,
-  Check,
   X,
   Layers,
   Palette,
@@ -19,7 +16,7 @@ import { CircularProgress } from "@mui/material";
 import { uploadService } from "@/lib/services/uploadService";
 import { ProductVariant } from "@/hooks/useVariantManagement";
 
-interface UniversalVariant extends ProductVariant {
+export interface UniversalVariant extends ProductVariant {
   colorName?: string;
   sizeName?: string;
   hexCode?: string;
@@ -35,8 +32,6 @@ interface VariantsProps {
   onError?: (message: string) => void;
 }
 
-const COMMON_SIZES = ["S", "M", "L", "XL", "XXL", "3XL", "52", "54", "56", "58", "60", "Free Size"];
-
 export const VariantsTikTokStyle = ({
   variants,
   onVariantsChange,
@@ -49,8 +44,6 @@ export const VariantsTikTokStyle = ({
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const [bulkPrice, setBulkPrice] = useState("");
   const [bulkStock, setBulkStock] = useState("");
-  const [customSizeInput, setCustomSizeInput] = useState("");
-  const [showCustomSize, setShowCustomSize] = useState(false);
 
   // Hidden file inputs for variant image uploads
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
@@ -93,20 +86,25 @@ export const VariantsTikTokStyle = ({
     if (v.hexCode) return v.hexCode;
     if (v.colorId) {
       const match = colors.find((c) => String(c.id) === String(v.colorId));
-      return match?.hexCode || match?.colorCode || "#cbd5e1";
+      if (match?.hexCode || match?.colorCode) return match.hexCode || match.colorCode;
+    }
+    if (v.colorName) {
+      const match = colors.find(
+        (c) => String(c.name).trim().toLowerCase() === String(v.colorName).trim().toLowerCase()
+      );
+      if (match?.hexCode || match?.colorCode) return match.hexCode || match.colorCode;
     }
     return "#cbd5e1";
   };
 
-  // 1. Add an empty / single variant row
-  const handleAddSingleVariant = () => {
-    const defaultSize = sizes[0]?.name || "M";
+  // 1. Add a new Color Card
+  const handleAddColor = () => {
     const newVar: UniversalVariant = {
       colorId: "",
       colorName: "",
-      sizeId: sizes[0]?.id || "",
-      sizeName: defaultSize,
-      sku: generateSKU(productTitle, "", defaultSize),
+      sizeId: "",
+      sizeName: "",
+      sku: generateSKU(productTitle, "", ""),
       price: basePrice ? String(basePrice) : "49.99",
       stock: "30",
       isActive: true,
@@ -115,50 +113,8 @@ export const VariantsTikTokStyle = ({
     onVariantsChange([...variants, newVar]);
   };
 
-  // 2. Quick-add by size pill (e.g. M, L, XL - matches user reference!)
-  const handleQuickAddSize = (sizeName: string) => {
-    // Check if this size already exists (with empty color)
-    const exists = variants.some((v) => {
-      const sName = getSizeName(v);
-      const cName = getColorName(v);
-      return sName.toLowerCase() === sizeName.toLowerCase() && !cName;
-    });
-
-    if (exists) {
-      onError?.(`Size "${sizeName}" is already in your variants.`);
-      return;
-    }
-
-    // Find if size exists in DB sizes list
-    const matchedSizeObj = sizes.find(
-      (s) => String(s.name).toLowerCase() === sizeName.toLowerCase()
-    );
-
-    const newVar: UniversalVariant = {
-      colorId: "",
-      colorName: "",
-      sizeId: matchedSizeObj?.id || "",
-      sizeName: sizeName,
-      sku: generateSKU(productTitle, "", sizeName),
-      price: basePrice ? String(basePrice) : "49.99",
-      stock: "30",
-      isActive: true,
-      images: [],
-    };
-
-    onVariantsChange([...variants, newVar]);
-  };
-
-  // 3. Add Custom Size from text input
-  const handleAddCustomSize = () => {
-    if (!customSizeInput.trim()) return;
-    handleQuickAddSize(customSizeInput.trim());
-    setCustomSizeInput("");
-    setShowCustomSize(false);
-  };
-
-  // 4. Duplicate variant row
-  const handleDuplicateVariant = (idx: number) => {
+  // 2. Duplicate Color Card
+  const handleDuplicateColor = (idx: number) => {
     const source = variants[idx];
     const clone: UniversalVariant = {
       ...source,
@@ -171,42 +127,68 @@ export const VariantsTikTokStyle = ({
     onVariantsChange(updated);
   };
 
-  // 5. Remove variant row
-  const handleRemoveVariant = (idx: number) => {
+  // 3. Remove Color Card
+  const handleRemoveColor = (idx: number) => {
     onVariantsChange(variants.filter((_, i) => i !== idx));
   };
 
-  // 6. Update single variant field
-  const handleUpdateField = (idx: number, field: keyof UniversalVariant, value: any) => {
+  // 4. Update color name atomically
+  const handleUpdateColor = (idx: number, colorValue: string) => {
     const updated = [...variants];
-    const item = { ...updated[idx], [field]: value };
+    const item = { ...updated[idx] };
 
-    // If color was changed via select
-    if (field === "colorId") {
-      const matched = colors.find((c) => String(c.id) === String(value));
-      if (matched) {
-        item.colorName = matched.name;
-        item.hexCode = matched.hexCode || matched.colorCode;
-      } else {
-        item.colorName = "";
-      }
-      item.sku = generateSKU(productTitle, item.colorName, getSizeName(item));
+    item.colorName = colorValue;
+    const matchedFromDb = colors.find(
+      (c) =>
+        String(c.name).trim().toLowerCase() === colorValue.trim().toLowerCase() ||
+        String(c.id) === String(colorValue)
+    );
+    if (matchedFromDb) {
+      item.colorId = matchedFromDb.id;
+      item.hexCode = item.hexCode || matchedFromDb.hexCode || matchedFromDb.colorCode;
+    } else {
+      item.colorId = "";
     }
 
-    // If size was changed via select
-    if (field === "sizeId") {
-      const matched = sizes.find((s) => String(s.id) === String(value));
-      if (matched) {
-        item.sizeName = matched.name;
-      }
-      item.sku = generateSKU(productTitle, getColorName(item), item.sizeName);
-    }
-
+    item.sku = generateSKU(productTitle, item.colorName, getSizeName(item));
     updated[idx] = item;
     onVariantsChange(updated);
   };
 
-  // 7. Upload photo for variant
+  // 5. Update color hex from color picker wheel
+  const handleUpdateHex = (idx: number, hex: string) => {
+    const updated = [...variants];
+    updated[idx] = { ...updated[idx], hexCode: hex };
+    onVariantsChange(updated);
+  };
+
+  // 6. Update size text input directly
+  const handleUpdateSize = (idx: number, sizeValue: string) => {
+    const updated = [...variants];
+    const item = { ...updated[idx] };
+
+    item.sizeName = sizeValue;
+    const matchedFromDb = sizes.find(
+      (s) =>
+        String(s.name).trim().toLowerCase() === sizeValue.trim().toLowerCase() ||
+        String(s.id) === String(sizeValue)
+    );
+    item.sizeId = matchedFromDb ? matchedFromDb.id : "";
+
+    item.sku = generateSKU(productTitle, getColorName(item), item.sizeName);
+    updated[idx] = item;
+    onVariantsChange(updated);
+  };
+
+  // 7. Update single variant field (sku, price, stock, isActive)
+  const handleUpdateField = (idx: number, field: keyof UniversalVariant, value: any) => {
+    const updated = [...variants];
+    const item = { ...updated[idx], [field]: value };
+    updated[idx] = item;
+    onVariantsChange(updated);
+  };
+
+  // 8. Upload photo for variant
   const handleUploadPhoto = async (idx: number, files: FileList | null) => {
     if (!files || files.length === 0) return;
     try {
@@ -217,18 +199,13 @@ export const VariantsTikTokStyle = ({
       const newImages = [...currentImages, ...urls.map((url) => ({ url, alt: "" }))];
       const primaryUrl = newImages[0]?.url || null;
 
-      const targetColorId = variants[idx].colorId;
       const targetColorName = variants[idx].colorName;
 
-      // If this variant has a color, also sync the photo across other variants with this exact color
       const updated = variants.map((v, i) => {
         if (i === idx) {
           return { ...v, images: newImages, imageUrl: primaryUrl };
         }
-        if (
-          (targetColorId && v.colorId === targetColorId) ||
-          (targetColorName && v.colorName === targetColorName)
-        ) {
+        if (targetColorName && v.colorName === targetColorName) {
           return { ...v, images: newImages, imageUrl: primaryUrl };
         }
         return v;
@@ -243,23 +220,19 @@ export const VariantsTikTokStyle = ({
     }
   };
 
-  // 8. Remove single photo from variant
+  // 9. Remove photo from variant
   const handleRemovePhoto = (variantIdx: number, photoIdx: number) => {
     const current = variants[variantIdx].images || [];
     const filtered = current.filter((_, i) => i !== photoIdx);
     const primaryUrl = filtered[0]?.url || null;
 
-    const targetColorId = variants[variantIdx].colorId;
     const targetColorName = variants[variantIdx].colorName;
 
     const updated = variants.map((v, i) => {
       if (i === variantIdx) {
         return { ...v, images: filtered, imageUrl: primaryUrl };
       }
-      if (
-        (targetColorId && v.colorId === targetColorId) ||
-        (targetColorName && v.colorName === targetColorName)
-      ) {
+      if (targetColorName && v.colorName === targetColorName) {
         return { ...v, images: filtered, imageUrl: primaryUrl };
       }
       return v;
@@ -268,7 +241,7 @@ export const VariantsTikTokStyle = ({
     onVariantsChange(updated);
   };
 
-  // 9. Bulk Apply Price
+  // 10. Bulk Apply Price
   const handleBulkApplyPrice = () => {
     if (!bulkPrice) {
       onError?.("Please enter a price to apply.");
@@ -278,7 +251,7 @@ export const VariantsTikTokStyle = ({
     onVariantsChange(updated);
   };
 
-  // 10. Bulk Apply Stock
+  // 11. Bulk Apply Stock
   const handleBulkApplyStock = () => {
     if (!bulkStock) {
       onError?.("Please enter a stock quantity to apply.");
@@ -288,114 +261,28 @@ export const VariantsTikTokStyle = ({
     onVariantsChange(updated);
   };
 
-  // 11. Auto-generate all SKUs
-  const handleAutoGenerateAllSKUs = () => {
-    const updated = variants.map((v) => ({
-      ...v,
-      sku: generateSKU(productTitle, getColorName(v), getSizeName(v)),
-    }));
-    onVariantsChange(updated);
-  };
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-            <Layers className="text-[#f85606]" size={22} />
+            <Layers className="text-blue-600" size={24} />
             <span>Product Variants</span>
           </h2>
           <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            Create size options (e.g. M, L), color variations, or any custom product variant.
+            Add colors, enter available sizes, and set price and stock.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={handleAddSingleVariant}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#f85606] hover:bg-[#ea4e03] text-white text-xs sm:text-sm font-bold shadow-sm transition cursor-pointer active:scale-95"
-          >
-            <Plus size={16} className="stroke-[3]" />
-            <span>Add Variant</span>
-          </button>
-        </div>
-      </div>
-
-      {/* QUICK SIZE PRESETS BAR (Matches reference: Size M, L) */}
-      <div className="p-4 bg-orange-50/40 rounded-2xl border border-orange-100/70 space-y-2.5">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5 uppercase tracking-wide">
-            <Sparkles size={14} className="text-[#f85606]" />
-            <span>Quick-Add Sizes:</span>
-          </span>
-          <span className="text-[11px] text-gray-500">
-            Click any size to instantly add that variant row
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {COMMON_SIZES.map((sz) => {
-            const isAlreadyAdded = variants.some(
-              (v) => getSizeName(v).toUpperCase() === sz.toUpperCase() && !getColorName(v)
-            );
-            return (
-              <button
-                key={sz}
-                type="button"
-                onClick={() => handleQuickAddSize(sz)}
-                className={`min-w-[42px] h-8 px-3 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1 cursor-pointer active:scale-95 ${
-                  isAlreadyAdded
-                    ? "bg-white border-[#f85606] text-[#f85606] shadow-2xs"
-                    : "bg-white border-gray-200 hover:border-[#f85606] hover:text-[#f85606] text-gray-700"
-                }`}
-                title={`Add size ${sz}`}
-              >
-                <span>{sz}</span>
-                {isAlreadyAdded && <Check size={11} className="stroke-[3]" />}
-              </button>
-            );
-          })}
-
-          {/* Custom Size Input / Toggle */}
-          {showCustomSize ? (
-            <div className="inline-flex items-center gap-1 bg-white border border-[#f85606] rounded-lg p-0.5">
-              <input
-                type="text"
-                placeholder="Custom Size"
-                value={customSizeInput}
-                onChange={(e) => setCustomSizeInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCustomSize())}
-                className="w-24 px-2 py-1 text-xs border-0 focus:outline-none"
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={handleAddCustomSize}
-                className="px-2 py-1 bg-[#f85606] text-white text-xs font-bold rounded"
-              >
-                Add
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCustomSize(false)}
-                className="p-1 text-gray-400 hover:text-gray-600"
-              >
-                <X size={13} />
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowCustomSize(true)}
-              className="h-8 px-3 rounded-lg text-xs font-bold border border-dashed border-gray-300 hover:border-gray-400 bg-white text-gray-600 transition flex items-center gap-1"
-            >
-              <Plus size={13} />
-              <span>Custom Size</span>
-            </button>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={handleAddColor}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold shadow-xs transition cursor-pointer active:scale-95"
+        >
+          <Plus size={16} className="stroke-[3]" />
+          <span>Add Color</span>
+        </button>
       </div>
 
       {/* BULK EDIT TOOLBAR (When 2+ variants exist) */}
@@ -444,91 +331,142 @@ export const VariantsTikTokStyle = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleAutoGenerateAllSKUs}
-              className="inline-flex items-center gap-1 px-3 py-1 bg-white hover:bg-gray-100 border border-gray-300 font-bold rounded-lg transition shadow-2xs text-gray-700"
-            >
-              <Sparkles size={13} className="text-amber-500" />
-              <span>Auto SKUs</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onVariantsChange([])}
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-rose-600 hover:bg-rose-50 border border-rose-200 font-semibold rounded-lg transition"
-            >
-              <Trash2 size={13} />
-              <span>Clear All</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => onVariantsChange([])}
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-rose-600 hover:bg-rose-50 border border-rose-200 font-semibold rounded-lg transition"
+          >
+            <Trash2 size={13} />
+            <span>Clear All</span>
+          </button>
         </div>
       )}
 
-      {/* VARIANTS LIST / MATRIX */}
+      {/* EMPTY STATE */}
       {variants.length === 0 ? (
         <div className="text-center py-12 px-6 bg-gray-50/70 rounded-2xl border-2 border-dashed border-gray-200">
-          <div className="w-12 h-12 rounded-2xl bg-orange-50 text-[#f85606] flex items-center justify-center mx-auto mb-3">
-            <Layers size={24} />
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
+            <Palette size={24} />
           </div>
           <h3 className="text-base font-bold text-gray-900 mb-1">
-            No Variants Created Yet
+            No Color Variants Added Yet
           </h3>
-          <p className="text-xs sm:text-sm text-gray-500 max-w-sm mx-auto mb-4">
-            Click <strong>M</strong> or <strong>L</strong> above to add sizes, or click <strong>+ Add Variant</strong> to build custom variants.
+          <p className="text-xs sm:text-sm text-gray-500 max-w-sm mx-auto mb-5">
+            Click below to add your first colorway with its photo and sizes.
           </p>
           <button
             type="button"
-            onClick={handleAddSingleVariant}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#f85606] text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition hover:bg-[#ea4e03]"
+            onClick={handleAddColor}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition hover:bg-blue-700 cursor-pointer"
           >
             <Plus size={16} />
-            <span>Add First Variant</span>
+            <span>Add First Color</span>
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex items-center justify-between text-xs font-bold text-gray-500 px-1 uppercase tracking-wider">
-            <span>Configured Variants ({variants.length})</span>
-            <span>Total Quantity: {variants.reduce((acc, v) => acc + (parseInt(String(v.stock)) || 0), 0)}</span>
+            <span>Color Variants ({variants.length})</span>
+            <span className="text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200 normal-case font-bold">
+              Total SKUs:{" "}
+              {variants.reduce((acc, v) => {
+                const sCount =
+                  (v.sizeName !== undefined ? v.sizeName : (getSizeName(v) || ""))
+                    .split(",")
+                    .map((s: string) => s.trim())
+                    .filter(Boolean).length || 1;
+                return acc + sCount;
+              }, 0)}
+            </span>
           </div>
 
-          <div className="grid grid-cols-1 gap-3">
+          <div className="grid grid-cols-1 gap-4">
             {variants.map((v, idx) => {
-              const colorName = getColorName(v);
-              const colorHex = getColorHex(v);
-              const sizeName = getSizeName(v);
+              const displayColor = v.colorName !== undefined ? v.colorName : (getColorName(v) || "");
+              const displaySize = v.sizeName !== undefined ? v.sizeName : (getSizeName(v) || "");
+              const colorHex = getColorHex({ ...v, colorName: displayColor });
               const photo = v.images?.[0]?.url || v.imageUrl;
               const isUploadingThis = uploadingIdx === idx;
 
               return (
                 <div
                   key={idx}
-                  className="p-3.5 sm:p-4 rounded-xl border border-gray-200 bg-white shadow-2xs hover:border-gray-300 transition flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  className="p-4 sm:p-5 rounded-2xl border border-gray-200 bg-white shadow-xs hover:border-gray-300 transition space-y-4"
                 >
-                  {/* Left: Photo + Color/Size Identifier */}
-                  <div className="flex items-center gap-3.5">
-                    {/* Photo Box */}
+                  {/* Card Header: Color #[N] + Action Buttons */}
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-900 px-2.5 py-1 bg-gray-100 rounded-lg">
+                        Color #{idx + 1}
+                      </span>
+                      {displayColor && (
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-50 border border-blue-100 text-xs font-bold text-blue-900">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full border border-gray-300"
+                            style={{ backgroundColor: colorHex || "#cbd5e1" }}
+                          />
+                          <span>{displayColor}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions: Eye, Copy, Trash */}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateField(idx, "isActive", !v.isActive)}
+                        className={`p-1.5 rounded-lg transition cursor-pointer ${
+                          v.isActive !== false
+                            ? "text-emerald-600 bg-emerald-50 hover:bg-emerald-100"
+                            : "text-gray-400 bg-gray-100 hover:bg-gray-200"
+                        }`}
+                        title={v.isActive !== false ? "Variant is active" : "Variant is inactive"}
+                      >
+                        {v.isActive !== false ? <Eye size={15} /> : <EyeOff size={15} />}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDuplicateColor(idx)}
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                        title="Duplicate this color"
+                      >
+                        <Copy size={15} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveColor(idx)}
+                        className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                        title="Delete this color"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Card Main Body: Photo + Color & Size Configuration */}
+                  <div className="flex flex-col sm:flex-row gap-4 items-start">
+                    {/* Left: 3:4 Portrait Photo Box */}
                     <div className="relative group shrink-0">
                       <div
                         onClick={() => fileInputRefs.current[idx]?.click()}
-                        className={`w-14 h-[72px] aspect-[3/4] rounded-xl border-2 flex items-center justify-center overflow-hidden cursor-pointer bg-gray-50 transition ${
+                        className={`w-18 h-[96px] aspect-[3/4] rounded-xl border-2 flex items-center justify-center overflow-hidden cursor-pointer bg-gray-50 transition ${
                           photo
-                            ? "border-orange-500 shadow-2xs"
-                            : "border-dashed border-gray-300 hover:border-[#f85606] text-gray-400 hover:text-[#f85606]"
+                            ? "border-blue-500 shadow-xs"
+                            : "border-dashed border-gray-300 hover:border-blue-500 text-gray-400 hover:text-blue-600"
                         }`}
                         style={{ aspectRatio: "3/4" }}
-                        title="Click to upload/change variant photo (auto-crops to 3:4 portrait)"
+                        title="Upload color photo (3:4 portrait)"
                       >
                         {isUploadingThis ? (
-                          <CircularProgress size={18} sx={{ color: "#f85606" }} />
+                          <CircularProgress size={18} sx={{ color: "#2563eb" }} />
                         ) : photo ? (
                           <img src={photo} alt="" className="w-full h-full object-cover object-top" />
                         ) : (
                           <div className="flex flex-col items-center">
                             <Upload size={14} />
-                            <span className="text-[9px] font-bold mt-0.5">3:4</span>
+                            <span className="text-[9px] font-bold mt-0.5">Photo</span>
                           </div>
                         )}
                       </div>
@@ -556,157 +494,118 @@ export const VariantsTikTokStyle = ({
                       />
                     </div>
 
-                    {/* Variant Badge & Inputs */}
-                    <div className="space-y-1">
+                    {/* Right: Color & Sizes Inputs */}
+                    <div className="flex-1 min-w-0 space-y-3 w-full">
+                      {/* Color Input */}
                       <div className="flex items-center gap-2 flex-wrap">
-                        {/* Size Pill */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs font-bold text-gray-500">Size:</span>
-                          <input
-                            type="text"
-                            placeholder="e.g. M, L"
-                            value={v.sizeName || sizeName}
-                            onChange={(e) => {
-                              handleUpdateField(idx, "sizeName", e.target.value);
-                              // Clear sizeId so custom sizeName takes priority
-                              handleUpdateField(idx, "sizeId", "");
-                            }}
-                            className="w-20 px-2 py-0.5 text-xs font-bold border border-gray-300 rounded-lg text-gray-900 focus:border-[#f85606]"
+                        <span className="text-xs font-bold text-gray-700 w-14 shrink-0">Color:</span>
+                        <input
+                          type="text"
+                          placeholder="e.g. Maroon, Sage Green, Black"
+                          value={displayColor}
+                          onChange={(e) => handleUpdateColor(idx, e.target.value)}
+                          className="w-48 sm:w-64 px-3 py-1.5 text-xs font-bold border border-gray-300 rounded-lg text-gray-900 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none transition shadow-2xs"
+                        />
+
+                        {/* Color Swatch & Color Picker Wheel */}
+                        <label className="relative cursor-pointer shrink-0 ml-0.5" title="Pick color shade">
+                          <span
+                            className="w-7 h-7 rounded-full border border-gray-300 shadow-2xs block transition hover:scale-110"
+                            style={{ backgroundColor: colorHex || "#cbd5e1" }}
                           />
-                        </div>
-
-                        {/* Color Selector / Input */}
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-gray-500">Color:</span>
-                          <select
-                            value={v.colorId || ""}
-                            onChange={(e) => handleUpdateField(idx, "colorId", e.target.value)}
-                            className="px-2 py-0.5 text-xs font-semibold border border-gray-300 rounded-lg text-gray-800 bg-white focus:border-[#f85606]"
-                          >
-                            <option value="">None / Custom</option>
-                            {colors.map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {c.name}
-                              </option>
-                            ))}
-                          </select>
-
-                          {/* Or Custom Color Text */}
-                          {!v.colorId && (
-                            <input
-                              type="text"
-                              placeholder="Color name"
-                              value={v.colorName || ""}
-                              onChange={(e) =>
-                                handleUpdateField(idx, "colorName", e.target.value)
-                              }
-                              className="w-24 px-2 py-0.5 text-xs border border-gray-300 rounded-lg text-gray-800 focus:border-[#f85606]"
-                            />
-                          )}
-
-                          {colorHex && colorHex !== "#cbd5e1" && (
-                            <span
-                              className="w-4 h-4 rounded-full border border-gray-300 shadow-2xs shrink-0"
-                              style={{ backgroundColor: colorHex }}
-                            />
-                          )}
-                        </div>
+                          <input
+                            type="color"
+                            value={colorHex && colorHex.startsWith("#") ? colorHex : "#cbd5e1"}
+                            onChange={(e) => handleUpdateHex(idx, e.target.value)}
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                          />
+                        </label>
                       </div>
 
-                      {/* Display Label */}
-                      <p className="text-[11px] text-gray-400 font-mono">
-                        Variant #{idx + 1}: {colorName ? `${colorName} / ` : ""}{sizeName || "Universal"}
-                      </p>
+                      {/* Sizes Input */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-gray-700 w-14 shrink-0">Sizes:</span>
+                        <input
+                          type="text"
+                          placeholder="e.g. 52, 54, 56, 58 or Free Size"
+                          value={displaySize}
+                          onChange={(e) => handleUpdateSize(idx, e.target.value)}
+                          className="w-full sm:w-80 px-3 py-1.5 text-xs font-bold border border-gray-300 rounded-lg text-gray-900 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none transition shadow-2xs"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Right: SKU, Price, Stock, Actions */}
-                  <div className="flex flex-wrap items-center gap-3">
-                    {/* SKU */}
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase">SKU</span>
-                      <input
-                        type="text"
-                        placeholder="SKU"
-                        value={v.sku || ""}
-                        onChange={(e) => handleUpdateField(idx, "sku", e.target.value)}
-                        className="w-28 px-2 py-1 text-xs font-mono border border-gray-300 rounded-lg focus:border-[#f85606]"
-                      />
+                  {/* Card Bottom: SKU, Price, Stock */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-100 bg-gray-50/60 -mx-4 -mb-4 sm:-mx-5 sm:-mb-5 p-3 sm:px-4 rounded-b-2xl">
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* SKU */}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">SKU:</span>
+                        <input
+                          type="text"
+                          placeholder="Auto SKU"
+                          value={v.sku || ""}
+                          onChange={(e) => handleUpdateField(idx, "sku", e.target.value)}
+                          className="w-32 sm:w-40 px-2.5 py-1 text-xs font-mono border border-gray-300 rounded-lg bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none"
+                        />
+                      </div>
+
+                      {/* Price */}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Price: £</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={v.price}
+                          onChange={(e) => handleUpdateField(idx, "price", e.target.value)}
+                          className="w-20 px-2.5 py-1 text-xs border border-gray-300 rounded-lg text-right bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none"
+                        />
+                        {v.compareAtPrice && Number(v.compareAtPrice) > Number(v.price) && (
+                          <div className="flex items-center gap-1 ml-0.5">
+                            <span className="text-[11px] text-gray-400 line-through">
+                              £{Number(v.compareAtPrice).toFixed(2)}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                              -{Math.round(((Number(v.compareAtPrice) - Number(v.price)) / Number(v.compareAtPrice)) * 100)}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Stock */}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Stock:</span>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          min="0"
+                          value={v.stock}
+                          onChange={(e) => handleUpdateField(idx, "stock", e.target.value)}
+                          className="w-18 px-2.5 py-1 text-xs border border-gray-300 rounded-lg text-right bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none"
+                        />
+                      </div>
                     </div>
 
-                    {/* Price */}
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase">Price (£)</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={v.price}
-                        onChange={(e) => handleUpdateField(idx, "price", e.target.value)}
-                        className="w-20 px-2 py-1 text-xs border border-gray-300 rounded-lg text-right focus:border-[#f85606]"
-                      />
-                    </div>
-
-                    {/* Stock */}
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase">Stock</span>
-                      <input
-                        type="number"
-                        placeholder="0"
-                        min="0"
-                        value={v.stock}
-                        onChange={(e) => handleUpdateField(idx, "stock", e.target.value)}
-                        className="w-18 px-2 py-1 text-xs border border-gray-300 rounded-lg text-right focus:border-[#f85606]"
-                      />
-                    </div>
-
-                    {/* Status Toggle */}
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateField(idx, "isActive", !v.isActive)}
-                      className={`p-2 rounded-lg transition cursor-pointer mt-3.5 ${
-                        v.isActive !== false
-                          ? "text-emerald-600 bg-emerald-50 hover:bg-emerald-100"
-                          : "text-gray-300 bg-gray-100 hover:bg-gray-200"
-                      }`}
-                      title={v.isActive !== false ? "Active variant" : "Inactive variant"}
-                    >
-                      {v.isActive !== false ? <Eye size={15} /> : <EyeOff size={15} />}
-                    </button>
-
-                    {/* Duplicate */}
-                    <button
-                      type="button"
-                      onClick={() => handleDuplicateVariant(idx)}
-                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer mt-3.5"
-                      title="Duplicate variant"
-                    >
-                      <Copy size={15} />
-                    </button>
-
-                    {/* Delete */}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveVariant(idx)}
-                      className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer mt-3.5"
-                      title="Remove variant"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                    <span className="text-[11px] text-gray-400">
+                      Applies to all sizes in this color
+                    </span>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <div className="pt-2 flex items-center justify-between">
+          {/* Bottom Add Color Button */}
+          <div className="pt-2">
             <button
               type="button"
-              onClick={handleAddSingleVariant}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-dashed border-gray-300 hover:border-[#f85606] text-gray-600 hover:text-[#f85606] text-xs font-bold transition cursor-pointer bg-white"
+              onClick={handleAddColor}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200 transition cursor-pointer"
             >
               <Plus size={14} />
-              <span>Add Another Variant</span>
+              <span>Add Another Color</span>
             </button>
           </div>
         </div>
