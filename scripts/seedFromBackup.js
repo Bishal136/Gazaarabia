@@ -163,64 +163,61 @@ async function runSeed() {
   console.log("🚀 GAZAARABIA MEDIA RESTORE & CATALOG SEED ENGINE");
   console.log("==================================================================");
 
-  // Step 1: Strict Check of Backup/uploads
-  console.log(`\n[1/5] 🛡️  Verifying Backup Source: ${BACKUP_DIR}...`);
-  if (!fs.existsSync(BACKUP_DIR)) {
-    throw new Error(`CRITICAL: Backup directory not found at ${BACKUP_DIR}`);
-  }
-
-  const backupCategories = path.join(BACKUP_DIR, "categories");
-  const backupProducts = path.join(BACKUP_DIR, "products");
-  if (!fs.existsSync(backupCategories) || !fs.existsSync(backupProducts)) {
-    throw new Error(`CRITICAL: Backup categories or products subdirectory missing in ${BACKUP_DIR}`);
-  }
-
-  console.log("✅ Backup directory verified as strictly read-only source.");
-
-  // Step 2: Restore Media Files into Active uploads/
-  console.log(`\n[2/5] 📦 Restoring Media Files into Active Directory: ${ACTIVE_UPLOADS_DIR}...`);
-  if (!fs.existsSync(ACTIVE_UPLOADS_DIR)) {
-    fs.mkdirSync(ACTIVE_UPLOADS_DIR, { recursive: true });
-  }
-
+  // Step 1 & 2: Check Backup Source & Restore Media Files
+  console.log(`\n[1/5] 🛡️  Checking Backup Source: ${BACKUP_DIR}...`);
+  const hasBackup = fs.existsSync(BACKUP_DIR) && fs.existsSync(path.join(BACKUP_DIR, "categories"));
   const mediaStats = { copied: 0, skipped: 0 };
 
-  // Copy all subfolders from Backup/uploads
-  const backupFolders = fs.readdirSync(BACKUP_DIR, { withFileTypes: true });
-  for (const folder of backupFolders) {
-    if (folder.isDirectory()) {
-      const srcSub = path.join(BACKUP_DIR, folder.name);
-      const destSub = path.join(ACTIVE_UPLOADS_DIR, folder.name);
-      copyDirectorySync(srcSub, destSub, mediaStats);
+  if (hasBackup) {
+    console.log("✅ Backup directory verified as strictly read-only source.");
+    console.log(`\n[2/5] 📦 Restoring Media Files into Active Directory: ${ACTIVE_UPLOADS_DIR}...`);
+    if (!fs.existsSync(ACTIVE_UPLOADS_DIR)) {
+      fs.mkdirSync(ACTIVE_UPLOADS_DIR, { recursive: true, mode: 0o775 });
     }
-  }
 
-  // Normalize and copy unrotated assets if present (e.g. products_... and variants_...)
-  const unrotatedDir = path.join(BACKUP_DIR, "backup_raw_unrotated");
-  if (fs.existsSync(unrotatedDir)) {
-    const rawFiles = fs.readdirSync(unrotatedDir);
-    const destProdDir = path.join(ACTIVE_UPLOADS_DIR, "products");
-    const destVarDir = path.join(ACTIVE_UPLOADS_DIR, "variants");
+    // Copy all subfolders from Backup/uploads
+    const backupFolders = fs.readdirSync(BACKUP_DIR, { withFileTypes: true });
+    for (const folder of backupFolders) {
+      if (folder.isDirectory()) {
+        const srcSub = path.join(BACKUP_DIR, folder.name);
+        const destSub = path.join(ACTIVE_UPLOADS_DIR, folder.name);
+        copyDirectorySync(srcSub, destSub, mediaStats);
+      }
+    }
 
-    for (const f of rawFiles) {
-      const srcFile = path.join(unrotatedDir, f);
-      if (f.startsWith("products_")) {
-        const targetName = f.replace(/^products_/, "");
-        const destFile = path.join(destProdDir, targetName);
-        if (!fs.existsSync(destFile)) {
-          fs.copyFileSync(srcFile, destFile);
-          try { fs.chmodSync(destFile, 0o664); } catch (_) {}
-          mediaStats.copied++;
-        }
-      } else if (f.startsWith("variants_")) {
-        const targetName = f.replace(/^variants_/, "");
-        const destFile = path.join(destVarDir, targetName);
-        if (!fs.existsSync(destFile)) {
-          fs.copyFileSync(srcFile, destFile);
-          try { fs.chmodSync(destFile, 0o664); } catch (_) {}
-          mediaStats.copied++;
+    // Normalize and copy unrotated assets if present (e.g. products_... and variants_...)
+    const unrotatedDir = path.join(BACKUP_DIR, "backup_raw_unrotated");
+    if (fs.existsSync(unrotatedDir)) {
+      const rawFiles = fs.readdirSync(unrotatedDir);
+      const destProdDir = path.join(ACTIVE_UPLOADS_DIR, "products");
+      const destVarDir = path.join(ACTIVE_UPLOADS_DIR, "variants");
+
+      for (const f of rawFiles) {
+        const srcFile = path.join(unrotatedDir, f);
+        if (f.startsWith("products_")) {
+          const targetName = f.replace(/^products_/, "");
+          const destFile = path.join(destProdDir, targetName);
+          if (!fs.existsSync(destFile)) {
+            fs.copyFileSync(srcFile, destFile);
+            try { fs.chmodSync(destFile, 0o664); } catch (_) {}
+            mediaStats.copied++;
+          }
+        } else if (f.startsWith("variants_")) {
+          const targetName = f.replace(/^variants_/, "");
+          const destFile = path.join(destVarDir, targetName);
+          if (!fs.existsSync(destFile)) {
+            fs.copyFileSync(srcFile, destFile);
+            try { fs.chmodSync(destFile, 0o664); } catch (_) {}
+            mediaStats.copied++;
+          }
         }
       }
+    }
+    console.log(`✅ Media restore complete: ${mediaStats.copied} files copied into active uploads.`);
+  } else {
+    console.log("ℹ️  Backup directory not present (production environment). Using active uploads/ directory.");
+    if (!fs.existsSync(ACTIVE_UPLOADS_DIR)) {
+      fs.mkdirSync(ACTIVE_UPLOADS_DIR, { recursive: true, mode: 0o775 });
     }
   }
 
@@ -230,8 +227,6 @@ async function runSeed() {
   if (!fs.existsSync(catKeep)) fs.writeFileSync(catKeep, "");
   const prodKeep = path.join(ACTIVE_UPLOADS_DIR, "products", ".gitkeep");
   if (!fs.existsSync(prodKeep)) fs.writeFileSync(prodKeep, "");
-
-  console.log(`✅ Media restore complete: ${mediaStats.copied} files copied into active uploads.`);
 
   // Step 3: Scan Active Uploads & Verify Assets
   console.log("\n[3/5] 🔍 Indexing active upload assets on disk...");
