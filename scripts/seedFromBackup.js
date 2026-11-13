@@ -222,11 +222,16 @@ async function runSeed() {
   }
 
   // Ensure standard .gitkeep files exist
-  fs.writeFileSync(path.join(ACTIVE_UPLOADS_DIR, ".gitkeep"), "");
-  const catKeep = path.join(ACTIVE_UPLOADS_DIR, "categories", ".gitkeep");
-  if (!fs.existsSync(catKeep)) fs.writeFileSync(catKeep, "");
-  const prodKeep = path.join(ACTIVE_UPLOADS_DIR, "products", ".gitkeep");
-  if (!fs.existsSync(prodKeep)) fs.writeFileSync(prodKeep, "");
+  try {
+    const rootKeep = path.join(ACTIVE_UPLOADS_DIR, ".gitkeep");
+    if (!fs.existsSync(rootKeep)) fs.writeFileSync(rootKeep, "");
+    const catKeep = path.join(ACTIVE_UPLOADS_DIR, "categories", ".gitkeep");
+    if (!fs.existsSync(catKeep)) fs.writeFileSync(catKeep, "");
+    const prodKeep = path.join(ACTIVE_UPLOADS_DIR, "products", ".gitkeep");
+    if (!fs.existsSync(prodKeep)) fs.writeFileSync(prodKeep, "");
+  } catch (err) {
+    // Non-fatal if uploads is owned by application user
+  }
 
   // Step 3: Scan Active Uploads & Verify Assets
   console.log("\n[3/5] 🔍 Indexing active upload assets on disk...");
