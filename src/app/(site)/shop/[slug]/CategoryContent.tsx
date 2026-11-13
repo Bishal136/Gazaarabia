@@ -443,6 +443,14 @@ export default function CategoryContent({ initialData }: { initialData?: any }) 
               setFilters={setFilters}
               filterMeta={filterMeta}
               onReset={handleResetFilters}
+              onFilterChange={(updater) => {
+                setFilters((prev) => {
+                  const updated = updater(prev);
+                  syncUrlWithState(1, sort, updated);
+                  return updated;
+                });
+                setCurrentPage(1);
+              }}
               onApply={() => {
                 setCurrentPage(1);
                 syncUrlWithState(1, sort, filters);

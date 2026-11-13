@@ -19,7 +19,7 @@ export async function GET() {
         orderBy: { name: "asc" },
       }),
       prisma.sizes.findMany({
-        select: { id: true, name: true, value: true },
+        select: { id: true, name: true },
         orderBy: { name: "asc" },
       }),
       prisma.categories.findMany({

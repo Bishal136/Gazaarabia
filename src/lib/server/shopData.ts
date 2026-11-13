@@ -40,56 +40,130 @@ export async function fetchShopData(
   const hasInStock = availability.includes("In stock");
   const hasOutOfStock = availability.includes("Out of stock");
 
-  const productWhere: any = {
-    active: true,
-    isDeleted: false,
-    sellingPrice: {
-      gte: priceMin,
-      lte: priceMax,
-    },
-  };
+  const andConditions: any[] = [
+    { active: true },
+    { isDeleted: false },
+  ];
 
-  if (q) {
-    const term = q.toLowerCase();
-    productWhere.OR = [
-      { title: { contains: term } },
-      { slug: { contains: term } },
-      { shortDescription: { contains: term } },
-    ];
-  }
-
-  if (ratingMin > 0) {
-    productWhere.reviews = {
-      some: {
-        rating: { gte: ratingMin },
+  // 1. Price Range condition (handles both regular sellingPrice and discountPrice if product is on sale)
+  andConditions.push({
+    OR: [
+      {
+        discountPrice: { not: null, gt: 0, gte: priceMin, lte: priceMax },
       },
-    };
+      {
+        AND: [
+          {
+            OR: [
+              { discountPrice: null },
+              { discountPrice: { lte: 0 } },
+            ],
+          },
+          {
+            sellingPrice: { gte: priceMin, lte: priceMax },
+          },
+        ],
+      },
+    ],
+  });
+
+  // 2. Search query q
+  if (q) {
+    andConditions.push({
+      OR: [
+        { title: { contains: q, mode: "insensitive" } },
+        { slug: { contains: q, mode: "insensitive" } },
+        { shortDescription: { contains: q, mode: "insensitive" } },
+      ],
+    });
   }
 
+  // 3. Stock availability
   if (hasInStock && !hasOutOfStock) {
-    productWhere.baseQty = { gt: 0 };
+    andConditions.push({ baseQty: { gt: 0 } });
   }
   if (hasOutOfStock && !hasInStock) {
-    productWhere.baseQty = { lte: 0 };
+    andConditions.push({ baseQty: { lte: 0 } });
   }
 
+  // 4. Subcategories filter
   if (subcategoriesFilter.length > 0) {
-    productWhere.subcategoryId = { in: subcategoriesFilter };
+    andConditions.push({ subcategoryId: { in: subcategoriesFilter } });
   }
 
+  // 5. Categories filter
   if (categoriesFilter.length > 0) {
-    productWhere.categoryId = { in: categoriesFilter };
+    andConditions.push({ categoryId: { in: categoriesFilter } });
   }
 
+  // 6. Rating filter (resolve through review aggregation because Prisma MongoDB relations on integer IDs don't count properly in relational some)
+  let ratingProductIds: number[] | null = null;
+  if (ratingMin > 0) {
+    try {
+      const stats = await prisma.review.groupBy({
+        by: ["productId"],
+        _avg: { rating: true },
+        having: {
+          rating: {
+            _avg: { gte: ratingMin },
+          },
+        },
+      });
+      ratingProductIds = stats.map((s: any) => s.productId);
+    } catch {
+      const matchingReviews = await prisma.review.findMany({
+        where: { rating: { gte: ratingMin } },
+        select: { productId: true },
+        distinct: ["productId"],
+      });
+      ratingProductIds = matchingReviews.map((r: any) => r.productId);
+    }
+  }
+
+  // 7. Variants filter (sizes & colors)
+  // Resolve through productvariant because Prisma MongoDB count() on relational { productvariant: { some: ... } } returns 0
+  let variantProductIds: number[] | null = null;
   if (sizes.length > 0 || colors.length > 0) {
-    productWhere.productvariant = {
-      some: {
+    const matchingVariants = await prisma.productvariant.findMany({
+      where: {
         isActive: true,
         ...(sizes.length > 0 && { sizeId: { in: sizes } }),
         ...(colors.length > 0 && { colorId: { in: colors } }),
       },
-    };
+      select: { productId: true },
+      distinct: ["productId"],
+    });
+    variantProductIds = matchingVariants.map((v) => v.productId);
   }
+
+  // Intersect rating & variant product IDs if either or both are active
+  let targetProductIds: number[] | null = null;
+  if (ratingProductIds !== null && variantProductIds !== null) {
+    const variantSet = new Set(variantProductIds);
+    targetProductIds = ratingProductIds.filter((id) => variantSet.has(id));
+  } else if (ratingProductIds !== null) {
+    targetProductIds = ratingProductIds;
+  } else if (variantProductIds !== null) {
+    targetProductIds = variantProductIds;
+  }
+
+  if (targetProductIds !== null) {
+    if (targetProductIds.length === 0) {
+      // Immediate return when no products match the combined variant/rating filter
+      return {
+        products: [],
+        total: 0,
+        page,
+        limit,
+        totalPages: 1,
+        parentCategory: null,
+        subcategories: [],
+      };
+    }
+    andConditions.push({ id: { in: targetProductIds } });
+  }
+
+  const productWhere: any = { AND: andConditions };
 
   let orderBy: any = { createdAt: "desc" };
   if (sort === "price_asc") orderBy = { sellingPrice: "asc" };
@@ -108,6 +182,8 @@ export async function fetchShopData(
     sellingPrice: true,
     discountPrice: true,
     baseQty: true,
+    soldCount: true,
+    soldHighlightDuration: true,
     productimage: {
       select: { url: true, alt: true, primary: true },
     },
@@ -295,6 +371,8 @@ export async function fetchShopData(
       category: product.categories,
       productimage: product.productimage,
       productvariant: product.productvariant,
+      soldCount: product.soldCount || 0,
+      soldHighlightDuration: product.soldHighlightDuration || null,
       isInWishlist,
       availableStock,
       rating: Number(stats.averageRating.toFixed(1)),

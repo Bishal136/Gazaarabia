@@ -56,6 +56,9 @@ export const shopService = {
     filters.availability?.forEach((v: string) =>
       params.append("availability[]", v)
     );
+    filters.categories?.forEach((id: number) =>
+      params.append("categories[]", String(id))
+    );
     filters.sizes?.forEach((id: number) =>
       params.append("sizes[]", String(id))
     );

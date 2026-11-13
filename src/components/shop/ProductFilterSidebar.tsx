@@ -26,6 +26,7 @@ interface ProductFilterSidebarProps {
   };
   onApply?: () => void;
   onReset: () => void;
+  onFilterChange?: (updater: (prev: FilterState) => FilterState) => void;
   isMobileDrawer?: boolean;
   onCloseMobileDrawer?: () => void;
   totalProducts?: number;
@@ -37,6 +38,7 @@ export default function ProductFilterSidebar({
   filterMeta,
   onApply,
   onReset,
+  onFilterChange,
   isMobileDrawer = false,
   onCloseMobileDrawer,
   totalProducts,
@@ -45,6 +47,7 @@ export default function ProductFilterSidebar({
   const [openSections, setOpenSections] = useState({
     categories: true,
     price: true,
+    sizes: true,
     colors: true,
     rating: true,
     availability: true,
@@ -54,17 +57,34 @@ export default function ProductFilterSidebar({
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
+  const updateFilter = (updater: (prev: FilterState) => FilterState) => {
+    if (!isMobileDrawer && onFilterChange) {
+      onFilterChange(updater);
+    } else {
+      setFilters(updater);
+    }
+  };
+
   // Price slider buffer
   const [localPrice, setLocalPrice] = useState<[number, number]>([
     filters.priceMin || 0,
     filters.priceMax || 1000,
   ]);
 
+  // Synchronize local price if filters change externally (e.g. Reset or active pill removal)
+  React.useEffect(() => {
+    setLocalPrice([filters.priceMin || 0, filters.priceMax || 1000]);
+  }, [filters.priceMin, filters.priceMax]);
+
   const handlePriceChange = (values: number[]) => {
+    setLocalPrice([values[0], values[1]]);
+  };
+
+  const handlePriceCommit = (values: number[]) => {
     const min = values[0];
     const max = values[1];
     setLocalPrice([min, max]);
-    setFilters((prev) => ({
+    updateFilter((prev) => ({
       ...prev,
       priceMin: min,
       priceMax: max,
@@ -76,6 +96,7 @@ export default function ProductFilterSidebar({
     filters.availability.length +
     filters.categories.length +
     filters.subcategories.length +
+    filters.sizes.length +
     filters.colors.length +
     (filters.rating ? 1 : 0) +
     (filters.priceMin > 0 || (filters.priceMax < 1000 && filters.priceMax > 0) ? 1 : 0);
@@ -161,7 +182,7 @@ export default function ProductFilterSidebar({
                           type="checkbox"
                           checked={isChecked}
                           onChange={() =>
-                            setFilters((prev) => ({
+                            updateFilter((prev) => ({
                               ...prev,
                               categories: isChecked
                                 ? prev.categories.filter((id) => id !== cat.id)
@@ -203,6 +224,7 @@ export default function ProductFilterSidebar({
                   max={1000}
                   step={5}
                   onValueChange={handlePriceChange}
+                  onValueCommit={handlePriceCommit}
                   className="relative flex items-center select-none touch-none w-full h-5"
                 >
                   <Slider.Track className="bg-gray-200 relative grow rounded-full h-1.5">
@@ -228,6 +250,8 @@ export default function ProductFilterSidebar({
                         const val = Math.max(0, Number(e.target.value) || 0);
                         handlePriceChange([val, localPrice[1]]);
                       }}
+                      onBlur={() => handlePriceCommit(localPrice)}
+                      onKeyDown={(e) => e.key === "Enter" && handlePriceCommit(localPrice)}
                       className="w-full min-w-0 bg-transparent outline-none text-xs"
                     />
                   </div>
@@ -248,6 +272,8 @@ export default function ProductFilterSidebar({
                         const val = Math.min(1000, Number(e.target.value) || 1000);
                         handlePriceChange([localPrice[0], val]);
                       }}
+                      onBlur={() => handlePriceCommit(localPrice)}
+                      onKeyDown={(e) => e.key === "Enter" && handlePriceCommit(localPrice)}
                       className="w-full min-w-0 bg-transparent outline-none text-xs"
                     />
                   </div>
@@ -257,7 +283,51 @@ export default function ProductFilterSidebar({
           )}
         </div>
 
-        {/* 3. COLOURS */}
+        {/* 3. SIZES */}
+        {filterMeta.sizes?.length > 0 && (
+          <div className="pt-5">
+            <button
+              type="button"
+              onClick={() => toggleSection("sizes")}
+              className="flex items-center justify-between w-full text-left font-semibold text-sm text-[var(--text-primary)] mb-3"
+            >
+              <span>Size</span>
+              {openSections.sizes ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+
+            {openSections.sizes && (
+              <div className="grid grid-cols-4 gap-2 max-h-52 overflow-y-auto overscroll-contain no-scrollbar pr-1">
+                {filterMeta.sizes.map((s) => {
+                  const isSelected = filters.sizes.includes(s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      title={s.name}
+                      onClick={() =>
+                        updateFilter((prev) => ({
+                          ...prev,
+                          sizes: isSelected
+                            ? prev.sizes.filter((id) => id !== s.id)
+                            : [...prev.sizes, s.id],
+                        }))
+                      }
+                      className={`h-9 rounded-lg border text-xs font-semibold flex items-center justify-center transition uppercase ${
+                        isSelected
+                          ? "border-[var(--brand-primary)] bg-[var(--brand-primary)] text-white shadow-sm font-bold"
+                          : "border-gray-200 hover:border-gray-400 text-gray-700 bg-white"
+                      }`}
+                    >
+                      {s.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 4. COLOURS */}
         {filterMeta.colors?.length > 0 && (
           <div className="pt-5">
             <button
@@ -279,7 +349,7 @@ export default function ProductFilterSidebar({
                       type="button"
                       title={c.name}
                       onClick={() =>
-                        setFilters((prev) => ({
+                        updateFilter((prev) => ({
                           ...prev,
                           colors: isSelected
                             ? prev.colors.filter((id) => id !== c.id)
@@ -317,7 +387,7 @@ export default function ProductFilterSidebar({
           </div>
         )}
 
-        {/* 4. RATING FILTER */}
+        {/* 5. RATING FILTER */}
         <div className="pt-5">
           <button
             type="button"
@@ -337,7 +407,7 @@ export default function ProductFilterSidebar({
                     key={stars}
                     type="button"
                     onClick={() =>
-                      setFilters((prev) => ({
+                      updateFilter((prev) => ({
                         ...prev,
                         rating: isSelected ? 0 : stars,
                       }))
@@ -369,7 +439,7 @@ export default function ProductFilterSidebar({
           )}
         </div>
 
-        {/* 5. AVAILABILITY */}
+        {/* 6. AVAILABILITY */}
         <div className="pt-5 pb-2">
           <button
             type="button"
@@ -393,7 +463,7 @@ export default function ProductFilterSidebar({
                       type="checkbox"
                       checked={isChecked}
                       onChange={() =>
-                        setFilters((prev) => ({
+                        updateFilter((prev) => ({
                           ...prev,
                           availability: isChecked
                             ? prev.availability.filter((a) => a !== status)

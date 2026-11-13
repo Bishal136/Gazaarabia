@@ -43,6 +43,9 @@ backup_*.json
 !.env.example
 !.env.*.example
 !shopify-app/.env.example
+qa-test/.env.test
+qa-test/.env.*
+!qa-test/.env.test.example
 
 # SSH keys, certificates, private keys
 *.pem
@@ -126,3 +129,4 @@ desktop.ini
 .agents/
 .gemini/
 Backup
+qa-test
