@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Award, TrendingUp } from "lucide-react";
+import ProductVideoHover from "@/components/ProductVideoHover";
+import { extractProductVideoUrl } from "@/lib/utils/productVideo";
 
 interface BestSellerProduct {
   id: number;
@@ -11,15 +14,211 @@ interface BestSellerProduct {
   slug: string;
   sellingPrice: number;
   discountPrice?: number | null;
+  videoUrl?: string | null;
   productimage: { url: string }[];
   productvariant?: {
     id: number;
+    videoUrl?: string | null;
     color?: { id: number; name: string; hexCode: string } | null;
   }[];
 }
 
 interface BestSellersProps {
   products: BestSellerProduct[];
+}
+
+/**
+ * Featured best-seller card with hover video playback
+ */
+function BestSellerFeaturedCard({
+  product,
+  index,
+  onClick,
+}: {
+  product: BestSellerProduct;
+  index: number;
+  onClick: () => void;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+  const videoUrl = extractProductVideoUrl(product);
+
+  return (
+    <motion.div
+      initial={false}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.15, duration: 0.6 }}
+      className="group cursor-pointer relative overflow-hidden rounded-xl sm:rounded-2xl bg-white shadow-sm hover:shadow-xl transition-shadow duration-500"
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div
+        className="relative w-full aspect-[3/4] overflow-hidden"
+        style={{ aspectRatio: "3/4" }}
+      >
+        <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-20 flex items-center gap-1.5 pointer-events-none">
+          <div className="w-6 h-6 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
+            <span className="text-white text-[10px] sm:text-sm font-bold">#{index + 1}</span>
+          </div>
+          <span className="bg-white/90 backdrop-blur-sm text-gray-800 text-[9px] sm:text-xs font-semibold px-2 sm:px-3 py-0.5 sm:py-1 rounded-full shadow-sm hidden sm:inline-block">
+            Best Seller
+          </span>
+        </div>
+        {product.discountPrice && product.discountPrice < product.sellingPrice && (
+          <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-20 bg-red-600 text-white text-[9px] sm:text-xs font-black px-2 sm:px-3 py-0.5 sm:py-1 rounded-full shadow-md uppercase tracking-wider pointer-events-none">
+            -{Math.round(((product.sellingPrice - product.discountPrice) / product.sellingPrice) * 100)}%
+          </div>
+        )}
+        <Image
+          src={product.productimage?.[0]?.url || "/placeholder.jpg"}
+          alt={product.title}
+          fill
+          loading="lazy"
+          sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 360px"
+          className="object-cover transition-transform duration-[1500ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-105"
+        />
+
+        {/* Hover overlay with second image if no video */}
+        {product.productimage?.[1] && !videoUrl && (
+          <Image
+            src={product.productimage[1].url}
+            alt={`${product.title} - alternate`}
+            fill
+            loading="lazy"
+            sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 360px"
+            className="object-cover absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 hidden sm:block"
+          />
+        )}
+
+        {/* Hover-to-play Video Preview (smoothly plays when video is available) */}
+        {videoUrl && (
+          <ProductVideoHover
+            videoUrl={videoUrl}
+            isHovered={isHovered}
+          />
+        )}
+
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+        <div className="absolute bottom-4 sm:bottom-6 left-0 right-0 justify-center opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500 hidden sm:flex pointer-events-none">
+          <span className="bg-white text-gray-900 text-xs font-semibold px-5 py-2 rounded-full shadow-lg uppercase tracking-wider">Quick View</span>
+        </div>
+      </div>
+      <div className="p-2 sm:p-4 md:p-5 text-center">
+        <h3 className="text-xs sm:text-base md:text-lg font-semibold text-gray-900 line-clamp-1 group-hover:text-[var(--brand-primary)] transition-colors leading-tight">
+          {product.title}
+        </h3>
+        <div className="flex items-center justify-center gap-1.5 mt-1">
+          {product.discountPrice && product.discountPrice < product.sellingPrice ? (
+            <>
+              <span className="text-[var(--brand-primary)] font-bold text-sm sm:text-lg">£{Number(product.discountPrice).toFixed(2)}</span>
+              <span className="text-gray-400 line-through text-[10px] sm:text-sm">£{Number(product.sellingPrice).toFixed(2)}</span>
+            </>
+          ) : (
+            <span className="text-[var(--brand-primary)] font-bold text-sm sm:text-lg">£{Number(product.sellingPrice).toFixed(2)}</span>
+          )}
+        </div>
+        {product.productvariant && product.productvariant.filter(v => v.color).length > 0 && (
+          <div className="flex items-center justify-center gap-1 mt-1.5 sm:mt-3">
+            {product.productvariant.filter(v => v.color).slice(0, 4).map((v) => (
+              <span key={v.id} className="w-2.5 h-2.5 sm:w-4 sm:h-4 rounded-full border border-gray-200 shadow-sm" style={{ backgroundColor: v.color?.hexCode }} title={v.color?.name} />
+            ))}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * Grid best-seller card with hover video playback
+ */
+function BestSellerGridCard({
+  product,
+  index,
+  onClick,
+}: {
+  product: BestSellerProduct;
+  index: number;
+  onClick: () => void;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+  const videoUrl = extractProductVideoUrl(product);
+
+  return (
+    <motion.div
+      initial={false}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: Math.min(index * 0.08, 0.4), duration: 0.5 }}
+      className="group cursor-pointer overflow-hidden rounded-lg sm:rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-500"
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div
+        className="relative w-full aspect-[3/4] overflow-hidden"
+        style={{ aspectRatio: "3/4" }}
+      >
+        <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 w-5 h-5 sm:w-7 sm:h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm pointer-events-none">
+          <span className="text-gray-700 text-[9px] sm:text-xs font-bold">#{index + 3}</span>
+        </div>
+        {product.discountPrice && product.discountPrice < product.sellingPrice && (
+          <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20 bg-red-600 text-white text-[8px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full shadow-md uppercase tracking-wider pointer-events-none">
+            -{Math.round(((product.sellingPrice - product.discountPrice) / product.sellingPrice) * 100)}%
+          </div>
+        )}
+        <Image
+          src={product.productimage?.[0]?.url || "/placeholder.jpg"}
+          alt={product.title}
+          fill
+          loading="lazy"
+          sizes="(max-width:640px) 50vw, (max-width:768px) 33vw, 250px"
+          className="object-cover transition-transform duration-[1200ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-110"
+        />
+        {product.productimage?.[1] && !videoUrl && (
+          <Image
+            src={product.productimage[1].url}
+            alt={`${product.title} alt`}
+            fill
+            loading="lazy"
+            sizes="(max-width:640px) 50vw, 250px"
+            className="object-cover absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 hidden sm:block"
+          />
+        )}
+
+        {/* Hover-to-play Video Preview (smoothly plays when video is available) */}
+        {videoUrl && (
+          <ProductVideoHover
+            videoUrl={videoUrl}
+            isHovered={isHovered}
+          />
+        )}
+      </div>
+      <div className="p-2 sm:p-3 md:p-4 text-center">
+        <h3 className="text-[11px] sm:text-sm font-medium text-gray-900 line-clamp-2 min-h-[28px] sm:min-h-[36px] group-hover:text-[var(--brand-primary)] transition-colors leading-tight">
+          {product.title}
+        </h3>
+        <div className="flex items-center justify-center gap-1.5 mt-0.5 sm:mt-1">
+          {product.discountPrice && product.discountPrice < product.sellingPrice ? (
+            <>
+              <span className="text-[var(--brand-primary)] font-bold text-[13px] sm:text-[15px]">£{Number(product.discountPrice).toFixed(2)}</span>
+              <span className="text-gray-400 line-through text-[10px] sm:text-xs">£{Number(product.sellingPrice).toFixed(2)}</span>
+            </>
+          ) : (
+            <span className="text-[var(--brand-primary)] font-bold text-[13px] sm:text-[15px]">£{Number(product.sellingPrice).toFixed(2)}</span>
+          )}
+        </div>
+        {product.productvariant && product.productvariant.filter(v => v.color).length > 0 && (
+          <div className="flex items-center justify-center gap-1 mt-1 sm:mt-2">
+            {product.productvariant.filter(v => v.color).slice(0, 3).map((v) => (
+              <span key={v.id} className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border border-gray-200" style={{ backgroundColor: v.color?.hexCode }} title={v.color?.name} />
+            ))}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
 }
 
 export default function BestSellers({ products }: BestSellersProps) {
@@ -59,68 +258,12 @@ export default function BestSellers({ products }: BestSellersProps) {
         {featured.length > 0 && (
           <div className="grid grid-cols-4 gap-2 sm:gap-3 md:gap-6 mb-2 sm:mb-3 md:mb-6">
             {featured.map((p, i) => (
-              <motion.div
+              <BestSellerFeaturedCard
                 key={p.id}
-                initial={false}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.15, duration: 0.6 }}
-                className="group cursor-pointer relative overflow-hidden rounded-xl sm:rounded-2xl bg-white shadow-sm hover:shadow-xl transition-shadow duration-500"
+                product={p}
+                index={i}
                 onClick={() => handleCardClick(p.slug)}
-              >
-                <div
-                  className="relative w-full aspect-[3/4] overflow-hidden"
-                  style={{ aspectRatio: "3/4" }}
-                >
-                  <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10 flex items-center gap-1.5">
-                    <div className="w-6 h-6 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
-                      <span className="text-white text-[10px] sm:text-sm font-bold">#{i + 1}</span>
-                    </div>
-                    <span className="bg-white/90 backdrop-blur-sm text-gray-800 text-[9px] sm:text-xs font-semibold px-2 sm:px-3 py-0.5 sm:py-1 rounded-full shadow-sm hidden sm:inline-block">
-                      Best Seller
-                    </span>
-                  </div>
-                  {p.discountPrice && p.discountPrice < p.sellingPrice && (
-                    <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 bg-red-600 text-white text-[9px] sm:text-xs font-black px-2 sm:px-3 py-0.5 sm:py-1 rounded-full shadow-md uppercase tracking-wider">
-                      -{Math.round(((p.sellingPrice - p.discountPrice) / p.sellingPrice) * 100)}%
-                    </div>
-                  )}
-                  <Image
-                    src={p.productimage?.[0]?.url || "/placeholder.jpg"}
-                    alt={p.title}
-                    fill
-                    loading="lazy"
-                    sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 360px"
-                    className="object-cover transition-transform duration-[1500ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <div className="absolute bottom-4 sm:bottom-6 left-0 right-0 justify-center opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500 hidden sm:flex">
-                    <span className="bg-white text-gray-900 text-xs font-semibold px-5 py-2 rounded-full shadow-lg uppercase tracking-wider">Quick View</span>
-                  </div>
-                </div>
-                <div className="p-2 sm:p-4 md:p-5 text-center">
-                  <h3 className="text-xs sm:text-base md:text-lg font-semibold text-gray-900 line-clamp-1 group-hover:text-[var(--brand-primary)] transition-colors leading-tight">
-                    {p.title}
-                  </h3>
-                  <div className="flex items-center justify-center gap-1.5 mt-1">
-                    {p.discountPrice && p.discountPrice < p.sellingPrice ? (
-                      <>
-                        <span className="text-[var(--brand-primary)] font-bold text-sm sm:text-lg">£{Number(p.discountPrice).toFixed(2)}</span>
-                        <span className="text-gray-400 line-through text-[10px] sm:text-sm">£{Number(p.sellingPrice).toFixed(2)}</span>
-                      </>
-                    ) : (
-                      <span className="text-[var(--brand-primary)] font-bold text-sm sm:text-lg">£{Number(p.sellingPrice).toFixed(2)}</span>
-                    )}
-                  </div>
-                  {p.productvariant && p.productvariant.filter(v => v.color).length > 0 && (
-                    <div className="flex items-center justify-center gap-1 mt-1.5 sm:mt-3">
-                      {p.productvariant.filter(v => v.color).slice(0, 4).map((v) => (
-                        <span key={v.id} className="w-2.5 h-2.5 sm:w-4 sm:h-4 rounded-full border border-gray-200 shadow-sm" style={{ backgroundColor: v.color?.hexCode }} title={v.color?.name} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </motion.div>
+              />
             ))}
           </div>
         )}
@@ -129,69 +272,12 @@ export default function BestSellers({ products }: BestSellersProps) {
         {gridItems.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-5">
             {gridItems.map((p, i) => (
-              <motion.div
+              <BestSellerGridCard
                 key={p.id}
-                initial={false}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: Math.min(i * 0.08, 0.4), duration: 0.5 }}
-                className="group cursor-pointer overflow-hidden rounded-lg sm:rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-500"
+                product={p}
+                index={i}
                 onClick={() => handleCardClick(p.slug)}
-              >
-                <div
-                  className="relative w-full aspect-[3/4] overflow-hidden"
-                  style={{ aspectRatio: "3/4" }}
-                >
-                  <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 w-5 h-5 sm:w-7 sm:h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm">
-                    <span className="text-gray-700 text-[9px] sm:text-xs font-bold">#{i + 3}</span>
-                  </div>
-                  {p.discountPrice && p.discountPrice < p.sellingPrice && (
-                    <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 bg-red-600 text-white text-[8px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full shadow-md uppercase tracking-wider">
-                      -{Math.round(((p.sellingPrice - p.discountPrice) / p.sellingPrice) * 100)}%
-                    </div>
-                  )}
-                  <Image
-                    src={p.productimage?.[0]?.url || "/placeholder.jpg"}
-                    alt={p.title}
-                    fill
-                    loading="lazy"
-                    sizes="(max-width:640px) 50vw, (max-width:768px) 33vw, 250px"
-                    className="object-cover transition-transform duration-[1200ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-110"
-                  />
-                  {p.productimage?.[1] && (
-                    <Image
-                      src={p.productimage[1].url}
-                      alt={`${p.title} alt`}
-                      fill
-                      loading="lazy"
-                      sizes="(max-width:640px) 50vw, 250px"
-                      className="object-cover absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 hidden sm:block"
-                    />
-                  )}
-                </div>
-                <div className="p-2 sm:p-3 md:p-4 text-center">
-                  <h3 className="text-[11px] sm:text-sm font-medium text-gray-900 line-clamp-2 min-h-[28px] sm:min-h-[36px] group-hover:text-[var(--brand-primary)] transition-colors leading-tight">
-                    {p.title}
-                  </h3>
-                  <div className="flex items-center justify-center gap-1.5 mt-0.5 sm:mt-1">
-                    {p.discountPrice && p.discountPrice < p.sellingPrice ? (
-                      <>
-                        <span className="text-[var(--brand-primary)] font-bold text-[13px] sm:text-[15px]">£{Number(p.discountPrice).toFixed(2)}</span>
-                        <span className="text-gray-400 line-through text-[10px] sm:text-xs">£{Number(p.sellingPrice).toFixed(2)}</span>
-                      </>
-                    ) : (
-                      <span className="text-[var(--brand-primary)] font-bold text-[13px] sm:text-[15px]">£{Number(p.sellingPrice).toFixed(2)}</span>
-                    )}
-                  </div>
-                  {p.productvariant && p.productvariant.filter(v => v.color).length > 0 && (
-                    <div className="flex items-center justify-center gap-1 mt-1 sm:mt-2">
-                      {p.productvariant.filter(v => v.color).slice(0, 3).map((v) => (
-                        <span key={v.id} className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border border-gray-200" style={{ backgroundColor: v.color?.hexCode }} title={v.color?.name} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </motion.div>
+              />
             ))}
           </div>
         )}

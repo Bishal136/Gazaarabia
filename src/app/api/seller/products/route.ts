@@ -266,6 +266,21 @@ export async function POST(request: NextRequest) {
     const lastProduct = await db.collection("products").find().sort({ id: -1 }).limit(1).toArray();
     const nextProductId = (lastProduct[0]?.id || 0) + 1;
 
+    // Process product tags (maximum 5)
+    let processedTags: string[] = [];
+    if (Array.isArray(body.tags)) {
+      processedTags = body.tags
+        .slice(0, 5)
+        .map((t: any) => String(t).trim().replace(/^#+/, ""))
+        .filter(Boolean);
+    } else if (typeof body.tags === "string" && body.tags.trim()) {
+      processedTags = body.tags
+        .split(",")
+        .slice(0, 5)
+        .map((t: string) => t.trim().replace(/^#+/, ""))
+        .filter(Boolean);
+    }
+
     const newProduct = {
       id: nextProductId,
       sellerId: seller.id,
@@ -275,6 +290,7 @@ export async function POST(request: NextRequest) {
       description: body.description || "",
       fitType: body.fitType || null,
       materialCareId: body.materialCareId ? parseInt(body.materialCareId) : null,
+      tags: processedTags,
       costPrice: parseFloat(body.costPrice || "0"),
       sellingPrice: parseFloat(body.sellingPrice || "0"),
       discountPrice: body.discountPrice ? parseFloat(body.discountPrice) : null,

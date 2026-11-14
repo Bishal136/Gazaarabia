@@ -339,6 +339,7 @@ model products {
 
   materialCareId Int?
   materialCare   MaterialCare? @relation(fields: [materialCareId], references: [id])
+  tags           Json?
 
   wishlist      Wishlist[]
   carts         Cart[]
@@ -351,6 +352,9 @@ model products {
 
   ambassadorId          Int?     // assigned ambassador
   ambassador            Affiliate? @relation("AffiliateAmbassadorRelation", fields: [ambassadorId], references: [id])
+
+  videoUrl              String?
+  videoThumbnail        String?
 
   // External Store Tracking
   externalProductId  String?   // unique per seller (see @@unique below), NOT globally

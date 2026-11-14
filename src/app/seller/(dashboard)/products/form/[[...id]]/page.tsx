@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useState, useEffect } from "react";
-import { Check, ImageIcon, Info, DollarSign, Shirt, Eye, AlertCircle, ShoppingBag, ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
+import { Check, ImageIcon, Info, DollarSign, Shirt, Eye, AlertCircle, ShoppingBag, ChevronRight, ChevronLeft, Sparkles, Tag, X, Plus } from "lucide-react";
 import PopupAlert from "@/components/PopupAlert";
 import AlertMessage from "@/components/AlertMessage";
 import { PopUpInterface, AlertInterface } from "@/lib/types";
@@ -15,8 +15,6 @@ import { categoryService } from "@/lib/services/categoryService";
 import { subcategoryService } from "@/lib/services/subcategoryService";
 import { colorService } from "@/lib/services/colorService";
 import { sizeService } from "@/lib/services/sizeService";
-// import { uploadService } from "@/lib/services/uploadService";
-import { materialCareService } from "@/lib/services/materialCareService";
 
 import { TextField, MenuItem, Box, Button, Popover } from "@mui/material";
 import { ROUTES } from "@/constants/routes";
@@ -49,6 +47,7 @@ function ProductFormContent() {
     description: "",
     fitType: "",
     materialCareId: "",
+    tags: [] as string[],
     soldCount: "",
     costPrice: "",
     sellingPrice: "",
@@ -60,6 +59,8 @@ function ProductFormContent() {
     subcategoryId: "",
     active: true,
   });
+
+  const [tagInput, setTagInput] = useState("");
 
   const [images, setImages] = useState<any[]>([]);
   const [productVideo, setProductVideo] = useState<any>(null);
@@ -74,7 +75,6 @@ function ProductFormContent() {
   const [categoryAnchorEl, setCategoryAnchorEl] = useState<null | HTMLElement>(null);
   const [hoveredCategory, setHoveredCategory] = useState<any | null>(null);
   const [drillDownCategory, setDrillDownCategory] = useState<any | null>(null);
-  const [careAdvices, setCareAdvices] = useState<any[]>([]);
 
   const [wearWith, setWearWith] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -121,14 +121,12 @@ function ProductFormContent() {
         subcatData,
         colorsData,
         sizesData,
-        careData,
       ]: any = await Promise.all([
         brandService.getAll(token),
         categoryService.getAll(token),
         subcategoryService.getAll(token),
         colorService.getAll(token),
         sizeService.getAll(token),
-        materialCareService.getAll(token),
       ]);
 
       setBrands(brandsData.data ?? brandsData);
@@ -138,7 +136,6 @@ function ProductFormContent() {
       setAllSubcategories(subList);
       setColors(colorsData.data ?? colorsData);
       setSizes(sizesData.data ?? sizesData);
-      setCareAdvices(careData.data ?? careData);
     } catch {
       setAlertMessage({
         isOpen: true,
@@ -159,6 +156,11 @@ function ProductFormContent() {
         fitType: data.fitType || "",
         soldCount: data.soldCount || "",
         materialCareId: data.materialCareId || "",
+        tags: Array.isArray(data.tags)
+          ? data.tags
+          : typeof data.tags === "string" && data.tags
+          ? data.tags.split(",").map((t: string) => t.trim().replace(/^#+/, "")).filter(Boolean)
+          : [],
         costPrice: data.costPrice || "",
         sellingPrice: data.sellingPrice || "",
         discountPrice: data.discountPrice || "",
@@ -217,6 +219,50 @@ function ProductFormContent() {
       } else {
         setSubcategories([]);
       }
+    }
+  };
+
+  const handleAddTag = (rawTag?: string) => {
+    const raw = rawTag !== undefined ? rawTag : tagInput;
+    const clean = raw.trim().replace(/^#+/, "");
+    if (!clean) return;
+
+    if (form.tags.length >= 5) {
+      setAlertMessage({
+        isOpen: true,
+        type: "error",
+        message: "You can add a maximum of 5 tags.",
+      });
+      return;
+    }
+
+    if (form.tags.some((t) => t.toLowerCase() === clean.toLowerCase())) {
+      setAlertMessage({
+        isOpen: true,
+        type: "error",
+        message: `Tag "${clean}" has already been added.`,
+      });
+      return;
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      tags: [...prev.tags, clean],
+    }));
+    setTagInput("");
+  };
+
+  const handleRemoveTag = (indexToRemove: number) => {
+    setForm((prev) => ({
+      ...prev,
+      tags: prev.tags.filter((_, idx) => idx !== indexToRemove),
+    }));
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      handleAddTag();
     }
   };
 
@@ -756,21 +802,79 @@ function ProductFormContent() {
                       />
                     </div>
 
-                    <TextField
-                      select
-                      label={<RequiredLabel text="Material & Care Guide" />}
-                      name="materialCareId"
-                      value={form.materialCareId}
-                      onChange={handleInputChange}
-                      fullWidth
-                      sx={fieldStyle}
-                    >
-                      {careAdvices.map((care) => (
-                        <MenuItem key={care.id} value={care.id}>
-                          {care.title} ({care.material})
-                        </MenuItem>
-                      ))}
-                    </TextField>
+                    {/* Product Tags (Replaced Material & Care Guide) */}
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                          <Tag size={16} className="text-gray-500" />
+                          <span>Product Tags</span>
+                          <span className="text-xs text-gray-400 font-normal">(Max 5 tags)</span>
+                        </label>
+                        <span
+                          className={`text-xs font-semibold px-2.5 py-0.5 rounded-full transition-colors ${
+                            form.tags.length >= 5
+                              ? "bg-amber-100 text-amber-800 border border-amber-300"
+                              : "bg-gray-100 text-gray-600 border border-gray-200"
+                          }`}
+                        >
+                          {form.tags.length}/5 tags
+                        </span>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            value={tagInput}
+                            onChange={(e) => setTagInput(e.target.value)}
+                            onKeyDown={handleTagKeyDown}
+                            disabled={form.tags.length >= 5}
+                            placeholder={
+                              form.tags.length >= 5
+                                ? "Maximum 5 tags reached"
+                                : "Type a tag and press Enter or comma (e.g. Cotton, Summer, Casual)..."
+                            }
+                            className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-[#f9fafb] text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary,#2563eb)] focus:border-transparent transition disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleAddTag()}
+                          disabled={form.tags.length >= 5 || !tagInput.trim()}
+                          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-gray-900 text-white text-xs font-semibold hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-xs"
+                        >
+                          <Plus size={14} />
+                          <span>Add</span>
+                        </button>
+                      </div>
+
+                      {/* Tag Chips */}
+                      {form.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {form.tags.map((tag, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200 group hover:border-gray-300 transition"
+                            >
+                              <span className="text-gray-400 font-semibold">#</span>
+                              <span>{tag}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTag(idx)}
+                                className="text-gray-400 hover:text-red-600 rounded-full p-0.5 hover:bg-white transition"
+                                title="Remove tag"
+                              >
+                                <X size={13} />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <p className="text-xs text-gray-400">
+                        Add up to 5 keywords to help customers find your product in search. Press Enter or comma to add.
+                      </p>
+                    </div>
 
 
                     {/* </div> */}

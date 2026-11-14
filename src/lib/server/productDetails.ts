@@ -230,10 +230,28 @@ export async function fetchProductBySlug(slug: string, userId: number | null = n
     }
   }
 
+  // Total sold count (base soldCount + actual completed orders)
+  let orderSoldQty = 0;
+  try {
+    const actualSoldOrders = await prisma.orderItem.aggregate({
+      where: {
+        productId: product.id,
+        returnStatus: { notIn: ["cancelled", "refunded"] },
+      },
+      _sum: { quantity: true },
+    });
+    orderSoldQty = actualSoldOrders._sum?.quantity || 0;
+  } catch (err) {
+    // Non-fatal if orderItem table/field missing
+  }
+  const effectiveSoldCount = (product.soldCount || 0) + orderSoldQty;
+
   // Serialize to pure JSON to guarantee clean RSC boundary crossing
   const responseData = JSON.parse(
     JSON.stringify({
       ...product,
+      soldCount: effectiveSoldCount,
+      soldHighlightDuration: product.soldHighlightDuration || null,
       seller: sellerInfo || product.seller || null,
       productvariant: variantsWithStock,
       availableStock: productAvailableQty,

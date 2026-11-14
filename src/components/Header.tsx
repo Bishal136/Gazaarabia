@@ -313,13 +313,22 @@ export default function Header() {
           className={`bg-[var(--brand-primary)] text-white text-[11px] py-1.5 tracking-[0.1em] transition-all duration-300 overflow-hidden ${scrolled ? "h-0 opacity-0" : "h-auto opacity-100"
             }`}
         >
-          <div className="max-w-[1600px] mx-auto px-6 flex items-center justify-between uppercase font-bold">
-            <span>{toolbarText || "Free UK shipping over £60 | Free international over £120"}</span>
-            <div className="hidden sm:flex gap-4 items-center">
-              <Link href="https://instagram.com/gazaarabia" target="_blank"><FaInstagram /></Link>
-              <Link href="https://facebook.com/gazaarabia" target="_blank"><FaFacebookF /></Link>
-              <Link href="https://tiktok.com/@gazaarabia" target="_blank"><FaTiktok /></Link>
-              <Link href="https://youtube.com/@gazaarabia" target="_blank"><FaYoutube /></Link>
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 flex items-center justify-between uppercase font-bold gap-4">
+            {/* Smooth Continuous Marquee on a single line — single message copy */}
+            <div className="flex-1 overflow-hidden relative select-none [container-type:inline-size]">
+              <div className="animate-announcement-marquee inline-block whitespace-nowrap">
+                <span className="inline-block">
+                  {toolbarText || "Free UK shipping over £60 | Free international over £120"}
+                </span>
+              </div>
+            </div>
+
+            {/* Social Icons */}
+            <div className="hidden sm:flex gap-4 items-center shrink-0 z-10 pl-2">
+              <Link href="https://instagram.com/gazaarabia" target="_blank" rel="noopener noreferrer"><FaInstagram /></Link>
+              <Link href="https://facebook.com/gazaarabia" target="_blank" rel="noopener noreferrer"><FaFacebookF /></Link>
+              <Link href="https://tiktok.com/@gazaarabia" target="_blank" rel="noopener noreferrer"><FaTiktok /></Link>
+              <Link href="https://www.youtube.com/@GazaArabia_Official" target="_blank" rel="noopener noreferrer"><FaYoutube /></Link>
             </div>
           </div>
         </div>

@@ -168,6 +168,7 @@ export async function GET(req: Request) {
         baseQty: true,
         soldCount: true,
         soldHighlightDuration: true,
+        videoUrl: true,
         productimage: {
           select: { url: true, alt: true, primary: true },
         },
@@ -176,6 +177,7 @@ export async function GET(req: Request) {
             id: true,
             price: true,
             stock: true,
+            videoUrl: true,
             color: { select: { id: true, name: true, hexCode: true } },
             size: { select: { id: true, name: true } },
           },

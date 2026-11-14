@@ -4,6 +4,8 @@ import Image from "next/image";
 import { ShoppingBag, Heart, Plus, Check, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import ProductVideoHover from "./ProductVideoHover";
+import { extractProductVideoUrl } from "@/lib/utils/productVideo";
 
 export interface ProductVariantItem {
   id: number;
@@ -53,7 +55,10 @@ export default function SingleImgMultiColorProductCard({
   );
   const [displayImg, setDisplayImg] = useState<string>(product.img);
   const [addedSuccess, setAddedSuccess] = useState<boolean>(false);
+  const [isHovered, setIsHovered] = useState(false);
   const router = useRouter();
+
+  const videoUrl = extractProductVideoUrl(product.rawProduct || product);
 
   // Keep image and wishlist state in sync if product prop updates
   useEffect(() => {
@@ -123,6 +128,8 @@ export default function SingleImgMultiColorProductCard({
   return (
     <div
       onClick={handleCardClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className="group flex flex-col text-center cursor-pointer transition-transform duration-300 hover:-translate-y-1 relative"
     >
       {/* New In Badge */}
@@ -162,6 +169,14 @@ export default function SingleImgMultiColorProductCard({
           loading="lazy"
           className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
         />
+
+        {/* Hover-to-play Video Preview (without text badges) */}
+        {videoUrl && (
+          <ProductVideoHover
+            videoUrl={videoUrl}
+            isHovered={isHovered}
+          />
+        )}
       </div>
 
       {/* Product Title */}

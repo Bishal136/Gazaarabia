@@ -530,6 +530,34 @@ html {
 
 /* ========== mobile view side bar menu drawer animation end ==================  */
 
+/* ========== Announcement Bar Single-Message Marquee ========== */
+@keyframes announcementMarquee {
+  0% {
+    transform: translate3d(100%, 0, 0);
+    transform: translate3d(100cqw, 0, 0);
+  }
+  100% {
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+
+.animate-announcement-marquee {
+  display: inline-block;
+  white-space: nowrap;
+  animation: announcementMarquee 22s linear infinite;
+  will-change: transform;
+}
+
+.animate-announcement-marquee:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-announcement-marquee {
+    animation-duration: 60s;
+  }
+}
+
 /* ========== Utility classes ========== */
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {

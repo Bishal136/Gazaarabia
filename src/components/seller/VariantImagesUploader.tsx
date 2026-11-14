@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Upload, Trash2 } from "lucide-react";
+import { Upload, Trash2, GripVertical, Star } from "lucide-react";
 import { uploadService } from "@/lib/services/uploadService";
 
 interface VariantImage {
@@ -26,6 +26,10 @@ export const VariantImagesUploader = ({
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
+  // Drag and drop reordering state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
   const handleFileChange = async (files: FileList | null) => {
     if (!files) return;
 
@@ -46,12 +50,14 @@ export const VariantImagesUploader = ({
   };
 
   const handleDrag = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes("Files")) return;
     e.preventDefault();
     e.stopPropagation();
     setDragActive(e.type === "dragenter" || e.type === "dragover");
   };
 
   const handleDrop = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes("Files")) return;
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
@@ -62,11 +68,76 @@ export const VariantImagesUploader = ({
     onImagesChange(images.filter((_, i) => i !== idx));
   };
 
+  // Reorder handlers
+  const handleImageDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("application/x-variant-image-index", String(index));
+  };
+
+  const handleImageDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleImageDragLeave = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (dragOverIndex === index) {
+      setDragOverIndex(null);
+    }
+  };
+
+  const handleImageDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const fromStr = e.dataTransfer.getData("application/x-variant-image-index");
+    const fromIndex = fromStr !== "" ? parseInt(fromStr, 10) : draggedIndex;
+
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+
+    if (fromIndex === null || isNaN(fromIndex) || fromIndex === targetIndex) {
+      return;
+    }
+
+    const reordered = [...images];
+    const [movedItem] = reordered.splice(fromIndex, 1);
+    reordered.splice(targetIndex, 0, movedItem);
+
+    onImagesChange(reordered);
+  };
+
+  const handleImageDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleSetAsPrimary = (index: number) => {
+    if (index === 0) return;
+    const reordered = [...images];
+    const [selected] = reordered.splice(index, 1);
+    reordered.unshift(selected);
+    onImagesChange(reordered);
+  };
+
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-semibold text-gray-700">
-        Variant Images <span className="text-red-500">*</span> ({images.length})
-      </label>
+      <div className="flex items-center justify-between">
+        <label className="block text-sm font-semibold text-gray-700">
+          Variant Images <span className="text-red-500">*</span> ({images.length})
+        </label>
+        {images.length > 1 && (
+          <span className="text-[11px] text-gray-500">
+            Drag to reorder
+          </span>
+        )}
+      </div>
 
       <div
         onDragEnter={handleDrag}
@@ -103,33 +174,78 @@ export const VariantImagesUploader = ({
 
       {images.length > 0 && (
         <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
-          {images.map((img, idx) => (
-            <div key={idx} className="group relative">
-              <div className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
-                <img
-                  src={img.url}
-                  alt={img.alt || `Image ${idx + 1}`}
-                  className="w-full h-full object-cover"
-                />
+          {images.map((img, idx) => {
+            const isDragging = draggedIndex === idx;
+            const isDragOver = dragOverIndex === idx && draggedIndex !== idx;
 
-                {idx === 0 && (
-                  <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
-                    1st
+            return (
+              <div
+                key={`${img.url}-${idx}`}
+                draggable
+                onDragStart={(e) => handleImageDragStart(e, idx)}
+                onDragOver={(e) => handleImageDragOver(e, idx)}
+                onDragLeave={(e) => handleImageDragLeave(e, idx)}
+                onDrop={(e) => handleImageDrop(e, idx)}
+                onDragEnd={handleImageDragEnd}
+                className={`group relative select-none cursor-grab active:cursor-grabbing transition-all ${
+                  isDragging ? "opacity-30 scale-95" : ""
+                } ${isDragOver ? "scale-105 z-10" : ""}`}
+              >
+                <div
+                  className={`relative aspect-square rounded-lg overflow-hidden border-2 bg-gray-100 transition-all ${
+                    isDragOver
+                      ? "border-blue-500 ring-2 ring-blue-500/40"
+                      : idx === 0
+                      ? "border-blue-500 shadow-2xs"
+                      : "border-gray-200"
+                  }`}
+                >
+                  <img
+                    src={img.url}
+                    alt={img.alt || `Image ${idx + 1}`}
+                    className="w-full h-full object-cover pointer-events-none"
+                  />
+
+                  {idx === 0 && (
+                    <div className="absolute top-1 left-1 bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-2xs">
+                      1st
+                    </div>
+                  )}
+
+                  <div className="absolute top-1 right-1 bg-black/50 text-white p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                    <GripVertical size={12} />
                   </div>
-                )}
 
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(idx)}
-                    className="p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                    {idx !== 0 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSetAsPrimary(idx);
+                        }}
+                        className="p-1 bg-blue-600 text-white rounded-full hover:bg-blue-700"
+                        title="Make 1st"
+                      >
+                        <Star size={12} className="fill-white" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemove(idx);
+                      }}
+                      className="p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
+                      title="Remove"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

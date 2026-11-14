@@ -94,19 +94,19 @@ export async function fetchHomepageData() {
     db
       .collection("products")
       .find(sigIds.length ? { id: { $in: sigIds } } : {})
-      .project({ id: 1, title: 1, slug: 1, sellingPrice: 1, discountPrice: 1, thumbnail: 1, image: 1 })
+      .project({ id: 1, title: 1, slug: 1, sellingPrice: 1, discountPrice: 1, thumbnail: 1, image: 1, videoUrl: 1 })
       .limit(8)
       .toArray(),
     db
       .collection("products")
       .find(trendIds.length ? { id: { $in: trendIds } } : {})
-      .project({ id: 1, title: 1, slug: 1, sellingPrice: 1, discountPrice: 1, thumbnail: 1, image: 1 })
+      .project({ id: 1, title: 1, slug: 1, sellingPrice: 1, discountPrice: 1, thumbnail: 1, image: 1, videoUrl: 1 })
       .limit(12)
       .toArray(),
     db
       .collection("products")
       .find(bestSellerIds.length ? { id: { $in: bestSellerIds } } : {})
-      .project({ id: 1, title: 1, slug: 1, sellingPrice: 1, discountPrice: 1, thumbnail: 1, image: 1 })
+      .project({ id: 1, title: 1, slug: 1, sellingPrice: 1, discountPrice: 1, thumbnail: 1, image: 1, videoUrl: 1 })
       .limit(12)
       .toArray(),
   ]);
@@ -134,7 +134,7 @@ export async function fetchHomepageData() {
       ? db
           .collection("productvariant")
           .find({ productId: { $in: allFeaturedProductIds } })
-          .project({ id: 1, productId: 1, colorId: 1 })
+          .project({ id: 1, productId: 1, colorId: 1, videoUrl: 1 })
           .toArray()
       : [],
   ]);
@@ -157,6 +157,7 @@ export async function fetchHomepageData() {
     const color = colorsById.get(v.colorId);
     variantsByProduct.get(v.productId)?.push({
       id: v.id,
+      videoUrl: v.videoUrl || null,
       color: color
         ? { id: color.id, name: color.name, hexCode: color.hexCode }
         : null,
@@ -169,12 +170,14 @@ export async function fetchHomepageData() {
       if (p.thumbnail) images = [{ url: p.thumbnail }];
       else if (p.image) images = [{ url: p.image }];
     }
+    const variantVideo = variantsByProduct.get(p.id)?.find((v: any) => v.videoUrl)?.videoUrl;
     return {
       id: p.id,
       title: p.title,
       slug: p.slug,
       sellingPrice: p.sellingPrice,
       discountPrice: p.discountPrice || null,
+      videoUrl: p.videoUrl || variantVideo || null,
       productimage: images.slice(0, 2),
       productvariant: (variantsByProduct.get(p.id) || []).slice(0, 4),
     };

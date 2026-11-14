@@ -287,7 +287,7 @@ export default function MobileMenuDrawer({
               <a href="https://instagram.com/gazaarabia" target="_blank" className="text-gray-400 hover:text-[var(--brand-primary)] transition-colors"><FaInstagram size={20} /></a>
               <a href="https://facebook.com/gazaarabia" target="_blank" className="text-gray-400 hover:text-[var(--brand-primary)] transition-colors"><FaFacebookF size={18} /></a>
               <a href="https://tiktok.com/@gazaarabia" target="_blank" className="text-gray-400 hover:text-[var(--brand-primary)] transition-colors"><FaTiktok size={18} /></a>
-              <a href="https://youtube.com/@gazaarabia" target="_blank" className="text-gray-400 hover:text-[var(--brand-primary)] transition-colors"><FaYoutube size={20} /></a>
+              <a href="https://www.youtube.com/@GazaArabia_Official" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[var(--brand-primary)] transition-colors"><FaYoutube size={20} /></a>
             </div>
           </div>
         </div>

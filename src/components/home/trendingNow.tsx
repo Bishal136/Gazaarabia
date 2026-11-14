@@ -8,8 +8,10 @@ import "swiper/css";
 import "swiper/css/navigation";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronLeft, ChevronRight, Flame } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { Swiper as SwiperType } from "swiper";
+import ProductVideoHover from "@/components/ProductVideoHover";
+import { extractProductVideoUrl } from "@/lib/utils/productVideo";
 
 interface TrendingProduct {
   id: number;
@@ -17,15 +19,142 @@ interface TrendingProduct {
   slug: string;
   sellingPrice: number;
   discountPrice?: number | null;
+  videoUrl?: string | null;
   productimage: { url: string }[];
   productvariant?: {
     id: number;
+    videoUrl?: string | null;
     color?: { id: number; name: string; hexCode: string } | null;
   }[];
 }
 
 interface TrendingNowProps {
   products: TrendingProduct[];
+}
+
+/**
+ * Individual trending product card supporting hover video preview
+ */
+function TrendingCard({
+  product,
+  index,
+  onClick,
+}: {
+  product: TrendingProduct;
+  index: number;
+  onClick: () => void;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+  const videoUrl = extractProductVideoUrl(product);
+
+  return (
+    <motion.div
+      initial={false}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: Math.min(index * 0.08, 0.4), duration: 0.5 }}
+      className="group cursor-pointer"
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Image Container */}
+      <div
+        className="relative w-full aspect-[3/4] overflow-hidden rounded-lg sm:rounded-xl bg-gray-100 max-w-[320px] mx-auto"
+        style={{ aspectRatio: "3/4" }}
+      >
+        {/* Trending Badge */}
+        <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[8px] sm:text-[10px] font-semibold px-2 sm:px-3 py-0.5 sm:py-1 rounded-full shadow-md uppercase tracking-wider">
+          Trending
+        </div>
+
+        {/* Discount Badge */}
+        {product.discountPrice && product.discountPrice < product.sellingPrice && (
+          <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 bg-red-600 text-white text-[8px] sm:text-[10px] font-black px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow-md uppercase tracking-wider">
+            -{Math.round(((product.sellingPrice - product.discountPrice) / product.sellingPrice) * 100)}%
+          </div>
+        )}
+
+        <Image
+          src={product.productimage?.[0]?.url || "/placeholder.jpg"}
+          alt={product.title}
+          fill
+          loading="lazy"
+          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 280px"
+          className="object-cover transition-transform duration-[1200ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-110"
+        />
+
+        {/* Hover overlay with second image (when no video) */}
+        {product.productimage?.[1] && !videoUrl && (
+          <Image
+            src={product.productimage[1].url}
+            alt={`${product.title} - alternate`}
+            fill
+            loading="lazy"
+            sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 280px"
+            className="object-cover absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 hidden sm:block"
+          />
+        )}
+
+        {/* Hover-to-play Video Preview (smoothly plays when video is available) */}
+        {videoUrl && (
+          <ProductVideoHover
+            videoUrl={videoUrl}
+            isHovered={isHovered}
+          />
+        )}
+
+        {/* Bottom gradient */}
+        <div className="absolute inset-x-0 bottom-0 h-16 sm:h-24 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+      </div>
+
+      {/* Product Info */}
+      <div className="pt-2 sm:pt-3 pb-1">
+        <h3 className="text-xs sm:text-sm md:text-[15px] font-medium text-gray-900 line-clamp-2 min-h-[32px] sm:min-h-[40px] group-hover:text-[var(--brand-primary)] transition-colors duration-300 leading-tight">
+          {product.title}
+        </h3>
+
+        <div className="flex items-center gap-1.5 sm:gap-2 mt-1 sm:mt-1.5">
+          {product.discountPrice && product.discountPrice < product.sellingPrice ? (
+            <>
+              <span className="text-[var(--brand-primary)] font-bold text-[13px] sm:text-[15px]">
+                £{Number(product.discountPrice).toFixed(2)}
+              </span>
+              <span className="text-gray-400 line-through text-[10px] sm:text-xs">
+                £{Number(product.sellingPrice).toFixed(2)}
+              </span>
+            </>
+          ) : (
+            <span className="text-[var(--brand-primary)] font-bold text-[13px] sm:text-[15px]">
+              £{Number(product.sellingPrice).toFixed(2)}
+            </span>
+          )}
+        </div>
+
+        {/* Color dots */}
+        {product.productvariant && product.productvariant.length > 0 && (
+          <div className="flex items-center gap-1 sm:gap-1.5 mt-1.5 sm:mt-2.5">
+            {product.productvariant
+              .filter((v) => v.color)
+              .slice(0, 4)
+              .map((v) => (
+                <span
+                  key={v.id}
+                  className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full border border-gray-200 shadow-sm"
+                  style={{ backgroundColor: v.color?.hexCode }}
+                  title={v.color?.name}
+                />
+              ))}
+            {product.productvariant.filter((v) => v.color).length > 4 && (
+              <span className="text-[9px] sm:text-[10px] text-gray-400 font-medium ml-0.5">
+                +{product.productvariant.filter((v) => v.color).length - 4}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
 }
 
 export default function TrendingNow({ products }: TrendingNowProps) {
@@ -119,102 +248,11 @@ export default function TrendingNow({ products }: TrendingNowProps) {
           >
             {productList.map((p, i) => (
               <SwiperSlide key={p.id}>
-                <motion.div
-                  initial={false}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: Math.min(i * 0.08, 0.4), duration: 0.5 }}
-                  className="group cursor-pointer"
+                <TrendingCard
+                  product={p}
+                  index={i}
                   onClick={() => handleCardClick(p.slug)}
-                >
-                  {/* Image Container */}
-                  <div
-                    className="relative w-full aspect-[3/4] overflow-hidden rounded-lg sm:rounded-xl bg-gray-100 max-w-[320px] mx-auto"
-                    style={{ aspectRatio: "3/4" }}
-                  >
-                    {/* Trending Badge */}
-                    <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[8px] sm:text-[10px] font-semibold px-2 sm:px-3 py-0.5 sm:py-1 rounded-full shadow-md uppercase tracking-wider">
-                      Trending
-                    </div>
-
-                    {/* Discount Badge */}
-                    {p.discountPrice && p.discountPrice < p.sellingPrice && (
-                      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 bg-red-600 text-white text-[8px] sm:text-[10px] font-black px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow-md uppercase tracking-wider">
-                        -{Math.round(((p.sellingPrice - p.discountPrice) / p.sellingPrice) * 100)}%
-                      </div>
-                    )}
-
-                    <Image
-                      src={p.productimage?.[0]?.url || "/placeholder.jpg"}
-                      alt={p.title}
-                      fill
-                      loading="lazy"
-                      sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 280px"
-                      className="object-cover transition-transform duration-[1200ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-110"
-                    />
-
-                    {/* Hover overlay with second image — desktop only */}
-                    {p.productimage?.[1] && (
-                      <Image
-                        src={p.productimage[1].url}
-                        alt={`${p.title} - alternate`}
-                        fill
-                        loading="lazy"
-                        sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 280px"
-                        className="object-cover absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 hidden sm:block"
-                      />
-                    )}
-
-                    {/* Bottom gradient */}
-                    <div className="absolute inset-x-0 bottom-0 h-16 sm:h-24 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  </div>
-
-                  {/* Product Info */}
-                  <div className="pt-2 sm:pt-3 pb-1">
-                    <h3 className="text-xs sm:text-sm md:text-[15px] font-medium text-gray-900 line-clamp-2 min-h-[32px] sm:min-h-[40px] group-hover:text-[var(--brand-primary)] transition-colors duration-300 leading-tight">
-                      {p.title}
-                    </h3>
-
-                    <div className="flex items-center gap-1.5 sm:gap-2 mt-1 sm:mt-1.5">
-                      {p.discountPrice && p.discountPrice < p.sellingPrice ? (
-                        <>
-                          <span className="text-[var(--brand-primary)] font-bold text-[13px] sm:text-[15px]">
-                            £{Number(p.discountPrice).toFixed(2)}
-                          </span>
-                          <span className="text-gray-400 line-through text-[10px] sm:text-xs">
-                            £{Number(p.sellingPrice).toFixed(2)}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-[var(--brand-primary)] font-bold text-[13px] sm:text-[15px]">
-                          £{Number(p.sellingPrice).toFixed(2)}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Color dots */}
-                    {p.productvariant && p.productvariant.length > 0 && (
-                      <div className="flex items-center gap-1 sm:gap-1.5 mt-1.5 sm:mt-2.5">
-                        {p.productvariant
-                          .filter((v) => v.color)
-                          .slice(0, 4)
-                          .map((v) => (
-                            <span
-                              key={v.id}
-                              className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full border border-gray-200 shadow-sm"
-                              style={{ backgroundColor: v.color?.hexCode }}
-                              title={v.color?.name}
-                            />
-                          ))}
-                        {p.productvariant.filter((v) => v.color).length > 4 && (
-                          <span className="text-[9px] sm:text-[10px] text-gray-400 font-medium ml-0.5">
-                            +{p.productvariant.filter((v) => v.color).length - 4}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
+                />
               </SwiperSlide>
             ))}
           </Swiper>

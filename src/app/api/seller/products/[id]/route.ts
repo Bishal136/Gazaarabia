@@ -75,10 +75,17 @@ export async function GET(req: NextRequest, context: RouteContext) {
       images: variantImgMap.get(v.id) || (v.imageUrl ? [{ url: v.imageUrl }] : []),
     }));
 
+    const productTags = Array.isArray(product.tags)
+      ? product.tags
+      : typeof product.tags === "string" && product.tags
+      ? product.tags.split(",").map((t: string) => t.trim()).filter(Boolean)
+      : [];
+
     return NextResponse.json({
       success: true,
       data: {
         ...product,
+        tags: productTags,
         brand,
         categories: category,
         subcategories: subcategory,
@@ -148,6 +155,22 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     if (body.description !== undefined) updateData.description = body.description;
     if (body.fitType !== undefined) updateData.fitType = body.fitType;
     if (body.materialCareId !== undefined) updateData.materialCareId = body.materialCareId ? parseInt(body.materialCareId) : null;
+    if (body.tags !== undefined) {
+      if (Array.isArray(body.tags)) {
+        updateData.tags = body.tags
+          .slice(0, 5)
+          .map((t: any) => String(t).trim().replace(/^#+/, ""))
+          .filter(Boolean);
+      } else if (typeof body.tags === "string") {
+        updateData.tags = body.tags
+          .split(",")
+          .slice(0, 5)
+          .map((t: string) => t.trim().replace(/^#+/, ""))
+          .filter(Boolean);
+      } else {
+        updateData.tags = [];
+      }
+    }
     if (body.costPrice !== undefined) updateData.costPrice = parseFloat(body.costPrice || "0");
     if (body.sellingPrice !== undefined) updateData.sellingPrice = parseFloat(body.sellingPrice || "0");
     if (body.discountPrice !== undefined) updateData.discountPrice = body.discountPrice ? parseFloat(body.discountPrice) : null;

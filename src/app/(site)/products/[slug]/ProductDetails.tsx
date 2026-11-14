@@ -49,6 +49,7 @@ import SizeGuideModal from "@/components/home/SizeGuideModal";
 import { fbEvent } from "@/components/analytics/FacebookPixel";
 import { gaEvent } from "@/components/analytics/GoogleAnalytics";
 import { formatGBP } from "@/lib/utils/shipping";
+import { formatSoldDuration } from "@/lib/utils";
 
 export default function ProductDetails({ initialProduct }: { initialProduct?: any }) {
   const { slug } = useParams<{ slug: string }>();
@@ -986,18 +987,9 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
     product?.brand?.name ||
     "Seller 1's Shop";
 
-  // Check if mediaList contains a video for "Watch Video" trigger
-  const videoMediaIndex = mediaList.findIndex((m) => m.type === "video");
-  const hasProductVideo = videoMediaIndex !== -1;
-
-  const handleWatchVideo = () => {
-    if (hasProductVideo) {
-      setActiveThumb(videoMediaIndex);
-      imgRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    } else {
-      setShowImageModal(true);
-    }
-  };
+  // Sold product count and highlight duration
+  const soldCount = Number(product?.soldCount || 0);
+  const soldDurationLabel = formatSoldDuration(product?.soldHighlightDuration);
 
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -1118,13 +1110,6 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
                     onTouchMove={handleMainTouchMove}
                     onTouchEnd={handleMainTouchEnd}
                   >
-                    {/* Top-Left Discount/Sale Badge */}
-                    {discountPercent > 0 && (
-                      <span className="absolute top-4 left-4 z-20 px-3 py-1 rounded-md bg-[#b08a78] text-white text-xs font-black uppercase tracking-wider shadow-md">
-                        {discountPercent}% OFF
-                      </span>
-                    )}
-
                     {/* Fullscreen Expand Action Button */}
                     <button
                       type="button"
@@ -1249,17 +1234,15 @@ export default function ProductDetails({ initialProduct }: { initialProduct?: an
                       </span>
                     </div>
 
-                    {/* Inline 'Watch Video' pill button (only if product has video) */}
-                    {hasProductVideo && (
-                      <button
-                        type="button"
-                        onClick={handleWatchVideo}
-                        className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#b08a78]/10 hover:bg-[#b08a78]/20 text-[#b08a78] border border-[#b08a78]/30 text-xs font-semibold transition cursor-pointer active:scale-95 shadow-2xs"
-                      >
-                        <Play size={10} className="fill-[#b08a78] text-[#b08a78] shrink-0" />
-                        <span>Watch Video</span>
-                      </button>
-                    )}
+                    {/* Sold Product Count Display (replaces 'Watch Video') */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-300 select-none">|</span>
+                      <span className="text-sm font-medium text-gray-700">
+                        {soldCount > 0 && soldDurationLabel
+                          ? `Sold ${soldCount} in ${soldDurationLabel}`
+                          : `${soldCount} Sold`}
+                      </span>
+                    </div>
                   </div>
 
                   {/* 4. PRICING ROW (matches requested 2-tier layout) */}

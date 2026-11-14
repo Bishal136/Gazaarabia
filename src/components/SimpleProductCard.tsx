@@ -4,12 +4,14 @@ import Image from "next/image";
 import { ShoppingBag, Heart } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import ProductVideoHover from "./ProductVideoHover";
 
 export interface Product {
   id: number | string;
   title: string;
   price: string;
   img: string;
+  videoUrl?: string;
   isNew?: boolean;
   isWishlisted?: boolean;
   slug?: string;
@@ -31,6 +33,7 @@ export default function ProductCard({
   onToggleWishlist,
 }: ProductCardProps) {
   const [wishlisted, setWishlisted] = useState(product.isWishlisted ?? false);
+  const [isHovered, setIsHovered] = useState(false);
   const router = useRouter();
 
   const handleCardClick = () => {
@@ -61,6 +64,8 @@ export default function ProductCard({
   return (
     <div
       onClick={handleCardClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className="group flex flex-col text-center cursor-pointer transition-transform duration-300 hover:-translate-y-1 relative pointer-events-none"
     >
       {/*  Remove from wishlist icon */}
@@ -107,6 +112,14 @@ export default function ProductCard({
           loading="lazy"
           className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
         />
+
+        {/* Hover-to-play Video Preview */}
+        {product.videoUrl && (
+          <ProductVideoHover
+            videoUrl={product.videoUrl}
+            isHovered={isHovered}
+          />
+        )}
       </div>
 
       {/*  Product Title */}

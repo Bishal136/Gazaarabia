@@ -184,6 +184,7 @@ export async function fetchShopData(
     baseQty: true,
     soldCount: true,
     soldHighlightDuration: true,
+    videoUrl: true,
     productimage: {
       select: { url: true, alt: true, primary: true },
     },
@@ -192,6 +193,7 @@ export async function fetchShopData(
         id: true,
         price: true,
         stock: true,
+        videoUrl: true,
         color: { select: { name: true, hexCode: true } },
         size: { select: { name: true } },
       },
@@ -367,6 +369,7 @@ export async function fetchShopData(
       title: product.title,
       sellingPrice: product.sellingPrice,
       discountPrice: product.discountPrice,
+      videoUrl: product.videoUrl || null,
       brand: product.brand,
       category: product.categories,
       productimage: product.productimage,
