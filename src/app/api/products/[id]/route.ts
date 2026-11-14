@@ -147,7 +147,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     const updated = await prisma.products.update({
       where: { id: productId },
       data: {
-        slug: body.slug.trim(),
+        slug: body.slug ? body.slug.trim() : undefined,
         title: body.title,
         shortDescription: body.shortDescription,
         description: body.description,

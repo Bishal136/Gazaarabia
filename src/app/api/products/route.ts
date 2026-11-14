@@ -156,11 +156,15 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    if (!body.slug || !body.title) {
+    if (!body.title) {
       return NextResponse.json(
-        { success: false, message: "Slug and Title are required." },
+        { success: false, message: "Title is required." },
         { status: 400 }
       );
+    }
+
+    if (!body.slug) {
+      body.slug = `${body.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "")}-${Date.now().toString().slice(-4)}`;
     }
 
     if (body.title.length < 5 || body.title.length > 40) {

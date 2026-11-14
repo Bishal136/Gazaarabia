@@ -1,8 +1,17 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, useEffect, useRef } from "react";
-import { Upload, Plus, Trash2, Copy } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  ImageIcon,
+  Info,
+  DollarSign,
+  ShoppingBag,
+  ChevronRight,
+  ShieldCheck,
+  Search,
+  Trash2,
+} from "lucide-react";
 import PopupAlert from "@/components/PopupAlert";
 import AlertMessage from "@/components/AlertMessage";
 import { PopUpInterface, AlertInterface } from "@/lib/types";
@@ -15,19 +24,21 @@ import { categoryService } from "@/lib/services/categoryService";
 import { subcategoryService } from "@/lib/services/subcategoryService";
 import { colorService } from "@/lib/services/colorService";
 import { sizeService } from "@/lib/services/sizeService";
-import { uploadService } from "@/lib/services/uploadService";
 import { materialCareService } from "@/lib/services/materialCareService";
-
-import { TextField, MenuItem, Box, Button, Autocomplete } from "@mui/material";
-import { ROUTES } from "@/constants/routes";
 import { ambassadorService } from "@/lib/services/ambassadorService";
+
+import { TextField, MenuItem, Box, Button, Popover, Switch, FormControlLabel } from "@mui/material";
+import { ROUTES } from "@/constants/routes";
 import RichTextEditor from "@/components/RichTextEditor";
+import { MediaUploader } from "@/components/seller/MediaUploader";
+import { VariantVideoUploader } from "@/components/seller/VariantVideoUploader";
+import { VariantsTikTokStyle } from "@/components/seller/VariantsTikTokStyle";
 
 function ProductFormContent() {
   const router = useRouter();
   const params = useParams();
   const { data: session, status } = useSession();
-  const token: any = session?.user?.token; // get token
+  const token: any = session?.user?.token;
   const id = params?.id?.[0];
   const isEditMode = Boolean(id);
 
@@ -35,40 +46,36 @@ function ProductFormContent() {
 
   useEffect(() => {
     if (!session) return;
-
-    const userRole = session?.user?.role?.toLowerCase();
-    if (status === "authenticated" && !allowedRoles.includes(session?.user?.role)) {
+    if (status === "authenticated" && !allowedRoles.includes(session?.user?.role?.toLowerCase())) {
       router.replace(ROUTES.HOME);
     }
-
-  }, [session, router]);
-
-
+  }, [session, router, status]);
 
   const [form, setForm] = useState({
-    slug: "",
     title: "",
+    slug: "",
     shortDescription: "",
     description: "",
     fitType: "",
     materialCareId: "",
-    ambassadorId: "",
-    soldHighlightDuration: "",
     soldCount: "",
-
+    soldHighlightDuration: "",
     costPrice: "",
     sellingPrice: "",
-    commissionValue: "",
     discountPrice: "",
+    commissionValue: "5",
     baseQty: "",
     barcode: "",
     brandId: "",
     categoryId: "",
     subcategoryId: "",
+    ambassadorId: "",
     active: true,
   });
 
+  const [isSlugEdited, setIsSlugEdited] = useState(false);
   const [images, setImages] = useState<any[]>([]);
+  const [productVideo, setProductVideo] = useState<any>(null);
   const [variants, setVariants] = useState<any[]>([]);
 
   const [brands, setBrands] = useState<any[]>([]);
@@ -76,24 +83,17 @@ function ProductFormContent() {
   const [subcategories, setSubcategories] = useState<any[]>([]);
   const [colors, setColors] = useState<any[]>([]);
   const [sizes, setSizes] = useState<any[]>([]);
+  const [allSubcategories, setAllSubcategories] = useState<any[]>([]);
+  const [categoryAnchorEl, setCategoryAnchorEl] = useState<null | HTMLElement>(null);
+  const [hoveredCategory, setHoveredCategory] = useState<any | null>(null);
   const [careAdvices, setCareAdvices] = useState<any[]>([]);
   const [ambassadors, setAmbassadors] = useState<any[]>([]);
-
-  // Wear with related
 
   const [wearWith, setWearWith] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [selectedWearWith, setSelectedWearWith] = useState<number[]>([]);
 
-
-
-
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [alertMessage, setAlertMessage] = useState<AlertInterface>({
@@ -109,28 +109,33 @@ function ProductFormContent() {
   });
 
   const fieldStyle = {
+    "& .MuiOutlinedInput-root": {
+      borderRadius: "0.5rem",
+      backgroundColor: "#f9fafb",
+      "&:hover fieldset": {
+        borderColor: "#cbd5e1",
+      },
+    },
     "& .MuiOutlinedInput-root.Mui-focused fieldset": {
-      borderColor: "var(--brand-secondary)",
+      borderColor: "var(--brand-secondary, #2563eb)",
+      borderWidth: "2px",
     },
     "& .MuiInputLabel-root.Mui-focused": {
-      color: "var(--brand-secondary)",
+      color: "var(--brand-secondary, #2563eb)",
     },
   };
 
-  // ---- SLUG GENERATOR ----
   const generateSlug = (text: string) => {
     return text
       .toLowerCase()
       .trim()
-      .replace(/[^a-z0-9\s-]/g, "") // remove special chars
-      .replace(/\s+/g, "-") // spaces → dash
-      .replace(/-+/g, "-"); // remove duplicate dash
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-");
   };
 
-  const [isSlugEdited, setIsSlugEdited] = useState(false);
+  const toArr = (val: any) => (Array.isArray(val?.data) ? val.data : Array.isArray(val) ? val : []);
 
-
-  //  Fetch dropdown data
   const fetchDropdownData = async () => {
     try {
       const [
@@ -148,18 +153,19 @@ function ProductFormContent() {
         colorService.getAll(token),
         sizeService.getAll(token),
         materialCareService.getAll(token),
-        ambassadorService.getAll(token)
+        ambassadorService.getAll(token).catch(() => ({ data: [] })),
       ]);
 
-      const toArr = (val: any) => (Array.isArray(val?.data) ? val.data : Array.isArray(val) ? val : []);
       setBrands(toArr(brandsData));
-      setCategories(toArr(categoriesData));
-      setSubcategories(toArr(subcatData));
+      const catList = toArr(categoriesData);
+      setCategories(catList);
+      const subList = toArr(subcatData);
+      setSubcategories(subList);
+      setAllSubcategories(subList);
       setColors(toArr(colorsData));
       setSizes(toArr(sizesData));
       setCareAdvices(toArr(careData));
       setAmbassadors(toArr(ambassadorData));
-
     } catch {
       setAlertMessage({
         isOpen: true,
@@ -169,43 +175,48 @@ function ProductFormContent() {
     }
   };
 
-  // Fetch product if edit mode
   const fetchProduct = async () => {
     try {
       const res = await productService.getById(token!, Number(id));
       const data = res?.data ?? null;
+      if (!data) return;
+
       setForm({
-        slug: data.slug || "",
         title: data.title || "",
+        slug: data.slug || "",
         shortDescription: data.shortDescription || "",
         description: data.description || "",
         fitType: data.fitType || "",
-        ambassadorId: data.ambassadorId || "",
-        soldHighlightDuration: data.soldHighlightDuration || "",
-        soldCount: data.soldCount || "",
-        materialCareId: data.materialCareId || "",
-        costPrice: data.costPrice || "",
-        sellingPrice: data.sellingPrice || "",
-        commissionValue: data.commissionValue || "",
-        discountPrice: data.discountPrice || "",
-        baseQty: data.baseQty || "",
+        soldCount: data.soldCount ? String(data.soldCount) : "",
+        soldHighlightDuration: data.soldHighlightDuration ? String(data.soldHighlightDuration) : "",
+        materialCareId: data.materialCareId ? String(data.materialCareId) : "",
+        costPrice: data.costPrice ? String(data.costPrice) : "",
+        sellingPrice: data.sellingPrice ? String(data.sellingPrice) : "",
+        discountPrice: data.discountPrice ? String(data.discountPrice) : "",
+        commissionValue: data.commissionValue !== undefined && data.commissionValue !== null ? String(data.commissionValue) : "5",
+        baseQty: data.baseQty ? String(data.baseQty) : "",
         barcode: data.barcode || "",
-        brandId: data.brandId?.toString() || "",
-        categoryId: data.categoryId?.toString() || "",
-        subcategoryId: data.subcategoryId?.toString() || "",
+        brandId: data.brandId ? String(data.brandId) : "",
+        categoryId: data.categoryId ? String(data.categoryId) : "",
+        subcategoryId: data.subcategoryId ? String(data.subcategoryId) : "",
+        ambassadorId: data.ambassadorId ? String(data.ambassadorId) : "",
         active: data.active ?? true,
       });
-      // setImages(data.images || []);
+
+      if (data.slug) setIsSlugEdited(true);
+
       setImages(data.productimage || []);
-      // setVariants(data.productvariant || []);
+      setProductVideo({
+        url: data.videoUrl || "",
+        thumbnail: data.videoThumbnail || "",
+      });
       setVariants(
         (data.productvariant || []).map((v: any) => ({
           ...v,
           images: v.variantImages || [],
         }))
       );
-      setWearWith(data.wearWith || []); // load wear-with products if editing
-
+      setWearWith(data.wearWith || []);
     } catch {
       setAlertMessage({
         isOpen: true,
@@ -222,30 +233,34 @@ function ProductFormContent() {
     }
   }, [token, id]);
 
-  //  Handle form input
   const handleInputChange = async (e: any) => {
     const { name, value, type, checked } = e.target;
-    setForm((prev) => {
-      const updated = {
+    const finalVal = type === "checkbox" ? checked : value;
+
+    if (name === "title" && !isSlugEdited && !isEditMode) {
+      setForm((prev) => ({
         ...prev,
-        [name]: type === "checkbox" ? checked : value,
-      };
+        title: value,
+        slug: generateSlug(value),
+      }));
+      return;
+    }
 
-      // ---- AUTO SLUG FROM TITLE ----
-      if (name === "title" && !isSlugEdited) {
-        updated.slug = generateSlug(value);
-      }
+    if (name === "slug") {
+      setIsSlugEdited(true);
+    }
 
-      return updated;
-    });
-    // When category changes -> load its subcategories
+    setForm((prev) => ({
+      ...prev,
+      [name]: finalVal,
+    }));
+
     if (name === "categoryId") {
-      setForm((prev) => ({ ...prev, subcategoryId: "" })); // reset subcategory
-
+      setForm((prev) => ({ ...prev, subcategoryId: "" }));
       if (value) {
         try {
           const res: any = await subcategoryService.getByCategory(token, Number(value));
-          setSubcategories(res.data ?? []);
+          setSubcategories(toArr(res));
         } catch {
           setSubcategories([]);
         }
@@ -253,130 +268,200 @@ function ProductFormContent() {
         setSubcategories([]);
       }
     }
-
   };
 
-  //  Upload Image
-  const handleFileChange = async (e: any) => {
-    const files = Array.from(e.target.files || []) as File[];
-    if (!files.length) return;
-
-    try {
-      const urls = await uploadService.uploadMultiple(files, "products");
-      setImages((prev) => [
-        ...prev,
-        ...urls.map((url: any) => ({
-          url,
-          alt: "",
-          colorId: "",
-          primary: false,
-        })),
-      ]);
-    } catch {
-      setAlertMessage({
-        isOpen: true,
-        type: "error",
-        message: "Image upload failed.",
-      });
-    }
+  // Pricing handlers
+  const handleRegularPriceChange = (val: string) => {
+    setForm((prev) => {
+      const updated = { ...prev, sellingPrice: val };
+      if (variants.length > 0) {
+        setVariants((vList) =>
+          vList.map((v) => ({
+            ...v,
+            compareAtPrice: prev.discountPrice && Number(prev.discountPrice) < Number(val) ? val : undefined,
+          }))
+        );
+      }
+      return updated;
+    });
   };
 
+  const handleDiscountPriceChange = (val: string) => {
+    setForm((prev) => {
+      const updated = { ...prev, discountPrice: val };
+      const reg = parseFloat(prev.sellingPrice);
+      const disc = parseFloat(val);
+      if (variants.length > 0) {
+        if (!isNaN(reg) && reg > 0 && !isNaN(disc) && disc > 0 && disc < reg) {
+          setVariants((vList) =>
+            vList.map((v) => ({
+              ...v,
+              price: val,
+              compareAtPrice: prev.sellingPrice,
+            }))
+          );
+        } else {
+          setVariants((vList) =>
+            vList.map((v) => ({
+              ...v,
+              price: prev.sellingPrice,
+              compareAtPrice: undefined,
+            }))
+          );
+        }
+      }
+      return updated;
+    });
+  };
 
-  //  Add variant
-  const handleVariantAdd = () => {
-    setVariants((prev) => [
+  const calculateTotalVariantQuantity = () => {
+    return variants.reduce((sum, v) => {
+      const qty = parseInt(String(v.stock)) || 0;
+      const cCount = (v.colorName || "").split(",").map((c: string) => c.trim()).filter(Boolean).length || 1;
+      const sCount = (v.sizeName || "").split(",").map((s: string) => s.trim()).filter(Boolean).length || 1;
+      return sum + qty * cCount * sCount;
+    }, 0);
+  };
+
+  const handleAutoFillBaseQty = () => {
+    const totalVariantQty = calculateTotalVariantQuantity();
+    setForm((prev) => ({
       ...prev,
-      { colorId: "", sizeId: "", sku: "", price: "", stock: "", isActive: true, images: [], videoUrl: "", videoThumbnail: "" },
-    ]);
+      baseQty: String(totalVariantQty),
+    }));
   };
 
-  //  Change variant
-  const handleVariantChange = (idx: number, field: string, value: any) => {
-    setVariants((prev) =>
-      prev.map((v, i) => (i === idx ? { ...v, [field]: value } : v))
-    );
-  };
-
-  //  Remove variant
-  const handleVariantRemove = (idx: number) => {
-    setVariants((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const validateVariants = () => {
-    for (const v of variants) {
-      if (!v.colorId || !v.sizeId || !v.sku.trim() || !v.price || !v.stock)
-        return false;
-    }
-    return true;
-  };
-
-  //  Submit
-  const handleSubmit = async (e: any) => {
-    e.preventDefault();
-
-    // ---- SLUG VALIDATION ----
-    if (!form.slug.trim()) {
-      setPopup({
-        isOpen: true,
-        type: "warning",
-        message: "Slug is required.",
-      });
-      return;
-    }
-
-    if (form.slug.length < 5 || form.slug.length > 40) {
-      setPopup({
-        isOpen: true,
-        type: "warning",
-        message: "Slug must be between 5 and 40 characters.",
-      });
-      return;
-    }
-
-    if (!/^[a-z0-9-]+$/.test(form.slug)) {
-      setPopup({
-        isOpen: true,
-        type: "warning",
-        message:
-          "Slug can only contain lowercase letters, numbers and hyphens.",
-      });
-      return;
-    }
-
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
 
     if (images.length === 0) {
       setPopup({
         isOpen: true,
-        type: "warning",
-        message: "Please upload at least one image before saving the product.",
+        type: "error",
+        message: "Please upload at least one main product image.",
       });
       return;
     }
 
-    if (variants.length == 0) {
+    if (!form.title || !form.description || !form.brandId || !form.categoryId) {
       setPopup({
         isOpen: true,
-        type: "warning",
-        message:
-          "Please add at least one variant.",
+        type: "error",
+        message: "Please fill in all basic product information (Title, Category, Brand, Description).",
       });
       return;
     }
 
-    if (variants.length > 0 && !validateVariants()) {
+    if (variants.length === 0) {
       setPopup({
         isOpen: true,
-        type: "warning",
-        message:
-          "Please fill all required fields in variants (Color, Size, SKU, Price, Stock).",
+        type: "error",
+        message: "Please add at least one product variant.",
+      });
+      return;
+    }
+
+    // Validate each variant
+    for (let i = 0; i < variants.length; i++) {
+      const v = variants[i];
+      const errors: string[] = [];
+
+      const hasColor = Boolean(v.colorId || v.colorName);
+      const hasSize = Boolean(v.sizeId || v.sizeName);
+      if (!hasColor && !hasSize) {
+        errors.push("Color or Size option");
+      }
+      if (!v.price) errors.push("Price");
+      if (v.stock === "" || v.stock === undefined) errors.push("Stock");
+      if (!v.images || v.images.length === 0) {
+        if (images && images.length > 0) {
+          v.images = images.map((img: any) => ({
+            url: typeof img === "string" ? img : img.url,
+            alt: form.title || "",
+          }));
+          v.imageUrl = v.images[0]?.url || null;
+        } else {
+          errors.push("Images");
+        }
+      }
+
+      if (errors.length > 0) {
+        setPopup({
+          isOpen: true,
+          type: "error",
+          message: `Variant #${i + 1}: Missing ${errors.join(", ")}`,
+        });
+        return;
+      }
+    }
+
+    if (!form.costPrice || !form.sellingPrice || !form.baseQty) {
+      setPopup({
+        isOpen: true,
+        type: "error",
+        message: "Please fill in all required pricing and inventory details (Cost Price, Selling Price, Base Qty).",
       });
       return;
     }
 
     try {
       setSubmitting(true);
-      const payload = { ...form, images, variants, wearWith: wearWith.map((w) => w.id) };
 
+      // Expand any variant with multiple comma-separated colors or sizes into individual SKU combinations
+      const expandedVariants: any[] = [];
+      for (const v of variants) {
+        const colorNames = (v.colorName || "")
+          .split(",")
+          .map((c: string) => c.trim())
+          .filter(Boolean);
+        const sizeNames = (v.sizeName || "")
+          .split(",")
+          .map((s: string) => s.trim())
+          .filter(Boolean);
+
+        const effectiveColors = colorNames.length > 0 ? colorNames : [v.colorName || ""];
+        const effectiveSizes = sizeNames.length > 0 ? sizeNames : [v.sizeName || ""];
+
+        for (const cName of effectiveColors) {
+          for (const sName of effectiveSizes) {
+            const cleanTitle = (form.title || "GZ")
+              .split(" ")
+              .slice(0, 2)
+              .map((w: string) => w.replace(/[^a-zA-Z0-9]/g, "").slice(0, 3).toUpperCase())
+              .join("-") || "GZ";
+            const cleanColor = cName ? cName.replace(/[^a-zA-Z0-9]/g, "").slice(0, 3).toUpperCase() : "";
+            const cleanSize = sName ? sName.replace(/[^a-zA-Z0-9]/g, "").toUpperCase() : "";
+            const autoSku = [cleanTitle, cleanColor, cleanSize].filter(Boolean).join("-");
+
+            const regPrice = parseFloat(form.sellingPrice || "0");
+            const discPrice = parseFloat(form.discountPrice || "0");
+            const hasPromo = discPrice > 0 && regPrice > discPrice;
+
+            expandedVariants.push({
+              ...v,
+              price: v.price || (hasPromo ? form.discountPrice : form.sellingPrice),
+              compareAtPrice: v.compareAtPrice || (hasPromo ? form.sellingPrice : undefined),
+              colorId: colorNames.length > 1 ? "" : v.colorId,
+              colorName: cName,
+              sizeId: sizeNames.length > 1 ? "" : v.sizeId,
+              sizeName: sName,
+              sku: effectiveColors.length === 1 && effectiveSizes.length === 1 && v.sku ? v.sku : autoSku,
+            });
+          }
+        }
+      }
+
+      const generatedSlug = form.slug?.trim() || generateSlug(form.title);
+
+      const payload = {
+        ...form,
+        slug: generatedSlug,
+        images,
+        variants: expandedVariants,
+        wearWith: wearWith.map((w) => w.id),
+        videoUrl: productVideo?.url || "",
+        videoThumbnail: productVideo?.thumbnail || "",
+      };
 
       if (isEditMode) {
         await productService.update(token!, Number(id), payload);
@@ -399,41 +484,20 @@ function ProductFormContent() {
       setAlertMessage({
         isOpen: true,
         type: "error",
-        message: err.message || err?.error?.message || "Failed to save product.",
+        message: err.message || "Failed to save product.",
       });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const RequiredLabel = ({ text }: { text: string }) => (
-    <span>
-      {text} <span className="text-red-600">*</span>
-    </span>
-  );
-
-
-
-  //======================== Wear with section ==================
-
-  const handleSearchProducts = async (pageNum = 1) => {
+  const handleSearchProducts = async () => {
     if (!searchQuery.trim()) return;
     try {
       setIsSearching(true);
-      // const res = await productService.getAll(token, searchQuery, pageNum, 5);
-      const res = await productService.getAll(token, searchQuery);
-
-      const products = res.data ?? [];
-      setHasMore(products.length === 5); // detect if next page exists
-      if (pageNum === 1) {
-        setSearchResults(products.filter((p: any) => p.id !== Number(id)));
-      } else {
-        setSearchResults((prev) => [
-          ...prev,
-          ...products.filter((p: any) => p.id !== Number(id)),
-        ]);
-      }
-      setPage(pageNum);
+      const res = await productService.getAll(token, { search: searchQuery });
+      const products = toArr(res);
+      setSearchResults(products.filter((p: any) => p.id !== Number(id)));
     } catch {
       setAlertMessage({
         isOpen: true,
@@ -445,8 +509,6 @@ function ProductFormContent() {
     }
   };
 
-
-  //  Add product to Wear With list
   const handleAddWearWith = (product: any) => {
     if (!wearWith.find((p) => p.id === product.id)) {
       setWearWith((prev) => [...prev, product]);
@@ -455,755 +517,797 @@ function ProductFormContent() {
     setSearchQuery("");
   };
 
-  //  Remove product from Wear With list
-  const handleRemoveWearWith = (id: number | string) => {
-    setWearWith((prev) => prev.filter((p) => p.id !== id));
+  const handleRemoveWearWith = (productId: number | string) => {
+    setWearWith((prev) => prev.filter((p) => p.id !== productId));
   };
 
-
-  //  Toggle selection
-  const toggleWearWithSelection = (id: number) => {
-    setSelectedWearWith((prev) =>
-      prev.includes(id) ? prev.filter((pid) => pid !== id) : [...prev, id]
-    );
-  };
-
-  //  Add selected to wearWith
-  const handleAddSelectedWearWith = () => {
-    const selectedProducts = searchResults.filter((p) =>
-      selectedWearWith.includes(p.id)
-    );
-    setWearWith((prev) => {
-      const newOnes = selectedProducts.filter(
-        (prod) => !prev.find((p) => p.id === prod.id)
-      );
-      return [...prev, ...newOnes];
-    });
-    setSelectedWearWith([]);
-    setSearchResults([]);
-    setSearchQuery("");
-  };
-
-  const handleVariantCopy = (idx: number) => {
-    setVariants((prev) => {
-      const variantToCopy = prev[idx];
-
-      const newVariant = {
-        ...variantToCopy,
-        id: undefined,
-        sku: "", // must be unique, so reset
-      };
-
-      const newVariants = [...prev];
-      newVariants.splice(idx + 1, 0, newVariant); // insert after current
-
-      return newVariants;
-    });
-  };
-
-  // handle the video file change
-  const handleVideoFileChange = async (e: any, idx: number) => {
-
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 1024 * 1024 * 1024) {
-      setAlertMessage({
-        isOpen: true,
-        type: "error",
-        message: "Video must be under 1GB",
-      });
-      return;
-    }
-
-    try {
-      const videoUrl = await uploadService.uploadVideo(file, "variant-videos");
-
-      handleVariantChange(idx, "videoUrl", videoUrl);
-      handleVariantChange(idx, "videoThumbnail", ""); // optional: auto-generate later
-    } catch {
-      setAlertMessage({
-        isOpen: true,
-        type: "error",
-        message: "Variant video upload failed.",
-      });
-    }
-
-  }
-
+  const RequiredLabel = ({ text }: { text: string }) => (
+    <span className="font-medium text-gray-700">
+      {text} <span className="text-red-500">*</span>
+    </span>
+  );
 
   return (
-    <Box className="p-6 max-w-7xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-6">
-        {isEditMode ? "Update Product" : "Add Product"}
-      </h1>
-
-      {alertMessage.isOpen && alertMessage.type && (
-        <AlertMessage
-          type={alertMessage.type}
-          message={alertMessage.message}
-          onClose={() => setAlertMessage((p) => ({ ...p, isOpen: false }))}
-        />
-      )}
-
-      {/*  Full UI inside form */}
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {/*  Basic Info */}
-        <Box className="bg-white p-6 rounded-xl shadow space-y-4">
-          <TextField label={<RequiredLabel text="Brand" />} select name="brandId"
-            value={form.brandId} onChange={handleInputChange} inputProps={{ required: true }} fullWidth sx={fieldStyle}>
-            {brands.map((b) => <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>)}
-          </TextField>
-
-          <TextField label={<RequiredLabel text="Category" />} select name="categoryId"
-            value={form.categoryId} onChange={handleInputChange} inputProps={{ required: true }} fullWidth sx={fieldStyle}>
-            {categories.map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
-          </TextField>
-
-          <TextField label={<RequiredLabel text="Subcategory" />} select name="subcategoryId"
-            value={form.subcategoryId} onChange={handleInputChange} inputProps={{ required: true }} fullWidth sx={fieldStyle}>
-            {subcategories.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
-          </TextField>
-
-          <TextField
-            label={<RequiredLabel text="Slug" />}
-            name="slug"
-            value={form.slug}
-            onChange={(e) => {
-              setIsSlugEdited(true);
-              handleInputChange(e);
-            }}
-            inputProps={{ required: true }}
-            fullWidth
-            sx={fieldStyle}
-          />
-
-
-          <TextField label={<RequiredLabel text="Title" />} name="title" value={form.title}
-            onChange={handleInputChange} inputProps={{ required: true }} fullWidth sx={fieldStyle} />
-
-          <RichTextEditor
-            label="Short Description"
-            required
-            value={form.shortDescription}
-            onChange={(value) => setForm((prev) => ({ ...prev, shortDescription: value }))}
-            minHeight={120}
-            placeholder="Write a brief product summary..."
-          />
-
-          <RichTextEditor
-            label="Description"
-            required
-            value={form.description}
-            onChange={(value) => setForm((prev) => ({ ...prev, description: value }))}
-            minHeight={220}
-            placeholder="Write the full product description..."
-          />
-
-          {/* <TextField select label={<RequiredLabel text="Care Advice" />} name="materialCareId"
-            value={form.materialCareId} onChange={handleInputChange} inputProps={{ required: true }}
-            fullWidth sx={fieldStyle}>
-            {careAdvices.map((care) => (
-              <MenuItem key={care.id} value={care.id}>
-                {care.title} ({care.material})
-              </MenuItem>
-            ))}
-          </TextField> */}
-
-          <Autocomplete
-            options={careAdvices}
-            getOptionLabel={(option) => `${option.title} (${option.material})`}
-            value={careAdvices.find(c => c.id === form.materialCareId) || null}
-            onChange={(e, newValue) =>
-              setForm(prev => ({
-                ...prev,
-                materialCareId: newValue?.id || ""
-              }))
-            }
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Care Advice"
-                required
-                sx={fieldStyle}
-              />
-            )}
-          />
-
-          <TextField
-            select
-            label="Assign Ambassador"
-            name="ambassadorId"
-            value={form.ambassadorId}
-            onChange={handleInputChange}
-            fullWidth
-            sx={fieldStyle}
-          >
-            <MenuItem value="">None</MenuItem>
-            {Array.isArray(ambassadors) &&
-              ambassadors.map((a) => {
-                const userName = a.user?.name || a.name || `Ambassador #${a.id}`;
-                const userEmail = a.user?.email || a.email || "";
-                return (
-                  <MenuItem key={a.id} value={a.id}>
-                    {userName} {userEmail ? `(${userEmail})` : ""}
-                  </MenuItem>
-                );
-              })}
-          </TextField>
-
-
-          <TextField
-            label="Highlight Duration (Hours)"
-            name="soldHighlightDuration"
-            type="number"
-            value={form.soldHighlightDuration || ""}
-            onChange={handleInputChange}
-            fullWidth
-            sx={fieldStyle}
-            placeholder="Example: 24 (means 24 hours)"
-          />
-
-          <TextField
-            label="Sold Count in Duration"
-            name="soldCount"
-            type="number"
-            value={form.soldCount || ""}
-            onChange={handleInputChange}
-            fullWidth
-            sx={fieldStyle}
-            placeholder="Example: 12"
-          />
-
-
-          {/* <TextField label={<RequiredLabel text="Subcategory" />} select name="subcategoryId"
-            value={form.subcategoryId} onChange={handleInputChange} inputProps={{ required: true }} fullWidth sx={fieldStyle}>
-            {subcategories.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
-          </TextField> */}
-
-
-        </Box>
-
-        {/*  Pricing */}
-        <Box className="bg-white p-6 rounded-xl shadow space-y-4">
-          <TextField label={<RequiredLabel text="Cost Price" />} name="costPrice" type="number"
-            value={form.costPrice} onChange={handleInputChange} inputProps={{ required: true }} fullWidth sx={fieldStyle} />
-          <TextField label={<RequiredLabel text="Selling Price" />} name="sellingPrice" type="number"
-            value={form.sellingPrice} onChange={handleInputChange} inputProps={{ required: true }} fullWidth sx={fieldStyle} />
-          <TextField label="Commission (%)" name="commissionValue" type="number"
-            value={form.commissionValue} onChange={handleInputChange} fullWidth sx={fieldStyle} />
-          <TextField label="Discount Price (Optional)" name="discountPrice" type="number"
-            value={form.discountPrice} onChange={handleInputChange} fullWidth sx={fieldStyle} helperText="Promotional price customer pays" />
-          <TextField label={<RequiredLabel text="Base Qty" />} name="baseQty" type="number"
-            value={form.baseQty} onChange={handleInputChange} inputProps={{ required: true }} fullWidth sx={fieldStyle} />
-          <TextField label={<RequiredLabel text="Barcode" />} name="barcode"
-            value={form.barcode} onChange={handleInputChange} inputProps={{ required: true }} fullWidth sx={fieldStyle} />
-
-          {/* <div className="flex items-center gap-2 pt-2">
-            <input type="checkbox" name="active" checked={form.active} onChange={handleInputChange}
-              className="w-4 h-4 accent-[var(--brand-secondary)] cursor-pointer" />
-            <label htmlFor="active" className="text-gray-700 font-medium cursor-pointer">Active</label>
-          </div> */}
-        </Box>
-
-        {/*  Images */}
-        <Box className="lg:col-span-2 bg-white p-6 rounded-xl shadow">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-            <h2 className="text-lg font-semibold">
-              Images <span className="text-red-600">*</span>
-            </h2>
-            <span className="text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full font-medium inline-block">
-              📐 Recommended: 3:4 Portrait (e.g. 1200×1600px). Uploads are auto-oriented and formatted to 3:4 portrait.
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-4">
-            {images.map((img, idx) => (
-              <div key={idx} className="relative group w-24 h-32 aspect-[3/4]">
-                <img src={img.url} alt="" className="w-full h-full object-cover object-top rounded-lg border bg-[#f8f5f0]" />
-                <button
-                  type="button"
-                  onClick={() => setImages(images.filter((_, i) => i !== idx))}
-                  className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition shadow-sm"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="w-24 h-32 aspect-[3/4] border-2 border-dashed flex flex-col items-center justify-center cursor-pointer rounded-lg text-gray-400 hover:text-black transition gap-1"
-            >
-              <Upload size={22} />
-              <span className="text-[10px] font-medium">3:4 Photo</span>
+    <Box className="min-h-screen bg-[#F5F5F5] pb-24">
+      {/* Top Banner */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-auto sm:h-16 py-3 sm:py-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <ShoppingBag className="text-blue-600" size={20} />
+            <div>
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900">
+                {isEditMode ? "Update Product" : "Publish New Product"}
+              </h1>
+              <p className="text-xs text-gray-500 hidden sm:block">
+                Create and customize your catalog product listing
+              </p>
             </div>
-            <input ref={fileInputRef} type="file" multiple accept=".jpg,.jpeg,.png,image/jpeg,image/png" onChange={handleFileChange} className="hidden" />
           </div>
-        </Box>
-
-        {/*  Variants */}
-        <Box className="lg:col-span-2 bg-white p-6 rounded-xl shadow space-y-3">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">Variants (Color × Size)</h2>
-            <Button variant="contained" sx={{ background: "var(--brand-secondary)" }} onClick={handleVariantAdd}>
-              <Plus size={16} style={{ marginRight: 4 }} /> Add Variant
+          <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+            <Button
+              variant="outlined"
+              onClick={() => router.push("/admin/products")}
+              fullWidth
+              sx={{
+                textTransform: "none",
+                borderRadius: "8px",
+                fontWeight: 600,
+                borderColor: "#E2E8F0",
+                color: "#64748B",
+                py: 1,
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => handleSubmit()}
+              fullWidth
+              disabled={submitting}
+              sx={{
+                background: "var(--brand-secondary, #2563eb)",
+                textTransform: "none",
+                borderRadius: "8px",
+                fontWeight: 600,
+                boxShadow: "none",
+                py: 1,
+              }}
+            >
+              {submitting ? "Saving..." : isEditMode ? "Update Product" : "Publish Product"}
             </Button>
           </div>
+        </div>
+      </div>
 
-          {variants.map((v, idx) => (
-            <div
-              key={idx}
-              className="border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50 shadow-sm hover:shadow-md transition-all duration-200"
-            >
-              {/*  Header with title + delete button */}
-              {/* <div className="flex justify-between items-center mb-3">
-                <h3 className="font-semibold text-gray-800">
-                  Variant #{idx + 1}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => handleVariantRemove(idx)}
-                  className="text-red-500 hover:text-red-700 transition flex items-center gap-1"
-                >
-                  <Trash2 size={16} /> Remove
-                </button>
-              </div> */}
+      <div className="max-w-[1400px] mx-auto px-3 sm:px-6 py-6 sm:py-8">
+        {alertMessage.isOpen && alertMessage.type && (
+          <AlertMessage
+            type={alertMessage.type}
+            message={alertMessage.message}
+            onClose={() => setAlertMessage((p) => ({ ...p, isOpen: false }))}
+          />
+        )}
 
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-semibold text-gray-800">
-                  Variant #{idx + 1}
-                </h3>
-
-                <div className="flex gap-2">
-                  {/* COPY BUTTON */}
-                  <button
-                    type="button"
-                    onClick={() => handleVariantCopy(idx)}
-                    title="Copy Variant"
-                    className="p-2 rounded-md border border-gray-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400 transition"
-                  >
-                    <Copy size={16} />
-                  </button>
-
-                  {/* DELETE BUTTON */}
-                  <button
-                    type="button"
-                    onClick={() => handleVariantRemove(idx)}
-                    title="Remove Variant"
-                    className="p-2 rounded-md border border-gray-300 text-red-500 hover:bg-red-50 hover:border-red-400 transition"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+        <div className="w-full max-w-5xl mx-auto space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* 1. MEDIA */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+              <div className="mb-6 flex items-start sm:items-center gap-2">
+                <ImageIcon className="text-blue-600 mt-1 sm:mt-0" size={24} />
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Product Media</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Upload high-quality images and video to showcase your product.
+                  </p>
                 </div>
               </div>
 
-
-              {/*  Main Inputs */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <TextField
-                  select
-                  label={<RequiredLabel text="Color" />}
-                  value={v.colorId}
-                  onChange={(e) => handleVariantChange(idx, "colorId", e.target.value)}
-                  inputProps={{ required: true }}
-                  fullWidth
-                  sx={fieldStyle}
-                >
-                  {colors.map((c) => (
-                    <MenuItem key={c.id} value={c.id}>
-                      {c.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-
-                <TextField
-                  select
-                  label={<RequiredLabel text="Size" />}
-                  value={v.sizeId}
-                  onChange={(e) => handleVariantChange(idx, "sizeId", e.target.value)}
-                  inputProps={{ required: true }}
-                  fullWidth
-                  sx={fieldStyle}
-                >
-                  {sizes.map((s) => (
-                    <MenuItem key={s.id} value={s.id}>
-                      {s.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-
-                <TextField
-                  label={<RequiredLabel text="SKU" />}
-                  value={v.sku}
-                  onChange={(e) => handleVariantChange(idx, "sku", e.target.value)}
-                  inputProps={{ required: true }}
-                  fullWidth
-                  sx={fieldStyle}
-                />
-
-                <TextField
-                  label={<RequiredLabel text="Price" />}
-                  type="number"
-                  value={v.price}
-                  onChange={(e) => handleVariantChange(idx, "price", e.target.value)}
-                  inputProps={{ required: true }}
-                  fullWidth
-                  sx={fieldStyle}
-                />
-
-                <TextField
-                  label={<RequiredLabel text="Stock" />}
-                  type="number"
-                  value={v.stock}
-                  onChange={(e) => handleVariantChange(idx, "stock", e.target.value)}
-                  inputProps={{ required: true }}
-                  fullWidth
-                  sx={fieldStyle}
+              {/* Images Section */}
+              <div className="mb-8">
+                <h3 className="text-sm font-semibold text-gray-900 mb-4">Product Images</h3>
+                <MediaUploader
+                  images={images}
+                  onImagesChange={setImages}
+                  onError={(msg) =>
+                    setAlertMessage({ isOpen: true, type: "error", message: msg })
+                  }
+                  maxImages={10}
                 />
               </div>
 
-              {/*  Variant Images */}
-              <div className="mt-4">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-sm font-medium text-gray-700">
-                    Variant Images
+              {/* Video Section */}
+              <div className="mb-8 pb-8 border-b border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                  Product Video & Video Link (Optional)
+                </h3>
+                <p className="text-xs text-gray-500 mb-4">
+                  Upload a high-resolution product showcase video (up to 1GB) or paste a video link (YouTube, Vimeo, CDN).
+                </p>
+                <VariantVideoUploader
+                  videoUrl={productVideo?.url || ""}
+                  videoThumbnail={productVideo?.thumbnail}
+                  onVideoChange={(url) => setProductVideo((prev: any) => ({ ...prev, url }))}
+                  onVideoThumbnailChange={(thumb) =>
+                    setProductVideo((prev: any) => ({ ...prev, thumbnail: thumb }))
+                  }
+                  onError={(msg) =>
+                    setAlertMessage({ isOpen: true, type: "error", message: msg })
+                  }
+                  variantLabel="Product"
+                />
+              </div>
+
+              <div className="bg-blue-50/50 rounded-xl p-4 flex gap-3 items-start border border-blue-100">
+                <Info className="text-blue-500 shrink-0 mt-0.5" size={20} />
+                <div className="text-sm text-blue-900">
+                  <p className="font-semibold mb-1">Media Guidelines</p>
+                  <ul className="list-disc pl-4 space-y-1 text-blue-800/80">
+                    <li>First image will be the product cover.</li>
+                    <li>Use clear, well-lit photos with a clean background.</li>
+                    <li>Recommended resolution: 1080x1080px (1:1 ratio).</li>
+                    <li>
+                      Video must be under 1GB (MP4, WebM, MOV) or a valid video link (YouTube, Vimeo, direct URL).
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. PRODUCT DETAILS */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-8">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <Info className="text-blue-600" size={24} />
+                Product Details
+              </h2>
+
+              <div className="space-y-6">
+                <TextField
+                  label={<RequiredLabel text="Product Name" />}
+                  name="title"
+                  value={form.title}
+                  onChange={handleInputChange}
+                  fullWidth
+                  sx={fieldStyle}
+                  placeholder="e.g., Sakina Embroidered Black Abaya"
+                />
+
+                {/* Category & Subcategory Cascading Popover */}
+                <div className="relative">
+                  <TextField
+                    label={<RequiredLabel text="Category & Subcategory" />}
+                    value={(() => {
+                      const sub = allSubcategories.find(
+                        (s) => String(s.id) === String(form.subcategoryId)
+                      );
+                      const cat = categories.find(
+                        (c) => String(c.id) === String(sub?.categoryId || form.categoryId)
+                      );
+                      const catDisplay = cat
+                        ? cat.submenu?.menu?.name
+                          ? `${cat.submenu.menu.name} > ${cat.name}`
+                          : cat.name
+                        : "";
+                      return catDisplay && sub
+                        ? `${catDisplay} > ${sub.name}`
+                        : catDisplay || "";
+                    })()}
+                    onClick={(e) => setCategoryAnchorEl(e.currentTarget)}
+                    fullWidth
+                    autoComplete="off"
+                    sx={fieldStyle}
+                    placeholder="Select Category & Subcategory"
+                    InputProps={{
+                      readOnly: true,
+                      endAdornment: (
+                        <ChevronRight
+                          size={18}
+                          className={`text-gray-400 transition-transform ${
+                            categoryAnchorEl ? "rotate-90" : ""
+                          }`}
+                        />
+                      ),
+                      sx: { cursor: "pointer", "& input": { cursor: "pointer" } },
+                    }}
+                  />
+
+                  <Popover
+                    open={Boolean(categoryAnchorEl)}
+                    anchorEl={categoryAnchorEl}
+                    onClose={() => setCategoryAnchorEl(null)}
+                    anchorOrigin={{
+                      vertical: "bottom",
+                      horizontal: "left",
+                    }}
+                    transformOrigin={{
+                      vertical: "top",
+                      horizontal: "left",
+                    }}
+                    PaperProps={{
+                      sx: {
+                        mt: 1,
+                        boxShadow:
+                          "0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)",
+                        borderRadius: "12px",
+                        border: "1px solid #e2e8f0",
+                        overflow: "hidden",
+                        width: { xs: "calc(100vw - 32px)", sm: "520px" },
+                        display: "flex",
+                        flexDirection: { xs: "column", sm: "row" },
+                      },
+                    }}
+                  >
+                    {/* Categories Column */}
+                    <div className="w-full sm:w-1/2 border-r border-slate-100 py-2 bg-slate-50 overflow-y-auto max-h-[300px] sm:max-h-[400px]">
+                      <p className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        Categories
+                      </p>
+                      {[...categories]
+                        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+                        .map((cat) => (
+                          <div
+                            key={cat.id}
+                            onMouseEnter={() => setHoveredCategory(cat)}
+                            onClick={() => setHoveredCategory(cat)}
+                            className={`px-4 py-2.5 flex items-center justify-between cursor-pointer transition-colors ${
+                              hoveredCategory?.id === cat.id
+                                ? "bg-blue-600 text-white"
+                                : "text-slate-600 hover:bg-slate-200"
+                            }`}
+                          >
+                            <span className="text-sm font-medium">
+                              {cat.name}
+                              {cat.submenu?.menu?.name ? ` - ${cat.submenu.menu.name}` : ""}
+                            </span>
+                            <ChevronRight
+                              size={14}
+                              className={
+                                hoveredCategory?.id === cat.id ? "text-white" : "text-slate-400"
+                              }
+                            />
+                          </div>
+                        ))}
+                    </div>
+
+                    {/* Subcategories Column */}
+                    <div className="w-full sm:w-1/2 py-2 bg-white overflow-y-auto max-h-[300px] sm:max-h-[400px]">
+                      {hoveredCategory ? (
+                        <>
+                          <p className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            {hoveredCategory.name} Subcategories
+                          </p>
+                          {allSubcategories
+                            .filter((s) => String(s.categoryId) === String(hoveredCategory.id))
+                            .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+                            .map((sub) => (
+                              <div
+                                key={sub.id}
+                                onClick={() => {
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    subcategoryId: String(sub.id),
+                                    categoryId: String(sub.categoryId),
+                                  }));
+                                  setCategoryAnchorEl(null);
+                                }}
+                                className="px-4 py-2.5 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-700 cursor-pointer transition-colors"
+                              >
+                                {sub.name}
+                              </div>
+                            ))}
+                          {allSubcategories.filter(
+                            (s) => String(s.categoryId) === String(hoveredCategory.id)
+                          ).length === 0 && (
+                            <div className="px-4 py-8 text-center text-slate-400 text-sm">
+                              No subcategories found
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="h-full flex items-center justify-center p-8 text-center text-slate-400 text-sm italic">
+                          Hover over a category to see subcategories
+                        </div>
+                      )}
+                    </div>
+                  </Popover>
+                </div>
+
+                <TextField
+                  label={<RequiredLabel text="Brand" />}
+                  select
+                  name="brandId"
+                  value={form.brandId}
+                  onChange={handleInputChange}
+                  fullWidth
+                  sx={fieldStyle}
+                >
+                  {brands.map((b) => (
+                    <MenuItem key={b.id} value={b.id}>
+                      {b.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Specifications (Add 4 or 5 key Benefits and Features){" "}
+                    <span className="text-red-500">*</span>
                   </label>
-                  <span className="text-[11px] text-amber-700 font-medium">
-                    (Auto-formatted to 3:4 portrait)
-                  </span>
+                  <RichTextEditor
+                    value={form.shortDescription}
+                    onChange={(value) =>
+                      setForm((prev) => ({ ...prev, shortDescription: value }))
+                    }
+                    minHeight={220}
+                    placeholder="Brief summary for specifications..."
+                  />
                 </div>
 
-                <div className="flex flex-wrap gap-3 mt-2">
-                  {v.images?.map((img: any, i: number) => (
-                    <div key={i} className="relative group w-20 h-28 aspect-[3/4]">
-                      <img
-                        src={img.url}
-                        alt=""
-                        className="w-full h-full object-cover object-top rounded-lg border border-gray-300 bg-[#f8f5f0]"
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Full Description <span className="text-red-500">*</span>
+                  </label>
+                  <RichTextEditor
+                    value={form.description}
+                    onChange={(value) =>
+                      setForm((prev) => ({ ...prev, description: value }))
+                    }
+                    minHeight={360}
+                    placeholder="Detailed features, materials..."
+                  />
+                </div>
+
+                <TextField
+                  select
+                  label={<RequiredLabel text="Material & Care Guide" />}
+                  name="materialCareId"
+                  value={form.materialCareId}
+                  onChange={handleInputChange}
+                  fullWidth
+                  sx={fieldStyle}
+                >
+                  {careAdvices.map((care) => (
+                    <MenuItem key={care.id} value={care.id}>
+                      {care.title} ({care.material})
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </div>
+            </div>
+
+            {/* 3. VARIANTS - TikTok Style Manager */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+              <VariantsTikTokStyle
+                variants={variants}
+                onVariantsChange={setVariants}
+                colors={colors}
+                sizes={sizes}
+                basePrice={
+                  form.discountPrice && Number(form.discountPrice) < Number(form.sellingPrice)
+                    ? form.discountPrice
+                    : form.sellingPrice
+                }
+                productTitle={form.title}
+                onError={(msg) =>
+                  setAlertMessage({
+                    isOpen: true,
+                    type: "error",
+                    message: msg,
+                  })
+                }
+              />
+            </div>
+
+            {/* 4. PRICING & INVENTORY */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                  <DollarSign className="text-blue-600" size={24} />
+                  Pricing & Inventory
+                </h2>
+                <p className="text-gray-500 mt-1">
+                  Set base product pricing, promotional discounts, and inventory tracking.
+                </p>
+              </div>
+
+              {/* 1. Base Pricing */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <TextField
+                  label={<RequiredLabel text="Regular Price (RRP)" />}
+                  name="sellingPrice"
+                  type="number"
+                  value={form.sellingPrice}
+                  onChange={(e) => handleRegularPriceChange(e.target.value)}
+                  inputProps={{ step: "0.01", min: "0" }}
+                  fullWidth
+                  sx={fieldStyle}
+                  helperText="Original retail price (shown strikethrough when discounted)"
+                  InputProps={{
+                    startAdornment: <span className="text-gray-500 mr-2 font-semibold">£</span>,
+                  }}
+                />
+
+                <TextField
+                  label="Sale / Discount Price (Optional)"
+                  name="discountPrice"
+                  type="number"
+                  value={form.discountPrice}
+                  onChange={(e) => handleDiscountPriceChange(e.target.value)}
+                  inputProps={{ step: "0.01", min: "0" }}
+                  fullWidth
+                  sx={fieldStyle}
+                  helperText="Promotional price customer pays"
+                  InputProps={{
+                    startAdornment: <span className="text-gray-500 mr-2 font-semibold">£</span>,
+                  }}
+                />
+              </div>
+
+              {/* 2. Cost Price & Barcode */}
+              <div className="pt-6 mt-6 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <TextField
+                    label={<RequiredLabel text="Cost Price" />}
+                    name="costPrice"
+                    type="number"
+                    value={form.costPrice}
+                    onChange={handleInputChange}
+                    inputProps={{ step: "0.01", min: "0" }}
+                    fullWidth
+                    sx={fieldStyle}
+                    helperText="Wholesale / production cost"
+                    InputProps={{
+                      startAdornment: <span className="text-gray-500 mr-2 font-semibold">£</span>,
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <TextField
+                    label="Barcode (EAN/UPC)"
+                    name="barcode"
+                    value={form.barcode}
+                    onChange={handleInputChange}
+                    fullWidth
+                    sx={fieldStyle}
+                    helperText="Optional inventory barcode or UPC number"
+                  />
+                </div>
+              </div>
+
+              {/* 3. Base Inventory & Variant Quantities */}
+              <div className="pt-6 mt-6 border-t border-gray-100">
+                <div className="max-w-md">
+                  <div className="flex items-end gap-2 mb-2">
+                    <div className="flex-1">
+                      <TextField
+                        label={<RequiredLabel text="Base Quantity" />}
+                        name="baseQty"
+                        type="number"
+                        value={form.baseQty}
+                        onChange={handleInputChange}
+                        inputProps={{ min: "0" }}
+                        fullWidth
+                        sx={fieldStyle}
+                        helperText="Initial stock level for base product"
                       />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outlined"
+                      onClick={handleAutoFillBaseQty}
+                      size="small"
+                      sx={{
+                        borderRadius: "6px",
+                        textTransform: "none",
+                        fontWeight: 600,
+                        borderColor: "#cbd5e1",
+                        color: "#475569",
+                        whiteSpace: "nowrap",
+                        mb: 0.5,
+                      }}
+                    >
+                      Auto Fill
+                    </Button>
+                  </div>
+
+                  {/* Variant Quantity Breakdown */}
+                  {variants.length > 0 && (
+                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-xs font-semibold text-blue-900 mb-2">
+                        Variant Quantities: {calculateTotalVariantQuantity()} total
+                      </p>
+                      <div className="text-xs text-blue-800 space-y-1.5 max-h-32 overflow-y-auto">
+                        {variants.map((v, idx) => {
+                          const colorName =
+                            v.colorName ||
+                            colors.find((c) => String(c.id) === String(v.colorId))?.name ||
+                            "Universal";
+                          const sizeName =
+                            v.sizeName ||
+                            sizes.find((s) => String(s.id) === String(v.sizeId))?.name ||
+                            "Universal";
+                          const qty = parseInt(String(v.stock)) || 0;
+                          const cCount =
+                            (v.colorName || "").split(",").map((c: string) => c.trim()).filter(Boolean).length || 1;
+                          const sCount =
+                            (v.sizeName || "").split(",").map((s: string) => s.trim()).filter(Boolean).length || 1;
+                          const totalCombos = cCount * sCount;
+                          const totalQty = qty * totalCombos;
+                          return (
+                            <div
+                              key={idx}
+                              className="flex justify-between items-center text-xs py-0.5 border-b border-blue-100 last:border-0"
+                            >
+                              <span>
+                                {colorName} - {sizeName}
+                                {totalCombos > 1 && (
+                                  <span className="text-[10px] text-blue-600 font-bold ml-1.5">
+                                    ({totalCombos} combos × {qty})
+                                  </span>
+                                )}
+                              </span>
+                              <span className="font-bold">{totalQty}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 5. ADMIN CONTROLS & PARTNERSHIPS */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+              <div className="mb-6 flex items-center gap-2">
+                <ShieldCheck className="text-blue-600" size={24} />
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                    Admin Controls & Partnerships
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Manage URL slug, ambassador affiliation, platform commission, and listing status.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <TextField
+                  label="URL Slug"
+                  name="slug"
+                  value={form.slug}
+                  onChange={handleInputChange}
+                  fullWidth
+                  sx={fieldStyle}
+                  helperText="Unique product URL path (auto-generated from product title)"
+                />
+
+                <TextField
+                  select
+                  label="Assign Ambassador (Optional)"
+                  name="ambassadorId"
+                  value={form.ambassadorId}
+                  onChange={handleInputChange}
+                  fullWidth
+                  sx={fieldStyle}
+                  helperText="Assign a partner or brand ambassador"
+                >
+                  <MenuItem value="">None</MenuItem>
+                  {Array.isArray(ambassadors) &&
+                    ambassadors.map((a) => {
+                      const userName = a.user?.name || a.name || `Ambassador #${a.id}`;
+                      const userEmail = a.user?.email || a.email || "";
+                      return (
+                        <MenuItem key={a.id} value={a.id}>
+                          {userName} {userEmail ? `(${userEmail})` : ""}
+                        </MenuItem>
+                      );
+                    })}
+                </TextField>
+
+                <TextField
+                  label="Platform Commission (%)"
+                  name="commissionValue"
+                  type="number"
+                  value={form.commissionValue}
+                  onChange={handleInputChange}
+                  fullWidth
+                  sx={fieldStyle}
+                  helperText="Platform commission rate for this product (default 5%)"
+                />
+
+                <TextField
+                  label="Highlight Duration (Hours)"
+                  name="soldHighlightDuration"
+                  type="number"
+                  value={form.soldHighlightDuration}
+                  onChange={handleInputChange}
+                  fullWidth
+                  sx={fieldStyle}
+                  placeholder="e.g., 24 (hours)"
+                  helperText="Duration to highlight product sales badge"
+                />
+
+                <div className="md:col-span-2 pt-2">
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={Boolean(form.active)}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, active: e.target.checked }))
+                        }
+                        color="primary"
+                      />
+                    }
+                    label={
+                      <div>
+                        <span className="font-semibold text-gray-900">Active Listing</span>
+                        <p className="text-xs text-gray-500">
+                          When enabled, this product is immediately visible to buyers on the storefront.
+                        </p>
+                      </div>
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 6. PAIR WITH (WEAR WITH) */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+                Pair With (Cross-Sell Recommendations)
+              </h2>
+              <p className="text-sm text-gray-500 mb-4">
+                Recommend complementary products to customers browsing this item.
+              </p>
+
+              <div className="flex gap-2 mb-4">
+                <TextField
+                  placeholder="Search catalog products..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleSearchProducts();
+                    }
+                  }}
+                  fullWidth
+                  sx={fieldStyle}
+                  size="small"
+                />
+                <Button
+                  variant="contained"
+                  onClick={handleSearchProducts}
+                  disabled={isSearching}
+                  sx={{
+                    background: "var(--brand-secondary, #2563eb)",
+                    borderRadius: "8px",
+                    textTransform: "none",
+                    fontWeight: 600,
+                    px: 3,
+                  }}
+                >
+                  <Search size={16} className="mr-1.5" />
+                  {isSearching ? "Searching..." : "Search"}
+                </Button>
+              </div>
+
+              {/* Search Results Dropdown List */}
+              {searchResults.length > 0 && (
+                <div className="border border-gray-200 rounded-xl p-3 bg-gray-50 mb-4 max-h-48 overflow-y-auto space-y-2">
+                  {searchResults.map((prod) => (
+                    <div
+                      key={prod.id}
+                      className="flex items-center justify-between p-2 bg-white rounded-lg border border-gray-100 hover:border-blue-200 cursor-pointer"
+                      onClick={() => handleAddWearWith(prod)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={prod?.productimage?.[0]?.url || "/images/placeholder.jpg"}
+                          alt={prod.title}
+                          className="w-10 h-10 object-cover rounded-md"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{prod.title}</p>
+                          <p className="text-xs text-gray-500">£{prod.sellingPrice}</p>
+                        </div>
+                      </div>
+                      <Button size="small" variant="text" sx={{ textTransform: "none" }}>
+                        + Add
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Selected Items */}
+              {wearWith.length > 0 && (
+                <div className="flex flex-wrap gap-3">
+                  {wearWith.map((prod) => (
+                    <div
+                      key={prod.id}
+                      className="relative border border-gray-200 rounded-xl p-3 w-36 bg-gray-50 flex flex-col items-center"
+                    >
+                      <img
+                        src={prod?.productimage?.[0]?.url || "/images/placeholder.jpg"}
+                        alt={prod.title}
+                        className="w-20 h-20 object-cover rounded-lg mb-2"
+                      />
+                      <span className="text-xs text-center font-medium line-clamp-2 text-gray-800">
+                        {prod.title}
+                      </span>
                       <button
                         type="button"
-                        onClick={() => {
-                          const updated = v.images.filter((_: any, j: any) => j !== i);
-                          if (v.colorId) {
-                            setVariants((prev) =>
-                              prev.map((variant) =>
-                                variant.colorId === v.colorId
-                                  ? { ...variant, images: updated }
-                                  : variant
-                              )
-                            );
-                          } else {
-                            handleVariantChange(idx, "images", updated);
-                          }
-                        }}
-                        className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition shadow-sm"
+                        onClick={() => handleRemoveWearWith(prod.id)}
+                        className="absolute top-1.5 right-1.5 p-1 bg-white rounded-full shadow text-red-500 hover:text-red-700"
+                        title="Remove"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   ))}
-
-                  {/* Upload Button */}
-                  <div
-                    onClick={() => document.getElementById(`variantFile${idx}`)?.click()}
-                    className="w-20 h-28 aspect-[3/4] border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer text-gray-400 hover:text-black transition gap-1"
-                  >
-                    <Upload size={18} />
-                    <span className="text-[9px] font-medium">3:4</span>
-                  </div>
-
-                  <input
-                    id={`variantFile${idx}`}
-                    type="file"
-                    multiple
-                    accept=".jpg,.jpeg,.png,image/jpeg,image/png"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const files = Array.from(e.target.files || []);
-                      if (!files.length) return;
-                      try {
-                        const urls = await uploadService.uploadMultiple(files, "variants");
-                        const updatedImages = [
-                          ...(v.images || []),
-                          ...urls.map((url: any) => ({ url, alt: "" })),
-                        ];
-                        if (v.colorId) {
-                          setVariants((prev) =>
-                            prev.map((variant, i) =>
-                              i === idx || variant.colorId === v.colorId
-                                ? { ...variant, images: updatedImages }
-                                : variant
-                            )
-                          );
-                        } else {
-                          handleVariantChange(idx, "images", updatedImages);
-                        }
-                      } catch {
-                        setAlertMessage({
-                          isOpen: true,
-                          type: "error",
-                          message: "Variant image upload failed.",
-                        });
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Variant Video */}
-              <div className="mt-4">
-                <label className="text-sm font-medium text-gray-700">
-                  Variant Video (Optional – only one)
-                </label>
-
-                {v.videoUrl ? (
-                  <div className="relative mt-2 w-40">
-                    <video
-                      src={v.videoUrl}
-                      poster={v.videoThumbnail}
-                      controls
-                      className="w-full rounded border"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleVariantChange(idx, "videoUrl", "");
-                        handleVariantChange(idx, "videoThumbnail", "");
-                      }}
-                      className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => document.getElementById(`variantVideo${idx}`)?.click()}
-                    className="mt-2 w-40 h-24 border-2 border-dashed rounded flex items-center justify-center cursor-pointer text-gray-400 hover:text-black"
-                  >
-                    <Upload size={18} />
-                    <span className="text-xs ml-2">Upload Video</span>
-                  </div>
-                )}
-
-                <input
-                  id={`variantVideo${idx}`}
-                  type="file"
-                  accept="video/mp4,video/webm"
-                  className="hidden"
-                  onChange={(e) => handleVideoFileChange(e, idx)}
-                />
-              </div>
-
-
-              {/* Footer - Active toggle */}
-              {/* <div className="flex justify-end items-center mt-4">
-                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={v.isActive}
-                    onChange={(e) =>
-                      handleVariantChange(idx, "isActive", e.target.checked)
-                    }
-                    className="w-4 h-4 accent-[var(--brand-secondary)]"
-                  />
-                  Active
-                </label>
-              </div> */}
-            </div>
-          ))}
-
-        </Box>
-
-
-
-        {/*  Wear With Section */}
-        <Box className="lg:col-span-2 bg-white p-6 rounded-xl shadow space-y-4 mt-6">
-          <h2 className="text-lg font-semibold">Wear With</h2>
-          <p className="text-sm text-gray-500">
-            Link related products that go well with this item.
-          </p>
-
-          {/*  Search Input & Button */}
-          <div className="flex items-center gap-3">
-            <TextField
-              label="Search Products"
-              placeholder="Type to search..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setPage(1);
-              }}
-              fullWidth
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  height: "42px", //  Match button height
-                },
-              }}
-            />
-            <Button
-              variant="contained"
-              sx={{
-                background: "var(--brand-secondary)",
-                height: "42px",
-                whiteSpace: "nowrap",
-                textTransform: "none",
-                px: 3,
-                "&:hover": {
-                  background: "var(--brand-primary)",
-                },
-              }}
-              disabled={isSearching}
-              onClick={() => handleSearchProducts(1)}
-            >
-              {isSearching ? "Searching..." : "Search"}
-            </Button>
-          </div>
-
-          {/*  Search Results */}
-          {searchResults.length > 0 && (
-            <div className="mt-3 bg-gray-50 border rounded-lg p-3 max-h-64 overflow-y-auto">
-              {searchResults.map((prod) => (
-                <label
-                  key={prod.id}
-                  className="flex justify-between items-center py-2 border-b last:border-none cursor-pointer hover:bg-gray-100 px-2 rounded-md transition"
-                >
-                  <div className="flex items-center gap-3">
-                    {/* Checkbox */}
-                    <input
-                      type="checkbox"
-                      checked={selectedWearWith.includes(prod.id)}
-                      onChange={() => toggleWearWithSelection(prod.id)}
-                      className="w-4 h-4 text-[var(--brand-secondary)] border-gray-300 rounded focus:ring-[var(--brand-secondary)]"
-                    />
-                    <img
-                      src={prod?.productimage?.[0]?.url || "/images/placeholder.jpg"}
-                      alt={prod.title}
-                      className="w-10 h-10 rounded object-cover border"
-                    />
-                    <span className="text-sm font-medium text-gray-800">
-                      {prod.title}
-                    </span>
-                  </div>
-
-                  {/*  Optional Quick Add Button */}
-                  <Button
-                    size="small"
-                    variant="contained"
-                    sx={{
-                      background: "var(--brand-secondary)",
-                      textTransform: "none",
-                      fontSize: "13px",
-                      "&:hover": {
-                        background: "var(--brand-primary)",
-                      },
-                    }}
-                    onClick={() => handleAddWearWith(prod)}
-                  >
-                    Add
-                  </Button>
-                </label>
-              ))}
-
-              {/* Add Selected Button */}
-              {selectedWearWith.length > 0 && (
-                <div className="text-right mt-3">
-                  <Button
-                    variant="contained"
-                    size="small"
-                    sx={{
-                      background: "var(--brand-secondary)",
-                      textTransform: "none",
-                      fontSize: "13px",
-                      px: 3,
-                      "&:hover": {
-                        background: "var(--brand-primary)",
-                      },
-                    }}
-                    onClick={handleAddSelectedWearWith}
-                  >
-                    Add Selected ({selectedWearWith.length})
-                  </Button>
-                </div>
-              )}
-
-              {/* Load More */}
-              {hasMore && (
-                <div className="text-center mt-3">
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    sx={{
-                      borderColor: "var(--brand-secondary)",
-                      color: "var(--brand-secondary)",
-                      textTransform: "none",
-                      fontSize: "13px",
-                      px: 3,
-                      "&:hover": {
-                        borderColor: "var(--brand-primary)",
-                        color: "var(--brand-primary)",
-                      },
-                    }}
-                    onClick={() => handleSearchProducts(page + 1)}
-                  >
-                    Load More
-                  </Button>
                 </div>
               )}
             </div>
-          )}
 
-          {/* Selected Wear With Items */}
-          {wearWith.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-3">
-              {wearWith.map((prod) => (
-                <div
-                  key={prod.id}
-                  className="relative border rounded-lg p-2 w-32 h-40 flex flex-col items-center justify-center bg-gray-50"
+            {/* Bottom Actions */}
+            <div className="mt-8 flex items-center justify-end border-t border-gray-200 pt-6">
+              <div className="flex gap-4">
+                <Button
+                  variant="outlined"
+                  onClick={() => router.push("/admin/products")}
+                  sx={{
+                    borderRadius: "8px",
+                    textTransform: "none",
+                    fontWeight: 600,
+                    px: 4,
+                    py: 1.5,
+                    borderColor: "#cbd5e1",
+                    color: "#475569",
+                  }}
                 >
-                  <img
-                    src={prod?.productimage?.[0]?.url || "/images/placeholder.jpg"}
-                    alt={prod.title}
-                    className="w-20 h-20 object-cover rounded mb-2"
-                  />
-                  <span className="text-xs text-center font-medium line-clamp-2">
-                    {prod.title}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveWearWith(prod.id)}
-                    className="absolute top-1 right-1 text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
+                  Cancel
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => handleSubmit()}
+                  disabled={submitting}
+                  sx={{
+                    background: "var(--brand-secondary, #2563eb)",
+                    borderRadius: "8px",
+                    textTransform: "none",
+                    fontWeight: 600,
+                    boxShadow: "none",
+                    px: 6,
+                    py: 1.5,
+                  }}
+                >
+                  {submitting ? "Saving..." : isEditMode ? "Update Product" : "Publish Product"}
+                </Button>
+              </div>
             </div>
-          )}
-        </Box>
-
-
-
-
-
-        {/* Actions */}
-        <Box className="lg:col-span-2 flex justify-end gap-3 mt-6">
-          <Button variant="outlined" onClick={() => router.push("/admin/products")}>
-            Cancel
-          </Button>
-          <Button variant="contained" sx={{ background: "var(--brand-secondary)" }} type="submit" disabled={submitting}>
-            {submitting ? "Saving..." : isEditMode ? "Update Product" : "Add Product"}
-          </Button>
-        </Box>
-      </form>
+          </form>
+        </div>
+      </div>
 
       <PopupAlert
         type={popup.type as any}
         message={popup.message}
-        confirmText={"OK"}
+        confirmText="OK"
         onConfirm={() => setPopup((p) => ({ ...p, isOpen: false }))}
         show={popup.isOpen}
       />
+
+      <style jsx global>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </Box>
   );
 }
