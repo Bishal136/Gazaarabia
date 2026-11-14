@@ -717,6 +717,50 @@ async function getNextAtomicSequence(db: any, colName: string, step = 1): Promis
 }
 
 /**
+ * Resolves relation filters on products (productvariant.some and reviews.some)
+ * into product ID constraints before running queries against the products collection.
+ */
+async function resolveProductRelationFilters(db: any, where: any, filter: Record<string, any>) {
+  if (!where || typeof where !== "object") return;
+
+  // Handle relation filter: productvariant.some
+  if (where.productvariant && where.productvariant.some) {
+    const variantWhere = convertPrismaWhereToMongo(where.productvariant.some);
+    const matchingVariants = await db
+      .collection("productvariant")
+      .find(variantWhere)
+      .project({ productId: 1 })
+      .toArray();
+    const pIds = Array.from(new Set(matchingVariants.map((v: any) => v.productId)));
+    delete filter.productvariant;
+    if (filter.id && filter.id.$in) {
+      const existingSet = new Set(filter.id.$in);
+      filter.id.$in = pIds.filter((id: any) => existingSet.has(id));
+    } else {
+      filter.id = { ...(filter.id || {}), $in: pIds };
+    }
+  }
+
+  // Handle relation filter: reviews.some
+  if (where.reviews && where.reviews.some) {
+    const reviewWhere = convertPrismaWhereToMongo(where.reviews.some);
+    const matchingReviews = await db
+      .collection("review")
+      .find(reviewWhere)
+      .project({ productId: 1 })
+      .toArray();
+    const rProductIds = Array.from(new Set(matchingReviews.map((r: any) => r.productId)));
+    delete filter.reviews;
+    if (filter.id && filter.id.$in) {
+      const existingSet = new Set(filter.id.$in);
+      filter.id.$in = rProductIds.filter((id: any) => existingSet.has(id));
+    } else {
+      filter.id = { ...(filter.id || {}), $in: rProductIds };
+    }
+  }
+}
+
+/**
  * Creates a Model Delegate for a given model
  */
 function createModelDelegate(modelName: string) {
@@ -761,6 +805,9 @@ function createModelDelegate(modelName: string) {
       const col = db.collection(colName);
 
       const filter = convertPrismaWhereToMongo(args.where);
+      if (colName === "products") {
+        await resolveProductRelationFilters(db, args.where, filter);
+      }
       const sort = convertPrismaOrderByToMongo(args.orderBy);
 
       let cursor = col.find(filter);
@@ -802,13 +849,8 @@ function createModelDelegate(modelName: string) {
 
       let filter = convertPrismaWhereToMongo(args.where);
 
-      // Handle relation filter: productvariant.some
-      if (colName === "products" && args.where && args.where.productvariant && args.where.productvariant.some) {
-        const variantWhere = convertPrismaWhereToMongo(args.where.productvariant.some);
-        const matchingVariants = await db.collection("productvariant").find(variantWhere).project({ productId: 1 }).toArray();
-        const pIds = matchingVariants.map((v: any) => v.productId);
-        delete filter.productvariant;
-        filter.id = { ...(filter.id || {}), $in: pIds };
+      if (colName === "products") {
+        await resolveProductRelationFilters(db, args.where, filter);
       }
 
       const sort = convertPrismaOrderByToMongo(args.orderBy);
@@ -856,6 +898,9 @@ function createModelDelegate(modelName: string) {
       const col = db.collection(colName);
 
       const filter = convertPrismaWhereToMongo(args.where);
+      if (colName === "products") {
+        await resolveProductRelationFilters(db, args.where, filter);
+      }
       return await col.countDocuments(filter);
     },
 
