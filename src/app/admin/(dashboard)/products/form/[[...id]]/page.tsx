@@ -151,13 +151,14 @@ function ProductFormContent() {
         ambassadorService.getAll(token)
       ]);
 
-      setBrands(brandsData.data ?? brandsData);
-      setCategories(categoriesData.data ?? categoriesData);
-      setSubcategories(subcatData.data ?? subcatData);
-      setColors(colorsData.data ?? colorsData);
-      setSizes(sizesData.data ?? sizesData);
-      setCareAdvices(careData.data ?? careData);
-      setAmbassadors(ambassadorData.data ?? ambassadorData);
+      const toArr = (val: any) => (Array.isArray(val?.data) ? val.data : Array.isArray(val) ? val : []);
+      setBrands(toArr(brandsData));
+      setCategories(toArr(categoriesData));
+      setSubcategories(toArr(subcatData));
+      setColors(toArr(colorsData));
+      setSizes(toArr(sizesData));
+      setCareAdvices(toArr(careData));
+      setAmbassadors(toArr(ambassadorData));
 
     } catch {
       setAlertMessage({
@@ -640,11 +641,16 @@ function ProductFormContent() {
             sx={fieldStyle}
           >
             <MenuItem value="">None</MenuItem>
-            {ambassadors.map((a) => (
-              <MenuItem key={a.id} value={a.id}>
-                {a.user.name} ({a.user.email})
-              </MenuItem>
-            ))}
+            {Array.isArray(ambassadors) &&
+              ambassadors.map((a) => {
+                const userName = a.user?.name || a.name || `Ambassador #${a.id}`;
+                const userEmail = a.user?.email || a.email || "";
+                return (
+                  <MenuItem key={a.id} value={a.id}>
+                    {userName} {userEmail ? `(${userEmail})` : ""}
+                  </MenuItem>
+                );
+              })}
           </TextField>
 
 

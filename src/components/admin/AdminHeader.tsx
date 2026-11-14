@@ -27,16 +27,6 @@ export default function AdminHeader({ onMenuToggle }: { onMenuToggle: () => void
       subtitle: "Manage the available subcategories for your product catalog.",
       action: { label: "Add Subcategory", modalKey: "subcategory" },
     },
-    "/admin/colors-list": {
-      title: "Colors",
-      subtitle: "Manage available colors.",
-      action: { label: "Add Color", href: "/admin/color" },
-    },
-    "/admin/sizes": {
-      title: "Sizes",
-      subtitle: "Manage available sizes.",
-      action: { label: "Add Size", href: "/admin/size-add" },
-    },
     "/admin/material-cares": {
       title: "Material Cares Advice",
       subtitle: "Manage material cares advice.",

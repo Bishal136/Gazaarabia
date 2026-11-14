@@ -42,8 +42,13 @@ export async function POST(req: Request) {
       );
     }
 
-    // Fetch user from MongoDB
-    const user = await db.collection("users").findOne({ email: normalizedEmail });
+    // Fetch user from MongoDB (exact match or case-insensitive fallback)
+    const user = await db.collection("users").findOne({
+      $or: [
+        { email: normalizedEmail },
+        { email: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } }
+      ]
+    });
 
     if (!user) {
       logLoginAttempt(req, normalizedEmail, false, "User not found");

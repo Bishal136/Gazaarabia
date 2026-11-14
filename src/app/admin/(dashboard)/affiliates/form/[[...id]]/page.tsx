@@ -46,14 +46,14 @@ export default function AddOrEditAffiliatePage() {
         const res: any = await affiliateService.getById(session?.user?.token, Number(affiliateId));
         const a = res?.data;
         setForm({
-          name: a.user.name,
-          email: a.user.email,
-          phone: a.user.phone || "",
+          name: a?.user?.name || a?.name || "",
+          email: a?.user?.email || a?.email || "",
+          phone: a?.user?.phone || "",
           password: "",
           type: "affiliate",
-          baseCommission: String(a.baseCommission),
-          shareCommission: String(a.shareCommission),
-          isActive: a.isActive,
+          baseCommission: String(a?.baseCommission || "0"),
+          shareCommission: String(a?.shareCommission || "0"),
+          isActive: Boolean(a?.isActive),
         });
       } catch {
         setAlert({ isOpen: true, type: "error", message: "Failed to load affiliate." });

@@ -48,7 +48,16 @@ const providers: any[] = [
 
         return null;
       } catch (error: any) {
-        console.error("Authorization error:", error);
+        const isExpectedAuthFailure =
+          error?.message === "Invalid credentials" ||
+          error?.message === "Email and password are required" ||
+          error?.message?.includes("Access denied");
+
+        if (isExpectedAuthFailure) {
+          console.warn(`[NextAuth Credentials] ${error.message} (${credentials?.email})`);
+        } else {
+          console.error("Authorization error:", error);
+        }
         throw new Error(error.message || "Login failed");
       }
     },

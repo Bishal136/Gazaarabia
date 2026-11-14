@@ -6,8 +6,6 @@ import {
   LayoutDashboard,
   ShoppingCart,
   Users,
-  Ruler,
-  Palette,
   Layers,
   Grid,
   Droplets,
@@ -70,8 +68,6 @@ const links = [
     icon: Boxes,
     children: [
       { href: "/admin/products", label: "All Products", icon: Boxes },
-      { href: "/admin/sizes", label: "Sizes", icon: Ruler },
-      { href: "/admin/colors-list", label: "Colors", icon: Palette },
       { href: "/admin/category-list", label: "Categories", icon: Layers },
       { href: "/admin/subcategories", label: "Subcategories", icon: Grid },
       { href: "/admin/material-cares", label: "Material Cares", icon: Droplets },
