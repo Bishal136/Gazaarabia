@@ -283,7 +283,7 @@ export default function CharityPage() {
             <div className="text-[var(--text-secondary)] leading-relaxed space-y-3">
                 <p>
                     We don’t want you to just “take our word for it”.
-                    We will host a dedicated “Solidarity Receipts” page on our website where you can see:
+                    We host a dedicated “Solidarity Receipts” page on our website where you can see:
                 </p>
 
                 <ul className="list-disc ml-6 space-y-1">
@@ -445,7 +445,10 @@ export default function CharityPage() {
             <section className="py-12 md:py-16 bg-[var(--soft-gray)]">
                 <div className="max-w-3xl mx-auto px-6">
                     <div className="bg-white p-6 md:p-10 rounded-2xl shadow-xl border border-[var(--mid-gray)]">
-                        <h2 className="text-2xl md:text-3xl font-bold text-center text-[var(--brand-primary)] mb-4">Make a Donation</h2>
+                        <h2 className="text-2xl md:text-3xl font-bold text-center text-[var(--brand-primary)] mb-2">Make a Donation</h2>
+                        <p className="text-xs sm:text-sm text-center text-[var(--text-secondary)] max-w-xl mx-auto mb-6">
+                            100% of direct donations and net proceeds are directed to humanitarian relief through established partners including Al Khair Foundation, Islamic Relief UK, and emergency aid initiatives on the ground.
+                        </p>
 
                         {(alertMessageData.isOpen && alertMessageData.type) && (
                             <AlertMessage type={alertMessageData.type} message={alertMessageData.message} onClose={() => setAlertMessageData((prev) => ({ ...prev, isOpen: false }))} />

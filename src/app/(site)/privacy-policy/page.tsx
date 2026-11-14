@@ -100,7 +100,7 @@ We do not sell your personal data.
 
 We may share your data with trusted third parties who help us run our business, such as:
 
-* Payment providers (e.g. Stripe, PayPal, Klarna, Apple Pay – depending on what we use)
+* Payment providers (including Stripe, PayPal, and Cash on Delivery)
 * Website hosting and platform providers
 * Email marketing and CRM tools
 * Analytics and advertising partners (e.g. Meta, Google – via cookies/pixels)
@@ -147,7 +147,7 @@ Under UK/EU data protection law, you have the right to:
 * Data portability – ask for your data in a structured, commonly used, machine-readable format, and to transfer it to another controller where applicable.
 * Withdraw consent – where we rely on consent (e.g. email marketing), you can withdraw it at any time.
 
-To exercise any of these rights, contact us at: [insert privacy email].
+To exercise any of these rights, contact us at: info@gazaarabia.com.
 
 We may need to verify your identity before acting on your request.
 

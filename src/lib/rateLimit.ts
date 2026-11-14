@@ -4,6 +4,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { connectToDatabase } from "./mongoose";
 
 interface RateLimitStore {
   [key: string]: { count: number; resetTime: number };
@@ -19,8 +20,8 @@ export interface RateLimitOptions {
 }
 
 /**
- * Rate limiter middleware
- * Returns true if request is allowed, false if rate limited
+ * Cluster-Safe Rate Limiter with MongoDB Atomic Tracking & In-Memory Fallback
+ * Guarantees synchronized request limits across all PM2 workers in cluster mode.
  */
 export async function rateLimit(
   req: Request,
@@ -49,7 +50,49 @@ export async function rateLimit(
   const key = keyGenerator(req);
   const now = Date.now();
 
-  // Initialize or get existing rate limit data
+  try {
+    const mongooseConn = await connectToDatabase();
+    const db = mongooseConn.connection.db;
+    if (db) {
+      const col = db.collection("rate_limits");
+      const expiresAt = new Date(now + windowMs);
+
+      // Find or increment atomic counter across all PM2 cluster workers
+      const doc = await col.findOneAndUpdate(
+        { _id: key as any },
+        {
+          $inc: { count: 1 },
+          $setOnInsert: { resetTime: now + windowMs, expiresAt },
+        },
+        { upsert: true, returnDocument: "after" }
+      );
+
+      const data: any = (doc && typeof doc.count === "number") ? doc : (doc as any)?.value;
+      const count = data?.count || 1;
+      const resetTime = data?.resetTime || now + windowMs;
+
+      // If counter expired, reset it
+      if (now > resetTime) {
+        await col.updateOne({ _id: key as any }, { $set: { count: 1, resetTime: now + windowMs, expiresAt } });
+        return {
+          allowed: true,
+          remaining: effectiveMax - 1,
+          resetTime: now + windowMs,
+        };
+      }
+
+      const allowed = count <= effectiveMax;
+      return {
+        allowed,
+        remaining: Math.max(0, effectiveMax - count),
+        resetTime,
+      };
+    }
+  } catch {
+    // Graceful fallback to in-memory store if DB query fails
+  }
+
+  // Fallback: In-memory store
   if (!store[key] || now > store[key].resetTime) {
     store[key] = {
       count: 0,

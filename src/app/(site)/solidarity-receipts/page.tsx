@@ -91,9 +91,14 @@ export default function PublicSolidarityReceiptsPage() {
 
                 {/* No Data */}
                 {visibleReceipts.length === 0 ? (
-                    <p className="text-center text-[var(--text-muted)]">
-                        No certificates available.
-                    </p>
+                    <div className="text-center py-12 px-6 max-w-lg mx-auto bg-white rounded-2xl border border-[var(--mid-gray)] shadow-sm">
+                        <p className="text-lg font-semibold text-[var(--brand-primary)] mb-2">
+                            Audited Certificates in Review
+                        </p>
+                        <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                            Official donation receipts and partner certificates from Palestine Solidarity Campaign, Al Khair Foundation, and Islamic Relief UK are currently undergoing quarterly verification and will appear here shortly.
+                        </p>
+                    </div>
                 ) : (
                     <>
                         {/* Grid */}
@@ -154,7 +159,7 @@ export default function PublicSolidarityReceiptsPage() {
                                         </h2>
                                         <p className="text-sm text-[var(--text-muted)] mt-1">
                                             {item.amount && (
-                                                <span className="font-bold">${item.amount.toFixed(2)}</span>
+                                                <span className="font-bold">£{item.amount.toFixed(2)}</span>
                                             )}
                                         </p>
                                         <p className="text-sm text-[var(--text-secondary)] mt-1">

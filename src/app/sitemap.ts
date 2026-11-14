@@ -22,6 +22,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/cookies-policy",
     "/impact",
     "/charity",
+    "/solidarity-receipts",
     "/loyalty",
     "/become-partner",
   ].map((route) => ({

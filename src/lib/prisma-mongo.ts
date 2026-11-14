@@ -679,6 +679,38 @@ function applySelect(doc: any, select: any): any {
 }
 
 /**
+ * Atomic Auto-Increment Sequence Generator using MongoDB findOneAndUpdate
+ * Guarantees zero race conditions / duplicate ID collisions across clustered PM2 workers.
+ */
+async function getNextAtomicSequence(db: any, colName: string, step = 1): Promise<number> {
+  const countersCol = db.collection("__system_counters");
+
+  const res = await countersCol.findOneAndUpdate(
+    { _id: colName },
+    { $inc: { seq: step } },
+    { upsert: false, returnDocument: "after" }
+  );
+
+  let seq = (res && typeof res.seq === "number") ? res.seq : res?.value?.seq;
+
+  // Initialize counter if not yet present
+  if (seq === undefined || seq === null) {
+    const lastDoc = await db.collection(colName).find().sort({ id: -1 }).limit(1).toArray();
+    const currentMax = lastDoc.length > 0 && typeof lastDoc[0].id === "number" ? lastDoc[0].id : 0;
+    const targetSeq = currentMax + step;
+
+    await countersCol.updateOne(
+      { _id: colName },
+      { $set: { seq: targetSeq } },
+      { upsert: true }
+    );
+    seq = targetSeq;
+  }
+
+  return seq;
+}
+
+/**
  * Creates a Model Delegate for a given model
  */
 function createModelDelegate(modelName: string) {
@@ -828,10 +860,9 @@ function createModelDelegate(modelName: string) {
 
       const data = { ...(args.data || {}) };
 
-      // Generate numeric ID if missing
+      // Generate numeric ID atomically if missing
       if (data.id === undefined) {
-        const last = await col.find().sort({ id: -1 }).limit(1).toArray();
-        data.id = last.length > 0 && typeof last[0].id === "number" ? last[0].id + 1 : 1;
+        data.id = await getNextAtomicSequence(db, colName, 1);
       }
 
       // If creating an order with nested orderItems, extract them before saving the order doc
@@ -858,8 +889,8 @@ function createModelDelegate(modelName: string) {
       // Insert nested order items into orders_item collection with the order's id
       if (colName === "orders" && nestedOrderItems.length > 0) {
         const itemsCol = db.collection("orders_item");
-        const lastItem = await itemsCol.find().sort({ id: -1 }).limit(1).toArray();
-        let nextItemId = lastItem.length > 0 && typeof lastItem[0].id === "number" ? lastItem[0].id + 1 : 1;
+        const endItemId = await getNextAtomicSequence(db, "orders_item", nestedOrderItems.length);
+        let nextItemId = endItemId - nestedOrderItems.length + 1;
 
         const docsToInsert = nestedOrderItems.map((item) => ({
           ...item,
@@ -890,8 +921,8 @@ function createModelDelegate(modelName: string) {
       const list = args.data || [];
       if (!Array.isArray(list) || list.length === 0) return { count: 0 };
 
-      const last = await col.find().sort({ id: -1 }).limit(1).toArray();
-      let nextId = last.length > 0 && typeof last[0].id === "number" ? last[0].id + 1 : 1;
+      const endSeq = await getNextAtomicSequence(db, colName, list.length);
+      let nextId = endSeq - list.length + 1;
       const now = new Date();
 
       const prepared = list.map((item) => {

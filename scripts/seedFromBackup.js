@@ -341,7 +341,7 @@ async function runSeed() {
 
     productDocs.push({
       id: prod.id,
-      sellerId: 3, // GAZAARABIA flagship seller
+      sellerId: prod.id <= 214 ? 7 : 3, // Distribute between Verified Vendor (7) and GAZAARABIA Flagship (3)
       slug: prod.slug,
       title: prod.title,
       shortDescription: prod.shortDescription,

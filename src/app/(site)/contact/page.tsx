@@ -98,7 +98,7 @@ export default function ContactPage() {
         <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10">
           {[
             { icon: <FaEnvelope className="text-3xl" />, title: "Email Us", detail: "info@gazaarabia.com" },
-            { icon: <FaPhoneAlt className="text-3xl" />, title: "Call Us", detail: "+440 77671 77465" },
+            { icon: <FaPhoneAlt className="text-3xl" />, title: "Call Us", detail: "+44 7767 177465" },
             // { icon: <FaMapMarkerAlt className="text-3xl" />, title: "Visit Us", detail: "123 Arab Street, New Delhi" },
           ].map((item, i) => (
             <div
