@@ -126,7 +126,7 @@ export async function fetchShopData(
   if (sizes.length > 0 || colors.length > 0) {
     const matchingVariants = await prisma.productvariant.findMany({
       where: {
-        isActive: { not: false },
+        isActive: { notIn: [false, 0] },
         ...(sizes.length > 0 && { sizeId: { in: sizes } }),
         ...(colors.length > 0 && { colorId: { in: colors } }),
       },

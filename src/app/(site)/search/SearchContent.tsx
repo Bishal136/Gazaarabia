@@ -22,6 +22,39 @@ import {
   PackageOpen,
 } from "lucide-react";
 
+const parseNumberArray = (searchParams: URLSearchParams, key: string): number[] => {
+  const raw = [
+    ...searchParams.getAll(`${key}[]`),
+    ...searchParams.getAll(key),
+  ];
+  return Array.from(
+    new Set(
+      raw
+        .flatMap((v) => v.split(","))
+        .map(Number)
+        .filter((n) => Number.isInteger(n) && n > 0)
+    )
+  );
+};
+
+const parseStringArray = (searchParams: URLSearchParams, key: string): string[] => {
+  const raw = [
+    ...searchParams.getAll(`${key}[]`),
+    ...searchParams.getAll(key),
+  ];
+  return Array.from(
+    new Set(
+      raw
+        .flatMap((v) => v.split(","))
+        .map((s) => s.trim())
+        .filter(Boolean)
+    )
+  );
+};
+
+const arraysMatch = (a: any[], b: any[]) =>
+  a.length === b.length && a.every((v, i) => v === b[i]);
+
 export default function SearchContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -57,20 +90,20 @@ export default function SearchContent() {
   );
   const [sort, setSort] = useState<string>(searchParams.get("sort") || "new");
 
-  const [filters, setFilters] = useState<FilterState>({
+  const [filters, setFilters] = useState<FilterState>(() => ({
     q: searchParams.get("q") || "",
-    availability: searchParams.getAll("availability[]"),
-    sizes: searchParams.getAll("sizes[]").map(Number).filter(Boolean),
-    colors: searchParams.getAll("colors[]").map(Number).filter(Boolean),
-    categories: searchParams.getAll("categories[]").map(Number).filter(Boolean),
-    subcategories: searchParams
-      .getAll("subcategories[]")
-      .map(Number)
-      .filter(Boolean),
+    availability: parseStringArray(searchParams, "availability"),
+    sizes: parseNumberArray(searchParams, "sizes"),
+    colors: parseNumberArray(searchParams, "colors"),
+    categories: parseNumberArray(searchParams, "categories"),
+    subcategories: parseNumberArray(searchParams, "subcategories"),
     priceMin: Number(searchParams.get("priceMin")) || 0,
     priceMax: Number(searchParams.get("priceMax")) || 1000,
     rating: Number(searchParams.get("rating")) || 0,
-  });
+  }));
+
+  // Track the serialization of the last request to avoid duplicate network calls
+  const lastFetchedKeyRef = React.useRef<string>("");
 
   // Load filter options
   useEffect(() => {
@@ -92,27 +125,42 @@ export default function SearchContent() {
     const qParam = searchParams.get("q") || "";
     const pageParam = Number(searchParams.get("page")) || 1;
     const sortParam = searchParams.get("sort") || "new";
-    const availParam = searchParams.getAll("availability[]");
-    const sizesParam = searchParams.getAll("sizes[]").map(Number).filter(Boolean);
-    const colorsParam = searchParams.getAll("colors[]").map(Number).filter(Boolean);
-    const catsParam = searchParams.getAll("categories[]").map(Number).filter(Boolean);
-    const subcatsParam = searchParams.getAll("subcategories[]").map(Number).filter(Boolean);
+    const availParam = parseStringArray(searchParams, "availability");
+    const sizesParam = parseNumberArray(searchParams, "sizes");
+    const colorsParam = parseNumberArray(searchParams, "colors");
+    const catsParam = parseNumberArray(searchParams, "categories");
+    const subcatsParam = parseNumberArray(searchParams, "subcategories");
     const priceMinParam = Number(searchParams.get("priceMin")) || 0;
     const priceMaxParam = Number(searchParams.get("priceMax")) || 1000;
     const ratingParam = Number(searchParams.get("rating")) || 0;
 
     setCurrentPage(pageParam);
     setSort(sortParam);
-    setFilters({
-      q: qParam,
-      availability: availParam,
-      sizes: sizesParam,
-      colors: colorsParam,
-      categories: catsParam,
-      subcategories: subcatsParam,
-      priceMin: priceMinParam,
-      priceMax: priceMaxParam,
-      rating: ratingParam,
+    setFilters((prev) => {
+      const isIdentical =
+        prev.q === qParam &&
+        prev.priceMin === priceMinParam &&
+        prev.priceMax === priceMaxParam &&
+        prev.rating === ratingParam &&
+        arraysMatch(prev.availability, availParam) &&
+        arraysMatch(prev.sizes, sizesParam) &&
+        arraysMatch(prev.colors, colorsParam) &&
+        arraysMatch(prev.categories, catsParam) &&
+        arraysMatch(prev.subcategories, subcatsParam);
+
+      if (isIdentical) return prev;
+
+      return {
+        q: qParam,
+        availability: availParam,
+        sizes: sizesParam,
+        colors: colorsParam,
+        categories: catsParam,
+        subcategories: subcatsParam,
+        priceMin: priceMinParam,
+        priceMax: priceMaxParam,
+        rating: ratingParam,
+      };
     });
   }, [searchParams]);
 
@@ -188,9 +236,27 @@ export default function SearchContent() {
   };
 
   useEffect(() => {
-    if (status !== "loading") {
-      fetchProducts(filters, currentPage, sort);
-    }
+    if (status === "loading") return;
+
+    const requestKey = JSON.stringify({
+      q: filters.q,
+      sort,
+      page: currentPage,
+      avail: filters.availability,
+      sizes: filters.sizes,
+      colors: filters.colors,
+      cats: filters.categories,
+      subcats: filters.subcategories,
+      min: filters.priceMin,
+      max: filters.priceMax,
+      rating: filters.rating,
+      token,
+    });
+
+    if (requestKey === lastFetchedKeyRef.current) return;
+    lastFetchedKeyRef.current = requestKey;
+
+    fetchProducts(filters, currentPage, sort);
   }, [currentPage, sort, filters, status, token]);
 
   // Wishlist Toggle
@@ -249,9 +315,10 @@ export default function SearchContent() {
       priceMax: 1000,
       rating: 0,
     };
-    setFilters(freshFilters);
+    setSort("new");
     setCurrentPage(1);
-    syncUrlWithState(1, sort, freshFilters);
+    setFilters(freshFilters);
+    syncUrlWithState(1, "new", freshFilters);
   };
 
   const activeFilterCount =
@@ -379,6 +446,14 @@ export default function SearchContent() {
               setFilters={setFilters}
               filterMeta={filterMeta}
               onReset={handleResetFilters}
+              onFilterChange={(updater) => {
+                setCurrentPage(1);
+                setFilters((prev) => {
+                  const updated = updater(prev);
+                  syncUrlWithState(1, sort, updated);
+                  return updated;
+                });
+              }}
               onApply={() => {
                 setCurrentPage(1);
                 syncUrlWithState(1, sort, filters);
@@ -477,6 +552,7 @@ export default function SearchContent() {
                 onApply={() => {
                   setCurrentPage(1);
                   syncUrlWithState(1, sort, filters);
+                  setIsMobileDrawerOpen(false);
                 }}
                 isMobileDrawer={true}
                 onCloseMobileDrawer={() => setIsMobileDrawerOpen(false)}

@@ -17,11 +17,29 @@ export async function GET(req: Request) {
     const priceMax = Number(searchParams.get("priceMax")) || 100000;
     const ratingMin = Number(searchParams.get("rating")) || 0;
 
-    const availability = searchParams.getAll("availability[]");
-    const sizes = searchParams.getAll("sizes[]").map(Number).filter(Boolean);
-    const colors = searchParams.getAll("colors[]").map(Number).filter(Boolean);
-    const categoriesFilter = searchParams.getAll("categories[]").map(Number).filter(Boolean);
-    const subcategoriesFilter = searchParams.getAll("subcategories[]").map(Number).filter(Boolean);
+    const getNumberArrayParam = (key: string): number[] => {
+      const raw = [
+        ...searchParams.getAll(`${key}[]`),
+        ...searchParams.getAll(key),
+      ];
+      return Array.from(
+        new Set(
+          raw
+            .flatMap((v) => v.split(","))
+            .map(Number)
+            .filter((n) => Number.isInteger(n) && n > 0)
+        )
+      );
+    };
+
+    const availability = [
+      ...searchParams.getAll("availability[]"),
+      ...searchParams.getAll("availability"),
+    ];
+    const sizes = getNumberArrayParam("sizes");
+    const colors = getNumberArrayParam("colors");
+    const categoriesFilter = getNumberArrayParam("categories");
+    const subcategoriesFilter = getNumberArrayParam("subcategories");
     const sort = searchParams.get("sort") || "new";
 
     const where: any = {
@@ -111,7 +129,7 @@ export async function GET(req: Request) {
     if (sizes.length > 0 || colors.length > 0) {
       where.productvariant = {
         some: {
-          isActive: true,
+          isActive: { notIn: [false, 0] },
           ...(sizes.length > 0 && { sizeId: { in: sizes } }),
           ...(colors.length > 0 && { colorId: { in: colors } }),
         },
@@ -200,7 +218,7 @@ export async function GET(req: Request) {
       success: true,
       products: formattedProducts,
       total,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.max(1, Math.ceil(total / limit)),
       page,
     });
     res.headers.set("Cache-Control", "public, s-maxage=30, stale-while-revalidate=120");

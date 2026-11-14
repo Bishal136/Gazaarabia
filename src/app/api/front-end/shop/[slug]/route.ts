@@ -12,16 +12,31 @@ export async function GET(
   const page = Number(searchParams.get("page")) || 1;
   const limit = Number(searchParams.get("limit")) || 12;
 
+  const getArrayParam = (key: string): string[] => {
+    const raw = [
+      ...searchParams.getAll(`${key}[]`),
+      ...searchParams.getAll(key),
+    ];
+    return Array.from(
+      new Set(
+        raw
+          .flatMap((v) => v.split(","))
+          .map((s) => s.trim())
+          .filter(Boolean)
+      )
+    );
+  };
+
   const filters = {
     q: searchParams.get("q") || "",
     priceMin: Number(searchParams.get("priceMin")) || 0,
     priceMax: Number(searchParams.get("priceMax")) || 100000,
     rating: Number(searchParams.get("rating")) || 0,
-    availability: searchParams.getAll("availability[]"),
-    sizes: searchParams.getAll("sizes[]"),
-    colors: searchParams.getAll("colors[]"),
-    subcategories: searchParams.getAll("subcategories[]"),
-    categories: searchParams.getAll("categories[]"),
+    availability: getArrayParam("availability"),
+    sizes: getArrayParam("sizes"),
+    colors: getArrayParam("colors"),
+    subcategories: getArrayParam("subcategories"),
+    categories: getArrayParam("categories"),
     sort: searchParams.get("sort") || "new",
   };
 
