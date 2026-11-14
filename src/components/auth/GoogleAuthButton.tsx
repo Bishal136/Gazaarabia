@@ -19,7 +19,7 @@ export default function GoogleAuthButton({
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      await signIn("google", { callbackUrl });
+      await signIn("google", { callbackUrl }, { prompt: "select_account" });
     } catch (error) {
       console.error("Google sign-in error:", error);
       setLoading(false);
