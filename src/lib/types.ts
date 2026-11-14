@@ -4,6 +4,8 @@ export interface PopUpInterface {
   isOpen: boolean;
   type: "success" | "error" | "warning" | "confirm" | "";
   message: string;
+  confirmText?: string;
+  cancelText?: string;
   onConfirm?: () => void;
   onCancel?: () => void;
 }

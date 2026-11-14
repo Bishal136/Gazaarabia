@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { Search, X } from "lucide-react";
 
 interface Props {
     brands: any[];
     categories: any[];
     subcategories: any[];
+    searchTerm?: string;
+    onSearchChange?: (val: string) => void;
     onChange: (filters: any) => void;
 }
 
@@ -13,6 +16,8 @@ export default function ProductFilters({
     brands,
     categories,
     subcategories,
+    searchTerm = "",
+    onSearchChange,
     onChange,
 }: Props) {
     const [filters, setFilters] = useState({
@@ -112,18 +117,48 @@ export default function ProductFilters({
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 space-y-5">
 
             {/* ================= HEADER ================= */}
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 className="text-sm font-semibold text-gray-800">Filters</h2>
-                    <p className="text-xs text-gray-500">Refine your product results</p>
+                    <h2 className="text-sm font-semibold text-gray-800">Filters & Search</h2>
+                    <p className="text-xs text-gray-500">Refine or search products by name, SKU, or ID</p>
                 </div>
 
-                <button
-                    onClick={resetFilters}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-100 transition"
-                >
-                    Reset All
-                </button>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                    {onSearchChange && (
+                        <div className="relative w-full sm:w-72">
+                            <Search
+                                size={16}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                            />
+                            <input
+                                type="text"
+                                placeholder="Search by title, SKU, ID, or slug..."
+                                value={searchTerm}
+                                onChange={(e) => onSearchChange(e.target.value)}
+                                className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-8 py-2 text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/20 focus:border-[var(--brand-primary)] transition"
+                            />
+                            {searchTerm && (
+                                <button
+                                    onClick={() => onSearchChange("")}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                                    title="Clear search"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    <button
+                        onClick={() => {
+                            resetFilters();
+                            if (onSearchChange) onSearchChange("");
+                        }}
+                        className="text-xs px-3.5 py-2 rounded-xl border border-gray-300 hover:bg-gray-100 text-gray-700 font-medium transition shrink-0"
+                    >
+                        Reset All
+                    </button>
+                </div>
             </div>
 
             {/* ================= PRIMARY FILTERS ================= */}

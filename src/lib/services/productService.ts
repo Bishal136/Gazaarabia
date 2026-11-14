@@ -31,6 +31,7 @@ export const productService = {
         const query = new URLSearchParams();
 
         if (params.search) query.append("search", params.search);
+        if (params.showDeleted !== undefined) query.append("showDeleted", String(params.showDeleted));
         if (params.categoryId) query.append("categoryId", params.categoryId);
         if (params.subcategoryId) query.append("subcategoryId", params.subcategoryId);
         if (params.brandIds?.length)

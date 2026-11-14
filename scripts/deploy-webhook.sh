@@ -19,6 +19,11 @@ echo "[2/4] Ensuring dependencies are up-to-date and database indexes exist..."
 npm install --include=dev --prefer-offline --no-audit
 npx tsx scripts/ensure-indexes.ts || true
 
+# Ensure uploads directory and public/uploads symlink exist
+mkdir -p "$APP_DIR/uploads"
+ln -sfn "$APP_DIR/uploads" "$APP_DIR/public/uploads"
+chmod -R 755 "$APP_DIR/uploads" || true
+
 echo "[3/4] Building production Next.js application..."
 npm run build
 

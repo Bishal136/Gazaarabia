@@ -46,12 +46,29 @@ export async function GET(req: NextRequest) {
 
     // ---------------- WHERE ----------------
     const showDeleted = searchParams.get("showDeleted") === "true";
-    const where: any = {
-      isDeleted: showDeleted
-    };
+    const where: any = showDeleted
+      ? { isDeleted: true }
+      : { isDeleted: { not: true } };
 
     if (search) {
-      where.title = { contains: search };
+      const trimmedSearch = search.trim();
+      const searchNum = Number(trimmedSearch.replace(/^#/, ""));
+      const isNum = !isNaN(searchNum) && searchNum > 0;
+
+      if (isNum) {
+        where.OR = [
+          { id: searchNum },
+          { title: { contains: trimmedSearch } },
+          { barcode: { contains: trimmedSearch } },
+          { slug: { contains: trimmedSearch } },
+        ];
+      } else {
+        where.OR = [
+          { title: { contains: trimmedSearch } },
+          { barcode: { contains: trimmedSearch } },
+          { slug: { contains: trimmedSearch } },
+        ];
+      }
     }
 
     if (categoryId) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { checkAuth } from "@/lib/authToken";
+import { checkAuth, getAuthenticatedUser } from "@/lib/authToken";
 
 const prisma: any = new PrismaClient();
 type RouteContext = { params: Promise<{ id: string }> };
@@ -398,22 +398,17 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 
 // DELETE product (removes variant images too)
 export async function DELETE(req: NextRequest, context: RouteContext) {
-  const userId = await checkAuth(req);
-  if (!userId) {
+  const user = await getAuthenticatedUser(req);
+  if (!user) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await prisma.users.findUnique({
-    where: { id: userId },
-    include: { role: true }
-  });
+  const roleName = user.role?.name?.toLowerCase() || "";
+  const allowedRoles = ["admin", "super_admin", "superadmin"];
 
-  const allowedRoles = ["admin"];
-
-  if (!user || !allowedRoles.includes(user.role.name.toLowerCase())) {
+  if (!allowedRoles.includes(roleName)) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
-
 
   try {
     const { id } = await context.params;
@@ -454,15 +449,23 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
       if (variantIds.length > 0) {
         await prisma.variantImage.deleteMany({ where: { variantId: { in: variantIds } } });
         await prisma.cart.deleteMany({ where: { variantId: { in: variantIds } } });
-        await prisma.review.deleteMany({ where: { variantId: { in: variantIds } } });
       }
 
       // Cleanup product-level relations
+      await prisma.review.deleteMany({ where: { productId } });
       await prisma.productimage.deleteMany({ where: { productId } });
       await prisma.wishlist.deleteMany({ where: { productId } });
+      await prisma.cart.deleteMany({ where: { productId } });
       await prisma.productRelation.deleteMany({
         where: { OR: [{ parentId: productId }, { childId: productId }] }
       });
+
+      // Cleanup stock reservations if any
+      try {
+        const { getDb } = await import("@/lib/prisma-mongo");
+        const db = await getDb();
+        await db.collection("stock_reservations").deleteMany({ productId });
+      } catch {}
 
       // Finally remove variants and the product itself
       await prisma.productvariant.deleteMany({ where: { productId } });
@@ -478,7 +481,7 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
   } catch (error: any) {
     console.error("DELETE Product Error:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to process product removal" },
+      { success: false, message: error.message || "Failed to process product removal" },
       { status: 500 }
     );
   }

@@ -231,7 +231,13 @@ export function convertPrismaWhereToMongo(where: any): any {
       }
     } else if (typeof val === "boolean") {
       // In migrated MongoDB data, MySQL TINYINT booleans may be stored as 1/0 or true/false
-      if (val === true) {
+      if (key === "isActive") {
+        if (val === true) {
+          mongoFilter[key] = { $nin: [false, 0] };
+        } else {
+          mongoFilter[key] = { $in: [false, 0] };
+        }
+      } else if (val === true) {
         mongoFilter[key] = { $in: [true, 1] };
       } else {
         mongoFilter[key] = { $in: [false, 0, null] };

@@ -45,6 +45,7 @@ export default function ProductListPage() {
   });
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
@@ -58,11 +59,18 @@ export default function ProductListPage() {
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
 
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
   const fetchProducts = async () => {
     try {
       setLoading(true);
       const res = await productService.getAll(token!, {
-        search: searchTerm,
+        search: debouncedSearch,
         ...filters,
       });
       setProducts(res.data || res);
@@ -75,7 +83,7 @@ export default function ProductListPage() {
 
   useEffect(() => {
     if (token) fetchProducts();
-  }, [token, searchTerm, filters]);
+  }, [token, debouncedSearch, filters]);
 
   useEffect(() => {
     if (!token) return;
@@ -114,6 +122,8 @@ export default function ProductListPage() {
       isOpen: true,
       type: "confirm",
       message: "Are you sure you want to delete this product?",
+      confirmText: "Yes, Delete",
+      cancelText: "Cancel",
       onConfirm: async () => {
         try {
           const res = await productService.remove(token!, id);
@@ -122,6 +132,12 @@ export default function ProductListPage() {
             isOpen: true,
             type: "success",
             message: res.message || "Product removed successfully.",
+            confirmText: "OK",
+            onConfirm: () => {
+              setPopUpAlertData((prev) => ({ ...prev, isOpen: false }));
+              fetchProducts();
+            },
+            onCancel: () => setPopUpAlertData((prev) => ({ ...prev, isOpen: false })),
           });
         } catch (error: any) {
           console.error("Delete error:", error);
@@ -129,6 +145,9 @@ export default function ProductListPage() {
             isOpen: true,
             type: "error",
             message: error.message || "Failed to delete product.",
+            confirmText: "OK",
+            onConfirm: () => setPopUpAlertData((prev) => ({ ...prev, isOpen: false })),
+            onCancel: () => setPopUpAlertData((prev) => ({ ...prev, isOpen: false })),
           });
         }
       },
@@ -158,6 +177,11 @@ export default function ProductListPage() {
         brands={brands}
         categories={categories}
         subcategories={filteredSubcategories}
+        searchTerm={searchTerm}
+        onSearchChange={(val: string) => {
+          setSearchTerm(val);
+          setCurrentPage(1);
+        }}
         onChange={(f: any) => {
           setFilters((prev) => ({ ...prev, ...f }));
           setCurrentPage(1);
@@ -347,8 +371,8 @@ export default function ProductListPage() {
       <PopupAlert
         type={popUpAlertData.type as any}
         message={popUpAlertData.message}
-        confirmText={popUpAlertData.type === "confirm" ? "Yes" : "OK"}
-        cancelText={popUpAlertData.type === "confirm" ? "Cancel" : undefined}
+        confirmText={popUpAlertData.confirmText || (popUpAlertData.type === "confirm" ? "Yes" : "OK")}
+        cancelText={popUpAlertData.cancelText || (popUpAlertData.type === "confirm" ? "Cancel" : undefined)}
         onConfirm={popUpAlertData.onConfirm}
         onCancel={popUpAlertData.onCancel}
         show={popUpAlertData.isOpen}
