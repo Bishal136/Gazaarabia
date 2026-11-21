@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { parseSearchIntent } from "@/lib/ai/searchIntentParser";
 
 // In-memory cache for default search discovery (empty query)
 let cachedDiscovery: { data: any; expiry: number } | null = null;
@@ -99,8 +100,8 @@ export async function GET(req: Request) {
 
     const searchTerm = q.toLowerCase();
 
-    // Parallel lookup across Products, Categories, and Subcategories
-    const [matchedProducts, matchedCategories, matchedSubcategories] = await Promise.all([
+    // Parallel lookup across Products, Categories, Subcategories, and AI Intent
+    const [matchedProducts, matchedCategories, matchedSubcategories, aiIntent] = await Promise.all([
       prisma.products.findMany({
         where: {
           active: true,
@@ -142,6 +143,7 @@ export async function GET(req: Request) {
         take: 4,
         select: { id: true, name: true, slug: true, categoryId: true },
       }),
+      parseSearchIntent(q).catch(() => null),
     ]);
 
     const formattedProducts = matchedProducts.map((p: any) => ({
@@ -156,6 +158,39 @@ export async function GET(req: Request) {
       categorySlug: p.categories?.slug || p.subcategories?.slug || "",
     }));
 
+    // Generate intelligent AI filter pills
+    const aiPills: Array<{ label: string; url: string; type: string }> = [];
+    if (aiIntent?.categoryName && aiIntent.categorySlug) {
+      aiPills.push({
+        label: `Category: ${aiIntent.categoryName}`,
+        url: `/shop?category=${aiIntent.categorySlug}`,
+        type: "category",
+      });
+    }
+    if (aiIntent?.color) {
+      aiPills.push({
+        label: `Color: ${aiIntent.color}`,
+        url: `/shop?color=${encodeURIComponent(aiIntent.color)}`,
+        type: "color",
+      });
+    }
+    if (aiIntent?.maxPrice) {
+      aiPills.push({
+        label: `Under £${aiIntent.maxPrice}`,
+        url: `/shop?maxPrice=${aiIntent.maxPrice}`,
+        type: "price",
+      });
+    }
+    for (const tag of (aiIntent?.tags || []).slice(0, 3)) {
+      if (!aiPills.some((p) => p.label.toLowerCase().includes(tag.toLowerCase()))) {
+        aiPills.push({
+          label: tag,
+          url: `/search?q=${encodeURIComponent(tag)}`,
+          type: "tag",
+        });
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -164,6 +199,16 @@ export async function GET(req: Request) {
         subcategories: matchedSubcategories,
         totalMatches: formattedProducts.length,
         query: q,
+        didYouMean: aiIntent?.correctedQuery || null,
+        aiPills,
+        aiIntent: aiIntent
+          ? {
+              cleanQuery: aiIntent.cleanQuery,
+              color: aiIntent.color,
+              maxPrice: aiIntent.maxPrice,
+              categoryName: aiIntent.categoryName,
+            }
+          : null,
       },
     });
   } catch (error: any) {

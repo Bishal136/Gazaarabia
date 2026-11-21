@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
+import { parseSearchIntent } from "@/lib/ai/searchIntentParser";
 
 export async function GET(req: Request) {
   try {
@@ -197,10 +198,50 @@ export async function GET(req: Request) {
       query.take = limit;
     }
 
-    const [products, total] = await Promise.all([
+    let [products, total] = await Promise.all([
       prisma.products.findMany(query),
       prisma.products.count({ where }),
     ]);
+
+    let aiDidYouMean: string | null = null;
+    let aiIntentSummary: string | null = null;
+
+    // AI Zero-Result Fallback & Typo Correction
+    if (products.length === 0 && q) {
+      try {
+        const intent = await parseSearchIntent(q);
+        if (intent && (intent.correctedQuery || intent.cleanQuery !== q || intent.categoryId)) {
+          const fallbackWhere: any = {
+            isDeleted: false,
+            active: true,
+          };
+          const fallbackTerms = [intent.cleanQuery, intent.correctedQuery].filter(Boolean);
+          const fallbackOr: any[] = [];
+          if (intent.categoryId) {
+            fallbackOr.push({ categoryId: intent.categoryId });
+          }
+          fallbackTerms.forEach((term: any) => {
+            fallbackOr.push({ title: { contains: term } });
+            fallbackOr.push({ shortDescription: { contains: term } });
+          });
+          if (fallbackOr.length > 0) {
+            fallbackWhere.OR = fallbackOr;
+            const fallbackProducts = await prisma.products.findMany({
+              ...query,
+              where: fallbackWhere,
+            });
+            if (fallbackProducts.length > 0) {
+              products = fallbackProducts;
+              total = fallbackProducts.length;
+              aiDidYouMean = intent.correctedQuery || null;
+              aiIntentSummary = intent.intentSummary;
+            }
+          }
+        }
+      } catch (err) {
+        // Non-blocking fallback
+      }
+    }
 
     // Calculate rating stats for each product
     const formattedProducts = products.map((p: any) => {
@@ -222,6 +263,8 @@ export async function GET(req: Request) {
       total,
       totalPages: Math.max(1, Math.ceil(total / limit)),
       page,
+      didYouMean: aiDidYouMean,
+      aiIntentSummary,
     });
     res.headers.set("Cache-Control", "public, s-maxage=30, stale-while-revalidate=120");
     return res;
