@@ -1,11 +1,27 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useMemo, useRef } from "react";
 
 const TinyMCEEditor = dynamic(() => import("@tinymce/tinymce-react").then((m) => m.Editor), {
   ssr: false,
   loading: () => <p>Loading editor...</p>,
 });
+
+export function getPlainTextLength(html: string): number {
+  if (!html) return 0;
+  const clean = html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+  return clean.length;
+}
 
 interface RichTextEditorProps {
   value: string;
@@ -14,16 +30,26 @@ interface RichTextEditorProps {
   label?: string;
   required?: boolean;
   minHeight?: number;
+  maxLength?: number;
+  helperText?: string;
 }
 
 export default function RichTextEditor({
   value,
   onChange,
   placeholder = "Write your content here...",
-  label = "Content",
+  label,
   required = false,
   minHeight = 300,
+  maxLength,
+  helperText,
 }: RichTextEditorProps) {
+  const maxLengthRef = useRef<number | undefined>(maxLength);
+  maxLengthRef.current = maxLength;
+
+  const charCount = useMemo(() => getPlainTextLength(value), [value]);
+  const isOverLimit = Boolean(maxLength && charCount > maxLength);
+  const isNearLimit = Boolean(maxLength && !isOverLimit && charCount >= maxLength * 0.85);
 
   const handleImageUpload = (blobInfo: any): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -68,7 +94,7 @@ export default function RichTextEditor({
           border: 1px solid #e5e7eb;
           border-radius: 0.5rem;
           overflow: hidden;
-          transition: border-color 0.2s;
+          transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         .rich-text-editor-wrapper:hover {
@@ -78,6 +104,11 @@ export default function RichTextEditor({
         .rich-text-editor-wrapper:focus-within {
           border-color: var(--brand-primary, #c73030);
           box-shadow: 0 0 0 2px rgba(199, 48, 48, 0.1);
+        }
+
+        .rich-text-editor-wrapper.has-error {
+          border-color: #ef4444 !important;
+          box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15) !important;
         }
 
         .editor-label {
@@ -146,7 +177,7 @@ export default function RichTextEditor({
             {label}
           </label>
         )}
-        <div className="rich-text-editor-wrapper">
+        <div className={`rich-text-editor-wrapper ${isOverLimit ? "has-error" : ""}`}>
           <TinyMCEEditor
             tinymceScriptSrc="/tinymce/tinymce.min.js"
             licenseKey="gpl"
@@ -203,9 +234,120 @@ export default function RichTextEditor({
               placeholder: placeholder,
               branding: false,
               promotion: false,
+              setup: (editor: any) => {
+                editor.on("keydown", (e: any) => {
+                  const max = maxLengthRef.current;
+                  if (!max) return;
+
+                  const allowedKeys = [
+                    "Backspace",
+                    "Delete",
+                    "ArrowLeft",
+                    "ArrowRight",
+                    "ArrowUp",
+                    "ArrowDown",
+                    "Home",
+                    "End",
+                    "PageUp",
+                    "PageDown",
+                    "Escape",
+                    "Tab",
+                  ];
+
+                  if (allowedKeys.includes(e.key) || e.ctrlKey || e.metaKey || e.altKey) {
+                    return;
+                  }
+
+                  // If user has highlighted text, replacement will not necessarily exceed
+                  const selection = editor.selection?.getContent({ format: "text" }) || "";
+                  if (selection.length > 0) {
+                    return;
+                  }
+
+                  const rawContent = editor.getContent({ format: "text" }) || "";
+                  const cleanLen = rawContent.replace(/\s+/g, " ").trim().length;
+
+                  if (cleanLen >= max) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }
+                });
+
+                editor.on("paste", (e: any) => {
+                  const max = maxLengthRef.current;
+                  if (!max) return;
+
+                  const clipboardData = e.clipboardData || (window as any).clipboardData;
+                  if (!clipboardData) return;
+
+                  const pastedText = clipboardData.getData("text") || "";
+                  if (!pastedText) return;
+
+                  const rawContent = editor.getContent({ format: "text" }) || "";
+                  const currentLen = rawContent.replace(/\s+/g, " ").trim().length;
+
+                  const selected = editor.selection?.getContent({ format: "text" }) || "";
+                  const selectedLen = selected.replace(/\s+/g, " ").trim().length;
+
+                  const remaining = max - Math.max(0, currentLen - selectedLen);
+
+                  if (remaining <= 0) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                  }
+
+                  if (pastedText.length > remaining) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const truncated = pastedText.substring(0, remaining);
+                    editor.insertContent(editor.dom.encode(truncated));
+                  }
+                });
+              },
             }}
           />
         </div>
+
+        {maxLength && (
+          <div className="flex flex-wrap items-center justify-between gap-2 mt-1.5 px-0.5 text-xs">
+            <div className="flex items-center gap-1.5 text-gray-500">
+              {isOverLimit ? (
+                <span className="text-red-600 font-semibold flex items-center gap-1">
+                  <svg
+                    className="w-4 h-4 inline flex-shrink-0 text-red-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                  Limit exceeded by {charCount - maxLength} characters (maximum {maxLength})
+                </span>
+              ) : (
+                <span>{helperText || `Maximum ${maxLength} characters.`}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                className={`px-2 py-0.5 rounded-full text-xs font-medium tabular-nums transition-colors ${
+                  isOverLimit
+                    ? "bg-red-100 text-red-700 font-bold border border-red-300"
+                    : isNearLimit
+                    ? "bg-amber-100 text-amber-800 font-semibold border border-amber-300"
+                    : "bg-gray-100 text-gray-600 border border-gray-200"
+                }`}
+              >
+                {charCount} / {maxLength}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

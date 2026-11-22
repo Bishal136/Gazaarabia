@@ -20,23 +20,64 @@ export interface UniversalVariant extends ProductVariant {
   colorName?: string;
   sizeName?: string;
   hexCode?: string;
+  color?: { id: number; name: string; hexCode?: string };
+  size?: { id: number; name: string };
 }
 
+const COMMON_COLOR_HEX_MAP: Record<string, string> = {
+  black: "#000000",
+  white: "#ffffff",
+  red: "#ef4444",
+  blue: "#3b82f6",
+  green: "#22c55e",
+  yellow: "#eab308",
+  purple: "#a855f7",
+  pink: "#ec4899",
+  orange: "#f97316",
+  gray: "#6b7280",
+  grey: "#6b7280",
+  navy: "#000080",
+  maroon: "#800000",
+  teal: "#0d9488",
+  olive: "#808000",
+  beige: "#f5f5dc",
+  brown: "#8b4513",
+  gold: "#ffd700",
+  silver: "#c0c0c0",
+  cream: "#fffdd0",
+  creame: "#d7c6c7",
+  burgundy: "#800020",
+  coral: "#ff7f50",
+  charcoal: "#36454f",
+  khaki: "#f0e68c",
+  indigo: "#4b0082",
+  lavender: "#e6e6fa",
+  mustard: "#ffdb58",
+  "sage green": "#9caf88",
+  sage: "#9caf88",
+  mint: "#98ff98",
+  "dark red": "#8b0000",
+  "dark blue": "#00008b",
+  "dark green": "#006400",
+  "sky blue": "#87ceeb",
+  "baby pink": "#f4c2c2",
+};
+
 interface VariantsProps {
-  variants: UniversalVariant[];
+  variants?: UniversalVariant[];
   onVariantsChange: (variants: UniversalVariant[]) => void;
-  colors: any[];
-  sizes: any[];
+  colors?: any[];
+  sizes?: any[];
   basePrice?: string | number;
   productTitle?: string;
   onError?: (message: string) => void;
 }
 
 export const VariantsTikTokStyle = ({
-  variants,
+  variants = [],
   onVariantsChange,
-  colors,
-  sizes,
+  colors = [],
+  sizes = [],
   basePrice,
   productTitle = "",
   onError,
@@ -47,6 +88,11 @@ export const VariantsTikTokStyle = ({
 
   // Hidden file inputs for variant image uploads
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+
+  // Safe array guards to prevent "colors.find / sizes.find is not a function"
+  const safeVariants = Array.isArray(variants) ? variants : [];
+  const safeColors = Array.isArray(colors) ? colors : [];
+  const safeSizes = Array.isArray(sizes) ? sizes : [];
 
   // Generate clean SKU
   const generateSKU = (title: string, color?: string, size?: string) => {
@@ -61,37 +107,43 @@ export const VariantsTikTokStyle = ({
     return parts.join("-");
   };
 
-  // Resolve color name
+  // Resolve color name safely
   const getColorName = (v: UniversalVariant) => {
     if (v.colorName) return v.colorName;
+    if (v.color?.name) return v.color.name;
     if (v.colorId) {
-      const match = colors.find((c) => String(c.id) === String(v.colorId));
+      const match = safeColors.find((c) => String(c.id) === String(v.colorId));
       return match?.name || String(v.colorId);
     }
     return "";
   };
 
-  // Resolve size name
+  // Resolve size name safely
   const getSizeName = (v: UniversalVariant) => {
     if (v.sizeName) return v.sizeName;
+    if (v.size?.name) return v.size.name;
     if (v.sizeId) {
-      const match = sizes.find((s) => String(s.id) === String(v.sizeId));
+      const match = safeSizes.find((s) => String(s.id) === String(v.sizeId));
       return match?.name || String(v.sizeId);
     }
     return "";
   };
 
-  // Resolve color hex
+  // Resolve color hex safely
   const getColorHex = (v: UniversalVariant) => {
     if (v.hexCode) return v.hexCode;
-    if (v.colorId) {
-      const match = colors.find((c) => String(c.id) === String(v.colorId));
+    if (v.color?.hexCode) return v.color.hexCode;
+    const cName = v.colorName || v.color?.name;
+    if (cName) {
+      const lower = String(cName).trim().toLowerCase();
+      if (COMMON_COLOR_HEX_MAP[lower]) return COMMON_COLOR_HEX_MAP[lower];
+      const match = safeColors.find(
+        (c) => String(c.name).trim().toLowerCase() === lower
+      );
       if (match?.hexCode || match?.colorCode) return match.hexCode || match.colorCode;
     }
-    if (v.colorName) {
-      const match = colors.find(
-        (c) => String(c.name).trim().toLowerCase() === String(v.colorName).trim().toLowerCase()
-      );
+    if (v.colorId) {
+      const match = safeColors.find((c) => String(c.id) === String(v.colorId));
       if (match?.hexCode || match?.colorCode) return match.hexCode || match.colorCode;
     }
     return "#cbd5e1";
@@ -99,55 +151,61 @@ export const VariantsTikTokStyle = ({
 
   // 1. Add a new Color Card
   const handleAddColor = () => {
+    const currentPrice = basePrice ? String(basePrice) : "49.99";
     const newVar: UniversalVariant = {
       colorId: "",
       colorName: "",
       sizeId: "",
       sizeName: "",
       sku: generateSKU(productTitle, "", ""),
-      price: basePrice ? String(basePrice) : "49.99",
+      price: currentPrice,
       stock: "30",
       isActive: true,
       images: [],
     };
-    onVariantsChange([...variants, newVar]);
+    onVariantsChange([...safeVariants, newVar]);
   };
 
   // 2. Duplicate Color Card
   const handleDuplicateColor = (idx: number) => {
-    const source = variants[idx];
+    const source = safeVariants[idx];
+    if (!source) return;
     const clone: UniversalVariant = {
       ...source,
       id: undefined,
       sku: source.sku ? `${source.sku}-COPY` : "",
       images: Array.isArray(source.images) ? [...source.images] : [],
     };
-    const updated = [...variants];
+    const updated = [...safeVariants];
     updated.splice(idx + 1, 0, clone);
     onVariantsChange(updated);
   };
 
   // 3. Remove Color Card
   const handleRemoveColor = (idx: number) => {
-    onVariantsChange(variants.filter((_, i) => i !== idx));
+    onVariantsChange(safeVariants.filter((_, i) => i !== idx));
   };
 
   // 4. Update color name atomically
   const handleUpdateColor = (idx: number, colorValue: string) => {
-    const updated = [...variants];
+    const updated = [...safeVariants];
     const item = { ...updated[idx] };
 
     item.colorName = colorValue;
-    const matchedFromDb = colors.find(
+    const lower = colorValue.trim().toLowerCase();
+    const matchedFromDb = safeColors.find(
       (c) =>
-        String(c.name).trim().toLowerCase() === colorValue.trim().toLowerCase() ||
+        String(c.name).trim().toLowerCase() === lower ||
         String(c.id) === String(colorValue)
     );
     if (matchedFromDb) {
       item.colorId = matchedFromDb.id;
-      item.hexCode = item.hexCode || matchedFromDb.hexCode || matchedFromDb.colorCode;
+      item.hexCode = matchedFromDb.hexCode || matchedFromDb.colorCode || item.hexCode;
     } else {
       item.colorId = "";
+      if (COMMON_COLOR_HEX_MAP[lower]) {
+        item.hexCode = COMMON_COLOR_HEX_MAP[lower];
+      }
     }
 
     item.sku = generateSKU(productTitle, item.colorName, getSizeName(item));
@@ -157,18 +215,18 @@ export const VariantsTikTokStyle = ({
 
   // 5. Update color hex from color picker wheel
   const handleUpdateHex = (idx: number, hex: string) => {
-    const updated = [...variants];
+    const updated = [...safeVariants];
     updated[idx] = { ...updated[idx], hexCode: hex };
     onVariantsChange(updated);
   };
 
   // 6. Update size text input directly
   const handleUpdateSize = (idx: number, sizeValue: string) => {
-    const updated = [...variants];
+    const updated = [...safeVariants];
     const item = { ...updated[idx] };
 
     item.sizeName = sizeValue;
-    const matchedFromDb = sizes.find(
+    const matchedFromDb = safeSizes.find(
       (s) =>
         String(s.name).trim().toLowerCase() === sizeValue.trim().toLowerCase() ||
         String(s.id) === String(sizeValue)
@@ -182,7 +240,7 @@ export const VariantsTikTokStyle = ({
 
   // 7. Update single variant field (sku, price, stock, isActive)
   const handleUpdateField = (idx: number, field: keyof UniversalVariant, value: any) => {
-    const updated = [...variants];
+    const updated = [...safeVariants];
     const item = { ...updated[idx], [field]: value };
     updated[idx] = item;
     onVariantsChange(updated);
@@ -195,13 +253,13 @@ export const VariantsTikTokStyle = ({
       setUploadingIdx(idx);
       const fileArray = Array.from(files);
       const urls = await uploadService.uploadMultiple(fileArray, "variants");
-      const currentImages = Array.isArray(variants[idx].images) ? variants[idx].images : [];
+      const currentImages = Array.isArray(safeVariants[idx]?.images) ? safeVariants[idx].images : [];
       const newImages = [...currentImages, ...urls.map((url) => ({ url, alt: "" }))];
       const primaryUrl = newImages[0]?.url || null;
 
-      const targetColorName = variants[idx].colorName;
+      const targetColorName = safeVariants[idx]?.colorName;
 
-      const updated = variants.map((v, i) => {
+      const updated = safeVariants.map((v, i) => {
         if (i === idx) {
           return { ...v, images: newImages, imageUrl: primaryUrl };
         }
@@ -222,13 +280,13 @@ export const VariantsTikTokStyle = ({
 
   // 9. Remove photo from variant
   const handleRemovePhoto = (variantIdx: number, photoIdx: number) => {
-    const current = variants[variantIdx].images || [];
+    const current = safeVariants[variantIdx]?.images || [];
     const filtered = current.filter((_, i) => i !== photoIdx);
     const primaryUrl = filtered[0]?.url || null;
 
-    const targetColorName = variants[variantIdx].colorName;
+    const targetColorName = safeVariants[variantIdx]?.colorName;
 
-    const updated = variants.map((v, i) => {
+    const updated = safeVariants.map((v, i) => {
       if (i === variantIdx) {
         return { ...v, images: filtered, imageUrl: primaryUrl };
       }
@@ -247,7 +305,7 @@ export const VariantsTikTokStyle = ({
       onError?.("Please enter a price to apply.");
       return;
     }
-    const updated = variants.map((v) => ({ ...v, price: bulkPrice }));
+    const updated = safeVariants.map((v) => ({ ...v, price: bulkPrice }));
     onVariantsChange(updated);
   };
 
@@ -257,7 +315,7 @@ export const VariantsTikTokStyle = ({
       onError?.("Please enter a stock quantity to apply.");
       return;
     }
-    const updated = variants.map((v) => ({ ...v, stock: bulkStock }));
+    const updated = safeVariants.map((v) => ({ ...v, stock: bulkStock }));
     onVariantsChange(updated);
   };
 
@@ -271,7 +329,7 @@ export const VariantsTikTokStyle = ({
             <span>Product Variants</span>
           </h2>
           <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            Add colors, enter available sizes, and set price and stock.
+            Add colors, enter available sizes (e.g. 52, 54, 56), and set individual or bulk pricing and inventory.
           </p>
         </div>
 
@@ -286,7 +344,7 @@ export const VariantsTikTokStyle = ({
       </div>
 
       {/* BULK EDIT TOOLBAR (When 2+ variants exist) */}
-      {variants.length > 1 && (
+      {safeVariants.length > 1 && (
         <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-bold text-gray-700">Bulk Apply:</span>
@@ -300,12 +358,19 @@ export const VariantsTikTokStyle = ({
                 placeholder="0.00"
                 value={bulkPrice}
                 onChange={(e) => setBulkPrice(e.target.value)}
-                className="w-20 px-2 py-1 border border-gray-300 rounded-lg bg-white"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleBulkApplyPrice();
+                  }
+                }}
+                className="w-20 px-2 py-1 border border-gray-300 rounded-lg bg-white outline-none focus:border-blue-500"
               />
               <button
                 type="button"
                 onClick={handleBulkApplyPrice}
-                className="px-2.5 py-1 bg-white hover:bg-gray-100 border border-gray-300 font-semibold rounded-lg shadow-2xs"
+                className="px-2.5 py-1 bg-white hover:bg-gray-100 border border-gray-300 font-semibold rounded-lg shadow-2xs cursor-pointer"
               >
                 Apply to All
               </button>
@@ -319,12 +384,19 @@ export const VariantsTikTokStyle = ({
                 placeholder="Qty"
                 value={bulkStock}
                 onChange={(e) => setBulkStock(e.target.value)}
-                className="w-16 px-2 py-1 border border-gray-300 rounded-lg bg-white"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleBulkApplyStock();
+                  }
+                }}
+                className="w-16 px-2 py-1 border border-gray-300 rounded-lg bg-white outline-none focus:border-blue-500"
               />
               <button
                 type="button"
                 onClick={handleBulkApplyStock}
-                className="px-2.5 py-1 bg-white hover:bg-gray-100 border border-gray-300 font-semibold rounded-lg shadow-2xs"
+                className="px-2.5 py-1 bg-white hover:bg-gray-100 border border-gray-300 font-semibold rounded-lg shadow-2xs cursor-pointer"
               >
                 Apply to All
               </button>
@@ -334,7 +406,7 @@ export const VariantsTikTokStyle = ({
           <button
             type="button"
             onClick={() => onVariantsChange([])}
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-rose-600 hover:bg-rose-50 border border-rose-200 font-semibold rounded-lg transition"
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-rose-600 hover:bg-rose-50 border border-rose-200 font-semibold rounded-lg transition cursor-pointer"
           >
             <Trash2 size={13} />
             <span>Clear All</span>
@@ -343,7 +415,7 @@ export const VariantsTikTokStyle = ({
       )}
 
       {/* EMPTY STATE */}
-      {variants.length === 0 ? (
+      {safeVariants.length === 0 ? (
         <div className="text-center py-12 px-6 bg-gray-50/70 rounded-2xl border-2 border-dashed border-gray-200">
           <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
             <Palette size={24} />
@@ -357,7 +429,7 @@ export const VariantsTikTokStyle = ({
           <button
             type="button"
             onClick={handleAddColor}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition hover:bg-blue-700 cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition hover:bg-blue-700 cursor-pointer active:scale-95"
           >
             <Plus size={16} />
             <span>Add First Color</span>
@@ -366,10 +438,10 @@ export const VariantsTikTokStyle = ({
       ) : (
         <div className="space-y-4">
           <div className="flex items-center justify-between text-xs font-bold text-gray-500 px-1 uppercase tracking-wider">
-            <span>Color Variants ({variants.length})</span>
+            <span>Color Variants ({safeVariants.length})</span>
             <span className="text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200 normal-case font-bold">
               Total SKUs:{" "}
-              {variants.reduce((acc, v) => {
+              {safeVariants.reduce((acc, v) => {
                 const sCount =
                   (v.sizeName !== undefined ? v.sizeName : (getSizeName(v) || ""))
                     .split(",")
@@ -381,7 +453,7 @@ export const VariantsTikTokStyle = ({
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            {variants.map((v, idx) => {
+            {safeVariants.map((v, idx) => {
               const displayColor = v.colorName !== undefined ? v.colorName : (getColorName(v) || "");
               const displaySize = v.sizeName !== undefined ? v.sizeName : (getSizeName(v) || "");
               const colorHex = getColorHex({ ...v, colorName: displayColor });
@@ -476,7 +548,7 @@ export const VariantsTikTokStyle = ({
                         <button
                           type="button"
                           onClick={() => handleRemovePhoto(idx, 0)}
-                          className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-sm"
+                          className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-sm cursor-pointer"
                           title="Remove photo"
                         >
                           <X size={10} className="stroke-[3]" />
@@ -501,9 +573,16 @@ export const VariantsTikTokStyle = ({
                         <span className="text-xs font-bold text-gray-700 w-14 shrink-0">Color:</span>
                         <input
                           type="text"
-                          placeholder="e.g. Maroon, Sage Green, Black"
+                          autoComplete="off"
+                          placeholder="e.g. Black (or Maroon, White...)"
                           value={displayColor}
                           onChange={(e) => handleUpdateColor(idx, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }
+                          }}
                           className="w-48 sm:w-64 px-3 py-1.5 text-xs font-bold border border-gray-300 rounded-lg text-gray-900 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none transition shadow-2xs"
                         />
 
@@ -527,9 +606,16 @@ export const VariantsTikTokStyle = ({
                         <span className="text-xs font-bold text-gray-700 w-14 shrink-0">Sizes:</span>
                         <input
                           type="text"
-                          placeholder="e.g. 52, 54, 56, 58 or Free Size"
+                          autoComplete="off"
+                          placeholder="e.g. 52, 54, 56 or S, M, L, XL"
                           value={displaySize}
                           onChange={(e) => handleUpdateSize(idx, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }
+                          }}
                           className="w-full sm:w-80 px-3 py-1.5 text-xs font-bold border border-gray-300 rounded-lg text-gray-900 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none transition shadow-2xs"
                         />
                       </div>
@@ -547,6 +633,12 @@ export const VariantsTikTokStyle = ({
                           placeholder="Auto SKU"
                           value={v.sku || ""}
                           onChange={(e) => handleUpdateField(idx, "sku", e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }
+                          }}
                           className="w-32 sm:w-40 px-2.5 py-1 text-xs font-mono border border-gray-300 rounded-lg bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none"
                         />
                       </div>
@@ -560,6 +652,12 @@ export const VariantsTikTokStyle = ({
                           placeholder="0.00"
                           value={v.price}
                           onChange={(e) => handleUpdateField(idx, "price", e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }
+                          }}
                           className="w-20 px-2.5 py-1 text-xs border border-gray-300 rounded-lg text-right bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none"
                         />
                         {v.compareAtPrice && Number(v.compareAtPrice) > Number(v.price) && (
@@ -583,6 +681,12 @@ export const VariantsTikTokStyle = ({
                           min="0"
                           value={v.stock}
                           onChange={(e) => handleUpdateField(idx, "stock", e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }
+                          }}
                           className="w-18 px-2.5 py-1 text-xs border border-gray-300 rounded-lg text-right bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none"
                         />
                       </div>
@@ -602,7 +706,7 @@ export const VariantsTikTokStyle = ({
             <button
               type="button"
               onClick={handleAddColor}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200 transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200 transition cursor-pointer active:scale-95"
             >
               <Plus size={14} />
               <span>Add Another Color</span>

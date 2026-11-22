@@ -347,6 +347,26 @@ export default function CustomerChatDrawer({
                 ) : (
                   messages.map((msg) => {
                     const isMe = msg.senderRole === "customer";
+                    const isAdmin = msg.senderRole === "admin" || Boolean(msg.metadata?.isOfficialIntervention);
+
+                    if (isAdmin) {
+                      return (
+                        <div key={msg.id} className="w-full my-2 flex justify-center">
+                          <div className="max-w-[92%] sm:max-w-[85%] bg-amber-50/95 border border-amber-300 rounded-2xl p-3.5 shadow-xs text-amber-950">
+                            <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs mb-1">
+                              <ShieldCheck size={15} className="text-amber-600 shrink-0" />
+                              <span>Platform Moderator Notice</span>
+                            </div>
+                            <p className="text-xs text-amber-950 whitespace-pre-wrap leading-relaxed font-medium">
+                              {msg.text}
+                            </p>
+                            <div className="text-[10px] text-amber-700/80 text-right mt-1 font-medium">
+                              {formatMessageTime(msg.createdAt)}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
 
                     return (
                       <div

@@ -9,10 +9,7 @@ import {
   X,
   ArrowRight,
   Clock,
-  TrendingUp,
-  Tag,
-  Loader,
-  Sparkles,
+  Shirt,
   Flame,
   PackageOpen,
 } from "lucide-react";
@@ -142,14 +139,6 @@ export default function AdvancedSearchModal({
     }
   };
 
-  const handleSearchSubmit = (searchTerm?: string) => {
-    const target = searchTerm || query;
-    if (!target.trim()) return;
-    saveRecentSearch(target);
-    onClose();
-    router.push(`/search?q=${encodeURIComponent(target.trim())}`);
-  };
-
   const clearRecentSearches = () => {
     setRecentSearches([]);
     try {
@@ -159,35 +148,54 @@ export default function AdvancedSearchModal({
     }
   };
 
+  const handleSearchSubmit = (searchTerm?: string) => {
+    const target = searchTerm || query;
+    if (!target.trim()) return;
+    saveRecentSearch(target);
+    onClose();
+    router.push(`/search?q=${encodeURIComponent(target.trim())}`);
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-md transition-all animate-[fadeIn_0.2s_ease-out] flex flex-col justify-start">
+    <div
+      className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-md transition-all animate-[fadeIn_0.2s_ease-out] flex flex-col justify-start"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Search Gazaarabia"
+    >
       <div className="bg-white w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden rounded-b-3xl border-b border-gray-200">
-        {/* CLEAN MINIMAL SEARCH BAR */}
+        {/* CLEAN MINIMAL SEARCH BAR (NO SQUARE BORDER, NO SQUARE FOCUS OUTLINE) */}
         <div className="max-w-[1400px] mx-auto w-full px-4 lg:px-8 py-3.5 sm:py-4 flex items-center gap-3 sm:gap-4 border-b border-gray-100 bg-white">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               handleSearchSubmit();
             }}
-            className="flex-1 relative flex items-center bg-gray-50 hover:bg-gray-100/60 focus-within:bg-white rounded-full border border-gray-200/80 focus-within:border-gray-300 focus-within:ring-2 focus-within:ring-black/5 px-4 py-2.5 transition-all"
+            className="flex-1 relative flex items-center bg-gray-50 hover:bg-gray-100/60 focus-within:bg-white rounded-full border border-gray-200/80 focus-within:border-gray-300 px-4 py-2.5 transition-all"
           >
             <Search
               size={18}
               className="text-gray-400 mr-3 shrink-0 pointer-events-none"
             />
+            {/* Input with strict inline outline: none to eliminate any browser focus square */}
             <input
               ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by title, category, fabric, or style..."
-              className="no-focus-ring w-full text-sm sm:text-base font-normal text-gray-900 placeholder:text-gray-400 !outline-none !border-none !ring-0 !shadow-none focus:!outline-none focus:!ring-0 focus:!shadow-none focus:!border-none bg-transparent"
+              className="w-full text-sm sm:text-base font-normal text-gray-900 placeholder:text-gray-400 bg-transparent !outline-none !border-none !ring-0 !shadow-none focus:!outline-none focus:!ring-0 focus:!shadow-none focus:!border-none"
               style={{
                 outline: "none",
+                outlineWidth: 0,
                 boxShadow: "none",
                 border: "none",
+                WebkitAppearance: "none",
               }}
             />
 
@@ -195,9 +203,12 @@ export default function AdvancedSearchModal({
             {query && (
               <button
                 type="button"
-                onClick={() => setQuery("")}
+                onClick={() => {
+                  setQuery("");
+                  inputRef.current?.focus();
+                }}
                 aria-label="Clear input"
-                className="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition shrink-0 ml-1"
+                className="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition shrink-0 ml-1 cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -209,23 +220,16 @@ export default function AdvancedSearchModal({
             type="button"
             onClick={onClose}
             aria-label="Close search"
-            className="p-2 sm:p-2.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-black transition shrink-0"
+            className="p-2 sm:p-2.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-black transition shrink-0 cursor-pointer"
           >
             <X size={22} />
           </button>
         </div>
 
-        {/* RESULTS AND SUGGESTIONS BODY */}
-        <div className="flex-1 overflow-y-auto overscroll-contain no-scrollbar p-6 lg:p-10">
+        {/* RESULTS AND SUGGESTIONS BODY (CLEAN UNIFIED WHITE CANVAS, NO SQUARES) */}
+        <div className="flex-1 overflow-y-auto overscroll-contain no-scrollbar p-6 lg:p-10 bg-white">
           <div className="max-w-[1400px] mx-auto">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-20 gap-3">
-                <Loader className="animate-spin text-[var(--brand-primary)]" size={36} />
-                <span className="text-xs font-semibold tracking-widest text-gray-400 uppercase">
-                  Searching Gazaarabia...
-                </span>
-              </div>
-            ) : debouncedQuery.length >= 2 ? (
+            {debouncedQuery.length >= 2 ? (
               /* REAL-TIME MATCHED RESULTS VIEW */
               <div className="space-y-8">
                 {/* Header with View All CTA */}
@@ -238,7 +242,7 @@ export default function AdvancedSearchModal({
                     <button
                       type="button"
                       onClick={() => handleSearchSubmit()}
-                      className="text-xs font-bold uppercase tracking-wider text-[var(--brand-primary)] hover:underline inline-flex items-center gap-1.5"
+                      className="text-xs font-bold uppercase tracking-wider text-[var(--brand-primary)] hover:underline inline-flex items-center gap-1.5 cursor-pointer"
                     >
                       <span>View All Matching Products</span>
                       <ArrowRight size={14} />
@@ -249,7 +253,7 @@ export default function AdvancedSearchModal({
                 <div className="flex flex-col lg:flex-row gap-8 items-start">
                   {/* Left Column: Quick Filter Links (Categories & Subcategories) */}
                   {(suggestions.categories?.length > 0 || suggestions.subcategories?.length > 0) && (
-                    <div className="w-full lg:w-72 shrink-0 space-y-5 bg-gray-50/70 p-4 rounded-2xl border border-gray-100">
+                    <div className="w-full lg:w-72 shrink-0 space-y-6">
                       {suggestions.categories?.length > 0 && (
                         <div>
                           <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-2.5">
@@ -264,7 +268,7 @@ export default function AdvancedSearchModal({
                                   saveRecentSearch(cat.name);
                                   onClose();
                                 }}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[var(--brand-primary)] hover:text-white border border-gray-200 text-xs font-semibold uppercase tracking-wider transition shadow-2xs"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 hover:bg-black hover:text-white border border-gray-200 text-xs font-semibold uppercase tracking-wider transition"
                               >
                                 <span>{cat.name}</span>
                                 <ArrowRight size={12} />
@@ -288,7 +292,7 @@ export default function AdvancedSearchModal({
                                   saveRecentSearch(sub.name);
                                   onClose();
                                 }}
-                                className="px-3 py-1.5 rounded-xl bg-white hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] border border-gray-200 text-xs font-medium uppercase tracking-wider transition shadow-2xs"
+                                className="px-3 py-1.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 hover:text-black border border-gray-200 text-xs font-medium uppercase tracking-wider transition"
                               >
                                 {sub.name}
                               </Link>
@@ -321,7 +325,10 @@ export default function AdvancedSearchModal({
                                 sizes="(max-width: 768px) 50vw, 25vw"
                                 className="object-cover group-hover:scale-105 transition-transform duration-500"
                                 onError={(e: any) => {
-                                  if (e?.currentTarget && e.currentTarget.src !== "/images/placeholder.png") {
+                                  if (
+                                    e?.currentTarget &&
+                                    e.currentTarget.src !== "/images/placeholder.png"
+                                  ) {
                                     e.currentTarget.src = "/images/placeholder.png";
                                   }
                                 }}
@@ -331,11 +338,19 @@ export default function AdvancedSearchModal({
                                   Out of Stock
                                 </span>
                               )}
-                              {product.discountPrice && Number(product.discountPrice) < Number(product.sellingPrice) && (
-                                <span className="absolute top-2 left-2 bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
-                                  -{Math.round(((Number(product.sellingPrice) - Number(product.discountPrice)) / Number(product.sellingPrice)) * 100)}%
-                                </span>
-                              )}
+                              {product.discountPrice &&
+                                Number(product.discountPrice) < Number(product.sellingPrice) && (
+                                  <span className="absolute top-2 left-2 bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                                    -
+                                    {Math.round(
+                                      ((Number(product.sellingPrice) -
+                                        Number(product.discountPrice)) /
+                                        Number(product.sellingPrice)) *
+                                        100
+                                    )}
+                                    %
+                                  </span>
+                                )}
                             </div>
                             <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider truncate">
                               {product.categoryName || "Collection"}
@@ -344,10 +359,12 @@ export default function AdvancedSearchModal({
                               {product.title}
                             </h4>
                             <div className="mt-1.5 flex items-baseline gap-1.5 text-xs font-bold text-[var(--brand-primary)]">
-                              <span>£{Number(product.discountPrice || product.sellingPrice || 0).toFixed(2)}</span>
+                              <span>
+                                {formatGBP(product.discountPrice || product.sellingPrice)}
+                              </span>
                               {product.discountPrice && (
                                 <span className="text-[10px] text-gray-400 line-through font-normal">
-                                  £{Number(product.sellingPrice || 0).toFixed(2)}
+                                  {formatGBP(product.sellingPrice)}
                                 </span>
                               )}
                             </div>
@@ -364,12 +381,15 @@ export default function AdvancedSearchModal({
                           No Results For &ldquo;{debouncedQuery}&rdquo;
                         </h4>
                         <p className="text-xs text-gray-500 max-w-sm mb-4 leading-relaxed">
-                          We couldn&apos;t find an exact match. Try checking the spelling or browse our trending collections below.
+                          We couldn&apos;t find an exact match. Try checking the spelling or browse our trending collections.
                         </p>
                         <button
                           type="button"
-                          onClick={() => setQuery("")}
-                          className="px-5 py-2 rounded-xl bg-[var(--brand-primary)] text-white text-xs font-semibold uppercase tracking-wider hover:opacity-90 transition shadow-sm"
+                          onClick={() => {
+                            setQuery("");
+                            inputRef.current?.focus();
+                          }}
+                          className="px-5 py-2 rounded-xl bg-[var(--brand-primary)] text-white text-xs font-semibold uppercase tracking-wider hover:opacity-90 transition shadow-sm cursor-pointer"
                         >
                           Clear Search
                         </button>
@@ -381,7 +401,7 @@ export default function AdvancedSearchModal({
             ) : (
               /* DEFAULT DISCOVERY VIEW: RECENT + POPULAR + TRENDING COLLECTIONS + BEST SELLERS */
               <div className="space-y-10">
-                {/* 3 DISCOVERY COLUMNS */}
+                {/* 3 DISCOVERY COLUMNS (CLEAN, NO ENCLOSING SQUARES) */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   {/* 1. Recent Searches */}
                   <div className="space-y-3">
@@ -394,7 +414,7 @@ export default function AdvancedSearchModal({
                         <button
                           type="button"
                           onClick={clearRecentSearches}
-                          className="text-[11px] text-gray-400 hover:text-[var(--brand-primary)] font-semibold transition"
+                          className="text-[11px] text-gray-400 hover:text-[var(--brand-primary)] font-semibold transition cursor-pointer"
                         >
                           Clear all
                         </button>
@@ -417,7 +437,7 @@ export default function AdvancedSearchModal({
                               type="button"
                               onClick={(e) => removeRecentSearch(e, term)}
                               aria-label={`Remove ${term}`}
-                              className="text-gray-400 hover:text-red-500 p-0.5 rounded-full hover:bg-white transition"
+                              className="text-gray-400 hover:text-red-500 p-0.5 rounded-full hover:bg-white transition cursor-pointer"
                             >
                               <X size={12} />
                             </button>
@@ -432,7 +452,7 @@ export default function AdvancedSearchModal({
                   {/* 2. Popular Styles */}
                   <div className="space-y-3">
                     <div className="flex items-center gap-1.5 border-b border-gray-100 pb-2.5">
-                      <Sparkles size={14} className="text-amber-500" />
+                      <Shirt size={14} className="text-stone-600" />
                       <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
                         Popular Styles
                       </span>
@@ -441,15 +461,15 @@ export default function AdvancedSearchModal({
                     <div className="flex flex-wrap gap-2">
                       {(suggestions.popularStyles?.length > 0
                         ? suggestions.popularStyles
-                        : suggestions.popularTags?.length > 0
-                        ? suggestions.popularTags.map((t: string) => ({ name: t, slug: t }))
                         : [
-                            { name: "Embroidered Abayas", slug: "embroidered-abayas" },
-                            { name: "Casual Modest Djellabas", slug: "casual-djellabas" },
-                            { name: "Chiffon Silk Wraps", slug: "chiffon-wraps" },
                             { name: "Classic White Thobes", slug: "classic-white-thobes" },
-                            { name: "Embroidered Kaftans", slug: "embroidered-kaftans" },
+                            { name: "Embroidered Abayas", slug: "embroidered-abayas" },
+                            { name: "Emirati & Omani Thobes", slug: "emirati-omani-thobes" },
                             { name: "Everyday Modest Abayas", slug: "everyday-modest-abayas" },
+                            { name: "Hooded Djellabas", slug: "hooded-djellabas" },
+                            { name: "Modern Streetwear Jubbahs", slug: "streetwear-jubbahs" },
+                            { name: "Moroccan Kaftans", slug: "moroccan-kaftans" },
+                            { name: "Occasion & Luxury Abayas", slug: "occasion-luxury-abayas" },
                           ]
                       ).map((style: any) => (
                         <button
@@ -459,7 +479,7 @@ export default function AdvancedSearchModal({
                             setQuery(style.name);
                             handleSearchSubmit(style.name);
                           }}
-                          className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[var(--brand-primary)]/5 border border-gray-200 hover:border-[var(--brand-primary)] text-xs font-medium text-gray-700 hover:text-[var(--brand-primary)] transition shadow-2xs cursor-pointer"
+                          className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-xs font-medium text-gray-700 hover:text-black transition shadow-2xs cursor-pointer"
                         >
                           {style.name}
                         </button>
@@ -470,7 +490,7 @@ export default function AdvancedSearchModal({
                   {/* 3. Trending Collections */}
                   <div className="space-y-3">
                     <div className="flex items-center gap-1.5 border-b border-gray-100 pb-2.5">
-                      <TrendingUp size={14} className="text-[var(--brand-primary)]" />
+                      <Flame size={14} className="text-[var(--brand-primary)]" />
                       <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
                         Trending Collections
                       </span>
@@ -481,9 +501,13 @@ export default function AdvancedSearchModal({
                         ? suggestions.categories
                         : [
                             { name: "ABAYAS", slug: "abayas" },
+                            { name: "DJELLABAS", slug: "djellabas" },
+                            { name: "GIFTS & HERITAGE", slug: "gifts" },
+                            { name: "HIJABS & SCARVES", slug: "hijab" },
+                            { name: "HOODIES & SWEATSHIRTS", slug: "hoodies-sweatshirts" },
+                            { name: "JELLABAS & JUBBAS", slug: "jellabas-jubbas" },
                             { name: "KAFTANS", slug: "kaftans" },
-                            { name: "HIJABS", slug: "hijab" },
-                            { name: "MEN'S THOBES", slug: "thobes" },
+                            { name: "MEN'S ACTIVEWEAR & JERSEYS", slug: "modest-activewear-m" },
                           ]
                       ).map((cat: any) => (
                         <Link
@@ -498,76 +522,6 @@ export default function AdvancedSearchModal({
                     </div>
                   </div>
                 </div>
-
-                {/* BEST SELLERS & TRENDING PRODUCTS SHOWCASE */}
-                {suggestions.products?.length > 0 && (
-                  <div className="pt-6 sm:pt-8 border-t border-gray-100">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h4 className="text-xs font-bold uppercase tracking-widest text-gray-900 flex items-center gap-2">
-                          <Flame size={15} className="text-orange-500 fill-orange-500" />
-                          Trending & Best Sellers
-                        </h4>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          Explore our most coveted modest designs handcrafted with purposeful elegance.
-                        </p>
-                      </div>
-                      <Link
-                        href="/shop/all"
-                        onClick={onClose}
-                        className="text-xs font-bold uppercase tracking-wider text-[var(--brand-primary)] hover:underline inline-flex items-center gap-1"
-                      >
-                        <span>View All</span>
-                        <ArrowRight size={13} />
-                      </Link>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                      {suggestions.products.slice(0, 4).map((p: any) => (
-                        <Link
-                          key={p.id}
-                          href={`/products/${p.slug}`}
-                          onClick={onClose}
-                          className="group flex flex-col rounded-2xl overflow-hidden border border-gray-100 hover:border-gray-200 hover:shadow-md transition bg-white p-2.5"
-                        >
-                          <div className="relative w-full aspect-square sm:aspect-[4/5] rounded-xl overflow-hidden bg-gray-50 mb-2">
-                            <Image
-                              src={p.imageUrl || "/images/placeholder.png"}
-                              alt={p.title}
-                              fill
-                              sizes="(max-width: 768px) 50vw, 25vw"
-                              className="object-cover group-hover:scale-105 transition-transform duration-500"
-                              onError={(e: any) => {
-                                if (e?.currentTarget && e.currentTarget.src !== "/images/placeholder.png") {
-                                  e.currentTarget.src = "/images/placeholder.png";
-                                }
-                              }}
-                            />
-                            {p.discountPrice && Number(p.discountPrice) < Number(p.sellingPrice) && (
-                              <span className="absolute top-2 left-2 bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
-                                -{Math.round(((Number(p.sellingPrice) - Number(p.discountPrice)) / Number(p.sellingPrice)) * 100)}%
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider truncate">
-                            {p.categoryName || "Collection"}
-                          </span>
-                          <h5 className="text-xs font-semibold text-gray-900 group-hover:text-[var(--brand-primary)] transition line-clamp-1 mt-0.5">
-                            {p.title}
-                          </h5>
-                          <div className="mt-1 flex items-baseline gap-1.5 text-xs font-bold text-[var(--brand-primary)]">
-                            <span>£{Number(p.discountPrice || p.sellingPrice || 0).toFixed(2)}</span>
-                            {p.discountPrice && (
-                              <span className="text-[10px] text-gray-400 line-through font-normal">
-                                £{Number(p.sellingPrice || 0).toFixed(2)}
-                              </span>
-                            )}
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </div>

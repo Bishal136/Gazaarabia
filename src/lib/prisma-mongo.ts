@@ -684,6 +684,35 @@ function applySelect(doc: any, select: any): any {
   return filtered;
 }
 
+function normalizePrismaConnectRelations(data: Record<string, any>) {
+  if (!data || typeof data !== "object") return;
+  for (const [k, v] of Object.entries(data)) {
+    if (v && typeof v === "object" && (v as any).connect && (v as any).connect.id !== undefined) {
+      const connectId = (v as any).connect.id;
+      if (k === "products" || k === "product") {
+        data.productId = connectId;
+      } else if (k === "color") {
+        data.colorId = connectId;
+      } else if (k === "size") {
+        data.sizeId = connectId;
+      } else if (k === "brand") {
+        data.brandId = connectId;
+      } else if (k === "categories" || k === "category") {
+        data.categoryId = connectId;
+      } else if (k === "subcategories" || k === "subcategory") {
+        data.subcategoryId = connectId;
+      } else if (k === "user" || k === "users") {
+        data.userId = connectId;
+      } else if (k === "seller") {
+        data.sellerId = connectId;
+      } else {
+        data[`${k}Id`] = connectId;
+      }
+      delete data[k];
+    }
+  }
+}
+
 /**
  * Atomic Auto-Increment Sequence Generator using MongoDB findOneAndUpdate
  * Guarantees zero race conditions / duplicate ID collisions across clustered PM2 workers.
@@ -910,6 +939,7 @@ function createModelDelegate(modelName: string) {
       const col = db.collection(colName);
 
       const data = { ...(args.data || {}) };
+      normalizePrismaConnectRelations(data);
 
       // Generate numeric ID atomically if missing
       if (data.id === undefined) {
@@ -929,6 +959,28 @@ function createModelDelegate(modelName: string) {
           nestedOrderItems = data.orderItems;
         }
         delete data.orderItems;
+      }
+
+      // If creating a product with nested images or variants, extract them before saving the product doc
+      let nestedProductImages: any[] = [];
+      let nestedProductVariants: any[] = [];
+      if (colName === "products") {
+        if (data.productimage) {
+          if (Array.isArray(data.productimage.create)) {
+            nestedProductImages = data.productimage.create;
+          } else if (data.productimage.create && typeof data.productimage.create === "object") {
+            nestedProductImages = [data.productimage.create];
+          }
+          delete data.productimage;
+        }
+        if (data.productvariant) {
+          if (Array.isArray(data.productvariant.create)) {
+            nestedProductVariants = data.productvariant.create;
+          } else if (data.productvariant.create && typeof data.productvariant.create === "object") {
+            nestedProductVariants = [data.productvariant.create];
+          }
+          delete data.productvariant;
+        }
       }
 
       const now = new Date();
@@ -951,6 +1003,76 @@ function createModelDelegate(modelName: string) {
           updatedAt: item.updatedAt || now,
         }));
         await itemsCol.insertMany(docsToInsert);
+      }
+
+      // Insert nested product images into productimage collection
+      if (colName === "products" && nestedProductImages.length > 0) {
+        const imgCol = db.collection("productimage");
+        const endImgId = await getNextAtomicSequence(db, "productimage", nestedProductImages.length);
+        let nextImgId = endImgId - nestedProductImages.length + 1;
+        const imgDocs = nestedProductImages.map((img) => ({
+          ...img,
+          id: img.id || nextImgId++,
+          productId: data.id,
+          createdAt: img.createdAt || now,
+          updatedAt: img.updatedAt || now,
+        }));
+        await imgCol.insertMany(imgDocs);
+      }
+
+      // Insert nested product variants into productvariant collection
+      if (colName === "products" && nestedProductVariants.length > 0) {
+        const varCol = db.collection("productvariant");
+        const varImgCol = db.collection("variant_images");
+        const endVarId = await getNextAtomicSequence(db, "productvariant", nestedProductVariants.length);
+        let nextVarId = endVarId - nestedProductVariants.length + 1;
+
+        const variantDocs: any[] = [];
+        const variantImageDocs: any[] = [];
+
+        for (const v of nestedProductVariants) {
+          const currentVarId = v.id || nextVarId++;
+          normalizePrismaConnectRelations(v);
+
+          let vImages: any[] = [];
+          if (v.variantImages?.create) {
+            vImages = Array.isArray(v.variantImages.create) ? v.variantImages.create : [v.variantImages.create];
+          } else if (Array.isArray(v.images)) {
+            vImages = v.images;
+          }
+          delete v.variantImages;
+
+          variantDocs.push({
+            ...v,
+            id: currentVarId,
+            productId: data.id,
+            createdAt: v.createdAt || now,
+            updatedAt: v.updatedAt || now,
+          });
+
+          if (vImages.length > 0) {
+            const endVarImgId = await getNextAtomicSequence(db, "variant_images", vImages.length);
+            let nextVarImgId = endVarImgId - vImages.length + 1;
+            for (const img of vImages) {
+              variantImageDocs.push({
+                id: img.id || nextVarImgId++,
+                variantId: currentVarId,
+                productId: data.id,
+                url: typeof img === "string" ? img : img.url,
+                alt: img.alt || "",
+                createdAt: now,
+                updatedAt: now,
+              });
+            }
+          }
+        }
+
+        if (variantDocs.length > 0) {
+          await varCol.insertMany(variantDocs);
+        }
+        if (variantImageDocs.length > 0) {
+          await varImgCol.insertMany(variantImageDocs);
+        }
       }
 
       let result = data;
@@ -978,6 +1100,7 @@ function createModelDelegate(modelName: string) {
 
       const prepared = list.map((item) => {
         const doc = { ...item };
+        normalizePrismaConnectRelations(doc);
         if (doc.id === undefined) doc.id = nextId++;
         if (!doc.createdAt) doc.createdAt = now;
         if (!doc.updatedAt) doc.updatedAt = now;
@@ -995,6 +1118,7 @@ function createModelDelegate(modelName: string) {
 
       const filter = convertPrismaWhereToMongo(args.where);
       const updateData = { ...(args.data || {}) };
+      normalizePrismaConnectRelations(updateData);
       delete updateData._id;
       delete updateData.id;
       updateData.updatedAt = new Date();

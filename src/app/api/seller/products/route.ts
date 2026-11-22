@@ -209,6 +209,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (body.shortDescription) {
+      const plainLen = String(body.shortDescription)
+        .replace(/<[^>]*>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim().length;
+      if (plainLen > 120) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Specifications summary (shortDescription) cannot exceed 120 characters.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const slug = `${body.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "")}-${crypto.randomUUID().split("-")[0]}`;
 
     // Helper for validating video URLs (direct files or video service links)
@@ -443,7 +460,9 @@ export async function POST(request: NextRequest) {
           stock: parseInt(v.stock || "0"),
           isActive: v.isActive ?? true,
           colorId: resolvedColorId,
+          colorName: v.colorName || null,
           sizeId: resolvedSizeId,
+          sizeName: v.sizeName || null,
           imageUrl: primaryImgUrl,
           videoUrl: v.videoUrl || null,
           videoThumbnail: v.videoThumbnail || null,

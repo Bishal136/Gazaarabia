@@ -194,6 +194,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (body.shortDescription) {
+      const plainLen = String(body.shortDescription)
+        .replace(/<[^>]*>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim().length;
+      if (plainLen > 120) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Specifications summary (shortDescription) cannot exceed 120 characters.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
 
     // Helper for validating video URLs (direct files or video service links)
     const isValidVideoUrl = (url: string) => {
@@ -247,6 +264,70 @@ export async function POST(req: NextRequest) {
     }
 
 
+    // Resolve colors & sizes for variants (supports custom colors and sizes)
+    const resolvedVariants: any[] = [];
+    if (Array.isArray(body.variants)) {
+      for (const v of body.variants) {
+        let colorId: number | null = v.colorId && !isNaN(Number(v.colorId)) ? parseInt(String(v.colorId)) : null;
+        let sizeId: number | null = v.sizeId && !isNaN(Number(v.sizeId)) ? parseInt(String(v.sizeId)) : null;
+
+        // Auto-resolve custom color by name if colorId not provided
+        if (!colorId && v.colorName) {
+          const cName = String(v.colorName).trim();
+          if (cName) {
+            try {
+              const foundColor = await prisma.colors.findFirst({
+                where: { name: { equals: cName, mode: "insensitive" } },
+              });
+              if (foundColor) {
+                colorId = foundColor.id;
+              } else {
+                const newColor = await prisma.colors.create({
+                  data: {
+                    name: cName,
+                    hexCode: v.hexCode || "#000000",
+                  },
+                });
+                colorId = newColor.id;
+              }
+            } catch (cErr) {
+              console.warn("Could not upsert variant color:", cErr);
+            }
+          }
+        }
+
+        // Auto-resolve custom size by name if sizeId not provided
+        if (!sizeId && v.sizeName) {
+          const sName = String(v.sizeName).trim();
+          if (sName) {
+            try {
+              const foundSize = await prisma.sizes.findFirst({
+                where: { name: { equals: sName, mode: "insensitive" } },
+              });
+              if (foundSize) {
+                sizeId = foundSize.id;
+              } else {
+                const newSize = await prisma.sizes.create({
+                  data: {
+                    name: sName,
+                  },
+                });
+                sizeId = newSize.id;
+              }
+            } catch (sErr) {
+              console.warn("Could not upsert variant size:", sErr);
+            }
+          }
+        }
+
+        resolvedVariants.push({
+          ...v,
+          resolvedColorId: colorId,
+          resolvedSizeId: sizeId,
+        });
+      }
+    }
+
     //  Create product with nested variants and variant images
     const product = await prisma.products.create({
       data: {
@@ -295,7 +376,7 @@ export async function POST(req: NextRequest) {
         productimage: {
           create:
             body.images?.map((img: any) => ({
-              url: img.url,
+              url: typeof img === "string" ? img : img.url,
               alt: img.alt || "",
               colorId: img.colorId ? parseInt(img.colorId) : null,
               primary: img.primary ?? false,
@@ -305,23 +386,17 @@ export async function POST(req: NextRequest) {
         // Variants with nested variant images (including productId)
         productvariant: {
           create:
-            body.variants?.map((v: any) => ({
-              sku: v.sku,
-              price: parseFloat(v.price),
-              stock: parseInt(v.stock),
+            resolvedVariants.map((v: any) => ({
+              sku: v.sku || "",
+              price: parseFloat(v.price || "0"),
+              compareAtPrice: v.compareAtPrice ? parseFloat(v.compareAtPrice) : null,
+              stock: parseInt(v.stock || "0"),
               isActive: v.isActive ?? true,
               imageUrl: v.images?.[0]?.url || (typeof v.images?.[0] === "string" ? v.images[0] : null) || null,
-              // colorId: v.colorId ? parseInt(v.colorId) : null,
-              // sizeId: v.sizeId ? parseInt(v.sizeId) : null,
-
-              color: v.colorId
-                ? { connect: { id: parseInt(v.colorId) } }
-                : undefined,
-
-              size: v.sizeId
-                ? { connect: { id: parseInt(v.sizeId) } }
-                : undefined,
-
+              colorId: v.resolvedColorId || null,
+              colorName: v.colorName || null,
+              sizeId: v.resolvedSizeId || null,
+              sizeName: v.sizeName || null,
 
               // VIDEO
               videoUrl: v.videoUrl || null,
@@ -330,13 +405,13 @@ export async function POST(req: NextRequest) {
               variantImages: {
                 create:
                   v.images?.map((img: any) => ({
-                    url: img.url,
+                    url: typeof img === "string" ? img : img.url,
                     alt: img.alt || "",
                     // Include productId directly during creation
                     productId: undefined,
                   })) || [],
               },
-            })) || [],
+            })),
         },
       },
       include: {
@@ -407,7 +482,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: false, message: "Failed to create product" },
+      { success: false, message: error?.message || "Failed to create product" },
       { status: 500 }
     );
   }

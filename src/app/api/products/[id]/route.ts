@@ -141,6 +141,23 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       );
     }
 
+    if (body.shortDescription) {
+      const plainLen = String(body.shortDescription)
+        .replace(/<[^>]*>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim().length;
+      if (plainLen > 120) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Specifications summary (shortDescription) cannot exceed 120 characters.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
 
 
     // 3️. Update main product
@@ -264,28 +281,72 @@ export async function PUT(req: NextRequest, context: RouteContext) {
           }
         }
 
+        let colorId: number | null = v.colorId && !isNaN(Number(v.colorId)) ? parseInt(String(v.colorId)) : null;
+        let sizeId: number | null = v.sizeId && !isNaN(Number(v.sizeId)) ? parseInt(String(v.sizeId)) : null;
 
+        // Auto-resolve custom color by name if colorId not provided
+        if (!colorId && v.colorName) {
+          const cName = String(v.colorName).trim();
+          if (cName) {
+            try {
+              const foundColor = await prisma.colors.findFirst({
+                where: { name: { equals: cName, mode: "insensitive" } },
+              });
+              if (foundColor) {
+                colorId = foundColor.id;
+              } else {
+                const newColor = await prisma.colors.create({
+                  data: {
+                    name: cName,
+                    hexCode: v.hexCode || "#000000",
+                  },
+                });
+                colorId = newColor.id;
+              }
+            } catch (cErr) {
+              console.warn("Could not upsert variant color:", cErr);
+            }
+          }
+        }
 
+        // Auto-resolve custom size by name if sizeId not provided
+        if (!sizeId && v.sizeName) {
+          const sName = String(v.sizeName).trim();
+          if (sName) {
+            try {
+              const foundSize = await prisma.sizes.findFirst({
+                where: { name: { equals: sName, mode: "insensitive" } },
+              });
+              if (foundSize) {
+                sizeId = foundSize.id;
+              } else {
+                const newSize = await prisma.sizes.create({
+                  data: {
+                    name: sName,
+                  },
+                });
+                sizeId = newSize.id;
+              }
+            } catch (sErr) {
+              console.warn("Could not upsert variant size:", sErr);
+            }
+          }
+        }
 
         if (v.id) {
           // UPDATE existing variant
           await prisma.productvariant.update({
             where: { id: v.id },
             data: {
-              sku: v.sku,
-              price: parseFloat(v.price),
-              stock: parseInt(v.stock),
+              sku: v.sku || "",
+              price: parseFloat(v.price || "0"),
+              compareAtPrice: v.compareAtPrice ? parseFloat(v.compareAtPrice) : null,
+              stock: parseInt(v.stock || "0"),
               isActive: v.isActive ?? true,
-              // colorId: v.colorId ? parseInt(v.colorId) : null,
-              // sizeId: v.sizeId ? parseInt(v.sizeId) : null,
-
-              color: v.colorId
-                ? { connect: { id: parseInt(v.colorId) } }
-                : { disconnect: true },
-
-              size: v.sizeId
-                ? { connect: { id: parseInt(v.sizeId) } }
-                : { disconnect: true },
+              colorId: colorId || null,
+              colorName: v.colorName || null,
+              sizeId: sizeId || null,
+              sizeName: v.sizeName || null,
 
               videoUrl: v.videoUrl || null,
               videoThumbnail: v.videoThumbnail || null,
@@ -298,7 +359,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
           if (Array.isArray(v.images)) {
             await prisma.variantImage.createMany({
               data: v.images.map((img: any) => ({
-                url: img.url,
+                url: typeof img === "string" ? img : img.url,
                 alt: img.alt || "",
                 variantId: v.id,
                 productId,
@@ -310,20 +371,15 @@ export async function PUT(req: NextRequest, context: RouteContext) {
           // CREATE new variant
           const newVariant = await prisma.productvariant.create({
             data: {
-              sku: v.sku,
-              price: parseFloat(v.price),
-              stock: parseInt(v.stock),
+              sku: v.sku || "",
+              price: parseFloat(v.price || "0"),
+              compareAtPrice: v.compareAtPrice ? parseFloat(v.compareAtPrice) : null,
+              stock: parseInt(v.stock || "0"),
               isActive: v.isActive ?? true,
-              // colorId: v.colorId ? parseInt(v.colorId) : null,
-              // sizeId: v.sizeId ? parseInt(v.sizeId) : null,
-
-              color: v.colorId
-                ? { connect: { id: parseInt(v.colorId) } }
-                : undefined,
-
-              size: v.sizeId
-                ? { connect: { id: parseInt(v.sizeId) } }
-                : undefined,
+              colorId: colorId || null,
+              colorName: v.colorName || null,
+              sizeId: sizeId || null,
+              sizeName: v.sizeName || null,
 
               products: {
                 connect: { id: productId },
@@ -332,15 +388,13 @@ export async function PUT(req: NextRequest, context: RouteContext) {
               videoUrl: v.videoUrl || null,
               videoThumbnail: v.videoThumbnail || null,
               imageUrl: v.images?.[0]?.url || (typeof v.images?.[0] === "string" ? v.images[0] : null) || null,
-
-              // productId,
             },
           });
 
           if (Array.isArray(v.images)) {
             await prisma.variantImage.createMany({
               data: v.images.map((img: any) => ({
-                url: img.url,
+                url: typeof img === "string" ? img : img.url,
                 alt: img.alt || "",
                 variantId: newVariant.id,
                 productId,

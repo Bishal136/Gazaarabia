@@ -19,6 +19,9 @@ import {
   ShieldCheck,
   Loader2,
   ArrowLeft,
+  ShieldAlert,
+  Headphones,
+  Plus,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -41,8 +44,13 @@ export default function SellerMessagesPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
+  const [startingAdminChat, setStartingAdminChat] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Dual-channel Tab: "buyer" (Customer-Seller) vs "admin" (Seller-Admin Support)
+  const [channelTab, setChannelTab] = useState<"buyer" | "admin">("buyer");
   const [filterTab, setFilterTab] = useState<"all" | "unread">("all");
+  
   const [inputText, setInputText] = useState("");
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
 
@@ -76,12 +84,16 @@ export default function SellerMessagesPage() {
       if (!token) return;
       try {
         if (isInitial) setLoading(true);
-        const data = await chatService.getConversations(token);
+        const data = await chatService.getConversations(token, "all");
         setConversations(data);
 
-        // Auto-select first conversation on desktop if none selected
+        // Auto-select first conversation matching the current channel tab if none selected
         if (isInitial && data.length > 0 && !selectedConvId) {
-          setSelectedConvId(data[0].id);
+          const matching = data.find((c) =>
+            channelTab === "admin" ? c.type === "seller_admin" : c.type !== "seller_admin"
+          );
+          if (matching) setSelectedConvId(matching.id);
+          else setSelectedConvId(data[0].id);
         }
       } catch (err) {
         console.error("Failed to load seller conversations:", err);
@@ -89,7 +101,7 @@ export default function SellerMessagesPage() {
         if (isInitial) setLoading(false);
       }
     },
-    [token, selectedConvId]
+    [token, selectedConvId, channelTab]
   );
 
   useEffect(() => {
@@ -139,7 +151,7 @@ export default function SellerMessagesPage() {
 
     const poll = async () => {
       try {
-        const data = await chatService.getConversations(token);
+        const data = await chatService.getConversations(token, "all");
         setConversations(data);
 
         if (selectedConvId) {
@@ -164,14 +176,38 @@ export default function SellerMessagesPage() {
     };
   }, [token, selectedConvId, scrollToBottom]);
 
+  // Start direct chat with Admin Support
+  const handleStartAdminSupport = async () => {
+    if (!token || startingAdminChat) return;
+    try {
+      setStartingAdminChat(true);
+      const conv = await chatService.startAdminSupportConversation(token);
+      setConversations((prev) => {
+        const exists = prev.some((c) => c.id === conv.id);
+        return exists ? prev : [conv, ...prev];
+      });
+      setSelectedConvId(conv.id);
+      setChannelTab("admin");
+      setMobileChatOpen(true);
+    } catch (err: any) {
+      alert(err?.message || "Failed to initiate Admin Support chat");
+    } finally {
+      setStartingAdminChat(false);
+    }
+  };
+
   // Active Conversation Object
   const activeConversation = useMemo(() => {
     return conversations.find((c) => c.id === selectedConvId) || null;
   }, [conversations, selectedConvId]);
 
-  // Filtered Conversations List
+  // Filtered Conversations List by Channel Tab (Buyer vs Admin) and search
   const filteredConversations = useMemo(() => {
     return conversations.filter((c) => {
+      const isSellerAdmin = c.type === "seller_admin";
+      if (channelTab === "admin" && !isSellerAdmin) return false;
+      if (channelTab === "buyer" && isSellerAdmin) return false;
+
       const q = searchQuery.toLowerCase();
       const matchesSearch =
         c.customer?.name?.toLowerCase().includes(q) ||
@@ -183,7 +219,20 @@ export default function SellerMessagesPage() {
       }
       return matchesSearch;
     });
-  }, [conversations, searchQuery, filterTab]);
+  }, [conversations, channelTab, searchQuery, filterTab]);
+
+  // Count unread for channels
+  const unreadCounts = useMemo(() => {
+    let buyerUnread = 0;
+    let adminUnread = 0;
+    conversations.forEach((c) => {
+      if (c.unreadCount > 0) {
+        if (c.type === "seller_admin") adminUnread += c.unreadCount;
+        else buyerUnread += c.unreadCount;
+      }
+    });
+    return { buyerUnread, adminUnread };
+  }, [conversations]);
 
   // Media Handlers
   const handleImagesSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -321,56 +370,118 @@ export default function SellerMessagesPage() {
   }
 
   return (
-    <div className="p-3 sm:p-5 max-w-7xl mx-auto pb-4">
+    <div className="p-3 sm:p-5 max-w-7xl mx-auto pb-4 space-y-3">
+      {/* SAFE TRADING POLICY BANNER */}
+      <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl px-4 py-2.5 flex items-center justify-between text-xs text-amber-900 shadow-2xs">
+        <div className="flex items-center gap-2 font-medium">
+          <ShieldAlert size={16} className="text-amber-600 shrink-0" />
+          <span>
+            <strong>Gazaarabia Safe Trading Policy:</strong> Sharing personal phone numbers, WhatsApp, or soliciting payments outside the platform is strictly prohibited. All conversations are monitored by platform administrators.
+          </span>
+        </div>
+      </div>
+
       {/* 2-COLUMN SPLIT-SCREEN MESSAGING DASHBOARD */}
-      <div className="bg-white rounded-3xl border border-gray-200/90 shadow-sm overflow-hidden flex flex-col md:flex-row min-h-[640px] h-[calc(100vh-120px)]">
+      <div className="bg-white rounded-3xl border border-gray-200/90 shadow-sm overflow-hidden flex flex-col md:flex-row min-h-[640px] h-[calc(100vh-160px)]">
         {/* LEFT COLUMN: CONVERSATION LIST (Sidebar) */}
         <div
           className={`w-full md:w-80 lg:w-96 shrink-0 border-r border-gray-100 flex flex-col h-full bg-[#fbfcfc] ${
             mobileChatOpen ? "hidden md:flex" : "flex"
           }`}
         >
-          {/* Search & Filter Tabs */}
-          <div className="p-4 border-b border-gray-100 space-y-3 bg-white shrink-0">
+          {/* Channel Tabs: Buyer Inquiries vs Admin Support */}
+          <div className="p-3 border-b border-gray-100 bg-white space-y-2.5 shrink-0">
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-gray-100 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setChannelTab("buyer");
+                  const firstBuyer = conversations.find((c) => c.type !== "seller_admin");
+                  if (firstBuyer) setSelectedConvId(firstBuyer.id);
+                }}
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                  channelTab === "buyer"
+                    ? "bg-white text-gray-900 shadow-xs"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                <User size={14} />
+                <span>Buyer Inquiries</span>
+                {unreadCounts.buyerUnread > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center">
+                    {unreadCounts.buyerUnread}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setChannelTab("admin");
+                  const firstAdmin = conversations.find((c) => c.type === "seller_admin");
+                  if (firstAdmin) setSelectedConvId(firstAdmin.id);
+                }}
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                  channelTab === "admin"
+                    ? "bg-indigo-600 text-white shadow-xs"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                <Headphones size={14} />
+                <span>Admin Support</span>
+                {unreadCounts.adminUnread > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
+                    {unreadCounts.adminUnread}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Search Input */}
             <div className="relative">
               <Search
-                size={16}
+                size={15}
                 className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
               />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search customers or products..."
-                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#b08a78] focus:border-transparent transition"
+                placeholder={
+                  channelTab === "admin"
+                    ? "Search admin support notices..."
+                    : "Search customers or products..."
+                }
+                className="w-full pl-9 pr-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#b08a78] focus:border-transparent transition"
               />
             </div>
 
+            {/* Filter Pills */}
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setFilterTab("all")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
                   filterTab === "all"
-                    ? "bg-gray-900 text-white shadow-2xs"
+                    ? "bg-gray-900 text-white"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
-                All ({conversations.length})
+                All ({filteredConversations.length})
               </button>
               <button
                 type="button"
                 onClick={() => setFilterTab("unread")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
                   filterTab === "unread"
-                    ? "bg-[#b08a78] text-white shadow-2xs"
+                    ? "bg-[#b08a78] text-white"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
                 <span>Unread</span>
-                {conversations.filter((c) => c.unreadCount > 0).length > 0 && (
-                  <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">
-                    {conversations.filter((c) => c.unreadCount > 0).length}
+                {filteredConversations.filter((c) => c.unreadCount > 0).length > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">
+                    {filteredConversations.filter((c) => c.unreadCount > 0).length}
                   </span>
                 )}
               </button>
@@ -379,7 +490,32 @@ export default function SellerMessagesPage() {
 
           {/* Conversation List Items */}
           <div className="flex-1 overflow-y-auto divide-y divide-gray-100 overscroll-contain">
-            {filteredConversations.length === 0 ? (
+            {channelTab === "admin" && filteredConversations.length === 0 ? (
+              <div className="p-6 text-center text-gray-400 flex flex-col items-center justify-center h-full space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-200">
+                  <Headphones size={24} />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-bold text-gray-800">No Support Thread Yet</h4>
+                  <p className="text-[11px] text-gray-400 mt-1 max-w-xs">
+                    Need help with payouts, store policies, or disputes? Connect directly with Gazaarabia Admin Support.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleStartAdminSupport}
+                  disabled={startingAdminChat}
+                  className="py-2 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition disabled:opacity-50"
+                >
+                  {startingAdminChat ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Plus size={14} />
+                  )}
+                  <span>Connect with Admin Support</span>
+                </button>
+              </div>
+            ) : filteredConversations.length === 0 ? (
               <div className="p-8 text-center text-gray-400 flex flex-col items-center justify-center h-full">
                 <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400 mb-2">
                   <MessageSquare size={22} />
@@ -394,7 +530,10 @@ export default function SellerMessagesPage() {
             ) : (
               filteredConversations.map((conv) => {
                 const isSelected = conv.id === selectedConvId;
-                const initial = (conv.customer?.name || "C").charAt(0).toUpperCase();
+                const isSellerAdmin = conv.type === "seller_admin";
+                const initial = isSellerAdmin
+                  ? "A"
+                  : (conv.customer?.name || "C").charAt(0).toUpperCase();
 
                 return (
                   <button
@@ -403,19 +542,26 @@ export default function SellerMessagesPage() {
                       setSelectedConvId(conv.id);
                       setMobileChatOpen(true);
                     }}
-                    className={`w-full text-left p-4 flex items-start gap-3 transition-all ${
+                    className={`w-full text-left p-3.5 flex items-start gap-3 transition-all ${
                       isSelected
                         ? "bg-white border-l-4 border-l-[#b08a78] shadow-xs"
                         : "hover:bg-gray-50/80"
                     }`}
                   >
-                    {/* Customer Avatar */}
+                    {/* Avatar */}
                     <div className="relative shrink-0">
-                      <div className="w-11 h-11 rounded-2xl bg-amber-50 text-[#b08a78] font-bold text-sm flex items-center justify-center border border-amber-200/60 shadow-2xs">
-                        {initial}
-                      </div>
+                      {isSellerAdmin ? (
+                        <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-700 font-black text-xs flex items-center justify-center border border-indigo-200 shadow-2xs">
+                          <Headphones size={18} />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-2xl bg-amber-50 text-[#b08a78] font-bold text-xs flex items-center justify-center border border-amber-200/60 shadow-2xs">
+                          {initial}
+                        </div>
+                      )}
+
                       {conv.unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-600 text-white font-bold text-[10px] rounded-full flex items-center justify-center border-2 border-white shadow-2xs">
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-600 text-white font-bold text-[9px] rounded-full flex items-center justify-center border-2 border-white shadow-2xs">
                           {conv.unreadCount}
                         </span>
                       )}
@@ -431,7 +577,9 @@ export default function SellerMessagesPage() {
                               : "font-semibold text-gray-800"
                           }`}
                         >
-                          {conv.customer?.name || "Customer"}
+                          {isSellerAdmin
+                            ? "Platform Admin Support"
+                            : conv.customer?.name || "Customer"}
                         </h4>
                         <span className="text-[10px] text-gray-400 shrink-0">
                           {formatRelativeTime(conv.lastMessageAt)}
@@ -448,11 +596,18 @@ export default function SellerMessagesPage() {
                         {conv.lastMessageText || "Started a conversation"}
                       </p>
 
-                      {/* Product Tag */}
+                      {/* Badges / Product Tag */}
                       {conv.product?.title && (
                         <div className="flex items-center gap-1 mt-1 text-[10px] text-[#b08a78] font-semibold truncate">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#b08a78] shrink-0" />
                           <span className="truncate">{conv.product.title}</span>
+                        </div>
+                      )}
+                      {isSellerAdmin && (
+                        <div className="mt-1">
+                          <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                            Official Support
+                          </span>
                         </div>
                       )}
                     </div>
@@ -474,7 +629,6 @@ export default function SellerMessagesPage() {
               {/* CHAT HEADER */}
               <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0 shadow-2xs">
                 <div className="flex items-center gap-3 min-w-0">
-                  {/* Mobile Back Button */}
                   <button
                     type="button"
                     onClick={() => setMobileChatOpen(false)}
@@ -484,20 +638,37 @@ export default function SellerMessagesPage() {
                     <ArrowLeft size={18} />
                   </button>
 
-                  <div className="w-10 h-10 rounded-2xl bg-amber-50 text-[#b08a78] font-bold text-sm flex items-center justify-center border border-amber-200/60 shadow-2xs shrink-0">
-                    {(activeConversation.customer?.name || "C").charAt(0).toUpperCase()}
-                  </div>
+                  {activeConversation.type === "seller_admin" ? (
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-700 font-black text-xs flex items-center justify-center border border-indigo-200 shadow-2xs shrink-0">
+                      <Headphones size={20} />
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 rounded-2xl bg-amber-50 text-[#b08a78] font-bold text-sm flex items-center justify-center border border-amber-200/60 shadow-2xs shrink-0">
+                      {(activeConversation.customer?.name || "C").charAt(0).toUpperCase()}
+                    </div>
+                  )}
+
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-sm text-gray-900 truncate">
-                        {activeConversation.customer?.name || "Customer"}
+                        {activeConversation.type === "seller_admin"
+                          ? "Gazaarabia Platform Admin Support"
+                          : activeConversation.customer?.name || "Customer"}
                       </h3>
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 shrink-0">
-                        Customer
-                      </span>
+                      {activeConversation.type === "seller_admin" ? (
+                        <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200 shrink-0">
+                          Platform Admin
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 shrink-0">
+                          Customer
+                        </span>
+                      )}
                     </div>
                     <p className="text-[11px] text-gray-400 truncate">
-                      {activeConversation.customer?.email || "Buyer inquiry"}
+                      {activeConversation.type === "seller_admin"
+                        ? "Store Policies, Payouts & Technical Inquiries"
+                        : activeConversation.customer?.email || "Buyer inquiry"}
                     </p>
                   </div>
                 </div>
@@ -541,12 +712,40 @@ export default function SellerMessagesPage() {
                       No messages in this chat yet
                     </p>
                     <p className="text-[11px] text-gray-400 mt-1">
-                      Reply below to greet the customer and answer their product questions.
+                      {activeConversation.type === "seller_admin"
+                        ? "Type below to ask Platform Admin Support for assistance."
+                        : "Reply below to greet the customer and answer their product questions."}
                     </p>
                   </div>
                 ) : (
                   messages.map((msg) => {
                     const isSeller = msg.senderRole === "seller";
+                    const isAdmin = msg.senderRole === "admin" || Boolean(msg.metadata?.isOfficialIntervention);
+
+                    // Render Official Moderator Intervention Notice
+                    if (isAdmin && activeConversation.type !== "seller_admin") {
+                      return (
+                        <div key={msg.id} className="w-full flex justify-center my-3">
+                          <div className="max-w-xl w-full bg-amber-50 border-2 border-amber-300/80 rounded-2xl p-4 shadow-sm text-amber-950">
+                            <div className="flex items-center justify-between text-xs font-black text-amber-900 mb-1.5">
+                              <span className="flex items-center gap-1.5">
+                                <ShieldCheck size={16} className="text-amber-600" />
+                                🛡️ OFFICIAL PLATFORM MODERATOR NOTICE
+                              </span>
+                              <span className="text-[10px] text-amber-700">
+                                {formatMessageTime(msg.createdAt)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-amber-950 whitespace-pre-wrap font-medium leading-relaxed">
+                              {msg.text}
+                            </p>
+                            <div className="text-[10px] text-amber-800 text-right mt-1 font-bold">
+                              Issued by Gazaarabia Platform Moderation
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
 
                     return (
                       <div
@@ -564,10 +763,20 @@ export default function SellerMessagesPage() {
                           className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-3 shadow-2xs space-y-2 ${
                             isSeller
                               ? "bg-[#b08a78] text-white rounded-tr-none"
+                              : isAdmin
+                              ? "bg-indigo-50 text-indigo-950 border border-indigo-200 rounded-tl-none"
                               : "bg-white text-gray-900 border border-gray-200/80 rounded-tl-none"
                           }`}
                         >
-                          {/* Attached Photos with graceful fallback */}
+                          {/* Admin Header if in seller_admin thread */}
+                          {isAdmin && (
+                            <div className="flex items-center gap-1 text-[10px] text-indigo-700 font-bold mb-1">
+                              <ShieldCheck size={12} />
+                              <span>Platform Admin Support</span>
+                            </div>
+                          )}
+
+                          {/* Attached Photos */}
                           {msg.mediaUrls && msg.mediaUrls.length > 0 && (
                             <div className="w-full">
                               {msg.mediaUrls.length === 1 ? (
@@ -580,7 +789,7 @@ export default function SellerMessagesPage() {
                                   />
                                 </div>
                               ) : (
-                                <div className="grid grid-cols-2 gap-2 max-w-[340px]">
+                                <div className="grid grid-cols-2 gap-1.5 max-w-[340px]">
                                   {msg.mediaUrls.map((url, i) => (
                                     <ChatImage
                                       key={i}
@@ -595,21 +804,21 @@ export default function SellerMessagesPage() {
                             </div>
                           )}
 
-                          {/* Attached Video with error handling */}
+                          {/* Attached Video */}
                           {msg.videoUrl && (
                             <div className="w-full max-w-[340px]">
                               <ChatVideoPlayer url={msg.videoUrl} />
                             </div>
                           )}
 
-                          {/* Text Message */}
+                          {/* Message Text */}
                           {msg.text && (
                             <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed">
                               {msg.text}
                             </p>
                           )}
 
-                          {/* Timestamp & Read Receipt */}
+                          {/* Timestamp and Read Status */}
                           <div
                             className={`flex items-center gap-1 justify-end text-[10px] ${
                               isSeller ? "text-white/80" : "text-gray-400"
@@ -619,9 +828,9 @@ export default function SellerMessagesPage() {
                             {isSeller && (
                               <span>
                                 {msg.isRead ? (
-                                  <CheckCheck size={13} className="text-sky-300" />
+                                  <CheckCheck size={12} className="text-sky-300" />
                                 ) : (
-                                  <Check size={13} className="text-white/70" />
+                                  <Check size={12} className="text-white/70" />
                                 )}
                               </span>
                             )}
@@ -633,22 +842,22 @@ export default function SellerMessagesPage() {
                 )}
               </div>
 
-              {/* PENDING ATTACHMENTS PREVIEW BAR */}
+              {/* MEDIA PREVIEW STRIP (BEFORE SENDING) */}
               {(imagePreviews.length > 0 || videoPreview) && (
-                <div className="p-3 bg-amber-50/70 border-t border-amber-200/60 flex flex-wrap items-center gap-2.5 shrink-0">
-                  <span className="text-[11px] font-bold text-amber-900 uppercase">
-                    Ready to send:
-                  </span>
-                  {imagePreviews.map((src, i) => (
-                    <div
-                      key={i}
-                      className="relative w-14 h-14 rounded-xl overflow-hidden border border-gray-200 bg-white"
-                    >
-                      <img src={src} alt="Preview" className="w-full h-full object-cover" />
+                <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center gap-3 overflow-x-auto shrink-0">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative w-16 h-16 rounded-xl overflow-hidden border border-gray-200 shrink-0">
+                      <Image
+                        src={preview}
+                        alt="Preview"
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
                       <button
                         type="button"
-                        onClick={() => handleRemoveImage(i)}
-                        className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5 hover:bg-black"
+                        onClick={() => handleRemoveImage(index)}
+                        className="absolute top-1 right-1 w-5 h-5 bg-black/70 text-white rounded-full flex items-center justify-center hover:bg-black transition"
                       >
                         <X size={12} />
                       </button>
@@ -656,12 +865,15 @@ export default function SellerMessagesPage() {
                   ))}
 
                   {videoPreview && (
-                    <div className="relative w-14 h-14 rounded-xl overflow-hidden border border-gray-200 bg-black flex items-center justify-center text-white">
-                      <Play size={16} className="fill-white" />
+                    <div className="relative w-20 h-16 rounded-xl overflow-hidden border border-gray-200 bg-black flex items-center justify-center shrink-0">
+                      <video src={videoPreview} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center text-white">
+                        <Play size={16} fill="white" />
+                      </div>
                       <button
                         type="button"
                         onClick={handleRemoveVideo}
-                        className="absolute top-0.5 right-0.5 bg-red-600 text-white rounded-full p-0.5"
+                        className="absolute top-1 right-1 w-5 h-5 bg-black/70 text-white rounded-full flex items-center justify-center hover:bg-black transition"
                       >
                         <X size={12} />
                       </button>
@@ -670,103 +882,96 @@ export default function SellerMessagesPage() {
                 </div>
               )}
 
-              {/* BOTTOM REPLY BAR */}
-              <form
-                onSubmit={handleSendMessage}
-                className="p-3 sm:p-4 bg-white border-t border-gray-100 flex items-end gap-2.5 shrink-0"
-              >
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleImagesSelect}
-                  accept="image/png,image/jpeg,image/webp"
-                  multiple
-                  className="hidden"
-                />
-                <input
-                  type="file"
-                  ref={videoInputRef}
-                  onChange={handleVideoSelect}
-                  accept="video/mp4,video/webm"
-                  className="hidden"
-                />
+              {/* MESSAGE COMPOSER INPUT */}
+              <div className="p-3 sm:p-4 border-t border-gray-100 bg-white shrink-0">
+                <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                  {/* Hidden File Inputs */}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImagesSelect}
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                  />
+                  <input
+                    type="file"
+                    ref={videoInputRef}
+                    onChange={handleVideoSelect}
+                    accept="video/*"
+                    className="hidden"
+                  />
 
-                <div className="flex items-center gap-1 text-gray-500 pb-1.5">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={sending}
-                    className="p-2 rounded-xl hover:bg-gray-100 hover:text-gray-800 transition"
-                    title="Attach customer photos (.jpg, .png, .webp)"
-                  >
-                    <ImageIcon size={20} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => videoInputRef.current?.click()}
-                    disabled={sending}
-                    className="p-2 rounded-xl hover:bg-gray-100 hover:text-gray-800 transition"
-                    title="Attach short product video (.mp4, .webm)"
-                  >
-                    <Video size={20} />
-                  </button>
-                </div>
+                  {/* Attachment Buttons */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-2 text-gray-500 hover:text-[#b08a78] hover:bg-amber-50 rounded-xl transition"
+                      title="Attach Photos"
+                    >
+                      <ImageIcon size={18} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => videoInputRef.current?.click()}
+                      className="p-2 text-gray-500 hover:text-[#b08a78] hover:bg-amber-50 rounded-xl transition"
+                      title="Attach Video"
+                    >
+                      <Video size={18} />
+                    </button>
+                  </div>
 
-                <div className="flex-1 min-w-0">
-                  <textarea
+                  {/* Text Input */}
+                  <input
+                    type="text"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage();
-                      }
-                    }}
-                    rows={1}
-                    placeholder="Type a reply to customer... (Press Enter to send)"
-                    disabled={sending}
-                    className="w-full max-h-28 py-2.5 px-3.5 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#b08a78] focus:border-transparent transition resize-none leading-relaxed"
+                    placeholder={
+                      activeConversation.type === "seller_admin"
+                        ? "Ask Gazaarabia Admin Support..."
+                        : "Type your reply to customer..."
+                    }
+                    className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#b08a78] focus:border-transparent transition"
                   />
-                </div>
 
-                <button
-                  type="submit"
-                  disabled={
-                    sending ||
-                    (!inputText.trim() && selectedImages.length === 0 && !selectedVideo)
-                  }
-                  className="px-4 sm:px-5 py-2.5 rounded-2xl bg-[#b08a78] hover:bg-[#976f5d] text-white font-bold text-xs sm:text-sm transition shadow-sm disabled:opacity-40 flex items-center gap-2 shrink-0 mb-0.5"
-                >
-                  {sending ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <>
-                      <Send size={15} />
-                      <span className="hidden sm:inline">Send Reply</span>
-                    </>
-                  )}
-                </button>
-              </form>
+                  {/* Send Button */}
+                  <button
+                    type="submit"
+                    disabled={
+                      sending ||
+                      (!inputText.trim() && selectedImages.length === 0 && !selectedVideo)
+                    }
+                    className="p-2.5 bg-[#b08a78] hover:bg-[#967262] text-white rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs shrink-0"
+                  >
+                    {sending ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <Send size={18} />
+                    )}
+                  </button>
+                </form>
+              </div>
             </>
           ) : (
-            /* Empty selection state */
-            <div className="h-full flex flex-col items-center justify-center p-8 text-center text-gray-400">
-              <div className="w-16 h-16 rounded-3xl bg-gray-50 flex items-center justify-center text-gray-300 mb-3 border border-gray-100">
-                <MessageSquare size={32} />
-              </div>
-              <h3 className="font-bold text-base text-gray-800">
-                Select a Customer Conversation
-              </h3>
-              <p className="text-xs text-gray-500 max-w-sm mt-1">
-                Choose a conversation from the left sidebar to view buyer inquiries, inspect attached products, and reply with photos or videos.
+            <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 p-8">
+              <MessageSquare size={36} className="text-gray-300 mb-2" />
+              <h4 className="font-bold text-sm text-gray-700">Select a Conversation</h4>
+              <p className="text-xs text-gray-400 mt-1 max-w-sm">
+                Choose a customer inquiry or connect with Gazaarabia Admin Support from the sidebar.
               </p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Lightbox */}
-      <MediaLightbox media={activeMedia} onClose={() => setActiveMedia(null)} />
+      {/* LIGHTBOX FOR FULL VIEW MEDIA */}
+      {activeMedia && (
+        <MediaLightbox
+          media={activeMedia}
+          onClose={() => setActiveMedia(null)}
+        />
+      )}
     </div>
   );
 }

@@ -17,6 +17,10 @@ export default function AdminHeader({ onMenuToggle }: { onMenuToggle: () => void
       title: "Dashboard",
       subtitle: "Overview of your store content and modules.",
     },
+    "/admin/messages": {
+      title: "Live Chat & Monitoring Command Center",
+      subtitle: "Audit buyer-seller interactions, resolve disputes, and support sellers in real time.",
+    },
     "/admin/category-list": {
       title: "Categories",
       subtitle: "Manage the available categories for your product catalog.",

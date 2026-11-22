@@ -26,9 +26,9 @@ export function ChatImage({ url, alt = "Photo", onClick, isSingle = true }: Chat
     <button
       type="button"
       onClick={onClick}
-      className={`group relative block overflow-hidden bg-stone-100 border border-stone-200/80 hover:border-[#b08a78] transition-all shadow-xs cursor-pointer text-left ${
+      className={`group relative block overflow-hidden bg-slate-50 border border-slate-200/90 hover:border-[#E82C3F] transition-all shadow-2xs cursor-pointer text-left ${
         isSingle
-          ? "w-full rounded-2xl"
+          ? "w-full max-w-[280px] rounded-2xl"
           : "w-24 h-24 sm:w-28 sm:h-28 rounded-xl shrink-0"
       }`}
     >
@@ -36,14 +36,14 @@ export function ChatImage({ url, alt = "Photo", onClick, isSingle = true }: Chat
         src={url}
         alt={alt}
         onError={() => setError(true)}
-        className={`block w-full object-cover group-hover:scale-105 transition-transform duration-300 ${
+        className={`block w-full object-contain bg-slate-50 group-hover:scale-102 transition-transform duration-300 ${
           isSingle
-            ? "max-h-64 sm:max-h-72 object-cover rounded-2xl"
+            ? "max-h-52 sm:max-h-56 object-contain rounded-2xl"
             : "h-full w-full object-cover"
         }`}
       />
-      <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-        <div className="p-2 rounded-full bg-black/60 backdrop-blur-xs shadow-sm">
+      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+        <div className="p-2 rounded-full bg-[#1E2A4A]/80 backdrop-blur-xs shadow-sm">
           <Maximize2 size={16} />
         </div>
       </div>

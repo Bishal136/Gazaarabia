@@ -31,24 +31,31 @@ export async function PATCH(
       return NextResponse.json({ message: "Conversation not found" }, { status: 404 });
     }
 
+    const roleName = user.role?.name?.toLowerCase() || "";
+    const isAdmin = roleName === "admin" || roleName === "superadmin";
+
     const isCustomer = conversation.customerId === user.id;
     let isSeller = conversation.sellerUserId === user.id;
 
-    if (!isSeller) {
+    if (!isSeller && !isAdmin) {
       const sellerDoc = await db.collection("sellers").findOne({ userId: user.id });
       if (sellerDoc && sellerDoc.id === conversation.sellerId) {
         isSeller = true;
       }
     }
 
-    if (!isCustomer && !isSeller) {
+    if (!isCustomer && !isSeller && !isAdmin) {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
 
+    // Mark messages directed to this user as read
     await db.collection("messages").updateMany(
       {
         conversationId: conversationId,
-        receiverId: user.id,
+        $or: [
+          { receiverId: user.id },
+          ...(isAdmin ? [{ receiverId: 0 }] : []),
+        ],
         isRead: false,
       },
       {
@@ -56,7 +63,12 @@ export async function PATCH(
       }
     );
 
-    if (isCustomer) {
+    if (isAdmin) {
+      await db.collection("conversations").updateOne(
+        { id: conversationId },
+        { $set: { unreadCountAdmin: 0, updatedAt: new Date() } }
+      );
+    } else if (isCustomer) {
       await db.collection("conversations").updateOne(
         { id: conversationId },
         { $set: { unreadCountCustomer: 0, updatedAt: new Date() } }

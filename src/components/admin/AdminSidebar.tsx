@@ -43,6 +43,7 @@ import { logoutUser } from "@/lib/logout";
 
 const links = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/messages", label: "Live Chat & Monitoring", icon: MessageSquare },
 
   {
     label: "Menus",

@@ -4,7 +4,7 @@ import { connectToDatabase, mongoose } from "@/lib/mongoose";
 
 export const dynamic = "force-dynamic";
 
-// Helper for next sequence ID
+// Helper for atomic sequence IDs
 async function getNextId(collection: any): Promise<number> {
   const last = await collection.find().sort({ id: -1 }).limit(1).toArray();
   return last.length > 0 && typeof last[0].id === "number" ? last[0].id + 1 : 1;
@@ -12,7 +12,7 @@ async function getNextId(collection: any): Promise<number> {
 
 // --------------------------------------------------------------------------
 // GET /api/chat/conversations
-// Returns all conversations for the authenticated customer or seller
+// Returns conversations for Customer or Seller, filterable by type
 // --------------------------------------------------------------------------
 export async function GET(req: NextRequest) {
   try {
@@ -27,6 +27,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: "Database not connected" }, { status: 500 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const requestedType = searchParams.get("type"); // "customer_seller" | "seller_admin" | "all"
+
     const isSeller = user.role?.name?.toLowerCase() === "seller";
     let sellerDoc: any = null;
     let query: any = {};
@@ -36,12 +39,27 @@ export async function GET(req: NextRequest) {
       if (!sellerDoc) {
         return NextResponse.json({ success: true, data: [] });
       }
-      query = {
-        $or: [
-          { sellerId: sellerDoc.id },
-          { sellerUserId: user.id },
-        ],
-      };
+
+      if (requestedType === "seller_admin") {
+        query = {
+          type: "seller_admin",
+          $or: [{ sellerId: sellerDoc.id }, { sellerUserId: user.id }],
+        };
+      } else if (requestedType === "customer_seller") {
+        query = {
+          $or: [
+            { type: "customer_seller", sellerId: sellerDoc.id },
+            { type: "customer_seller", sellerUserId: user.id },
+            // Legacy backwards-compatibility for existing docs without explicit type
+            { type: { $exists: false }, sellerId: sellerDoc.id },
+            { type: { $exists: false }, sellerUserId: user.id },
+          ],
+        };
+      } else {
+        query = {
+          $or: [{ sellerId: sellerDoc.id }, { sellerUserId: user.id }],
+        };
+      }
     } else {
       // Customer
       query = { customerId: user.id };
@@ -94,8 +112,11 @@ export async function GET(req: NextRequest) {
       const prod = conv.productId ? productMap.get(conv.productId) : null;
       const prodImage = conv.productId ? (imageMap.get(conv.productId) || prod?.image || "/placeholder.png") : null;
 
+      const convType = conv.type || (conv.customerId ? "customer_seller" : "seller_admin");
+
       return {
         id: conv.id,
+        type: convType,
         customerId: conv.customerId,
         sellerId: conv.sellerId,
         sellerUserId: conv.sellerUserId || sll?.userId,
@@ -103,12 +124,17 @@ export async function GET(req: NextRequest) {
         lastMessageText: conv.lastMessageText || "",
         lastMessageAt: conv.lastMessageAt || conv.updatedAt,
         lastMessageSenderId: conv.lastMessageSenderId || null,
+        lastMessageSenderRole: conv.lastMessageSenderRole || "customer",
         unreadCount: isSeller ? (conv.unreadCountSeller || 0) : (conv.unreadCountCustomer || 0),
         unreadCountCustomer: conv.unreadCountCustomer || 0,
         unreadCountSeller: conv.unreadCountSeller || 0,
+        unreadCountAdmin: conv.unreadCountAdmin || 0,
+        status: conv.status || (conv.isFlagged ? "flagged" : "active"),
+        isFlagged: Boolean(conv.isFlagged),
+        flagReason: conv.flagReason || null,
         customer: {
           id: cust?.id || conv.customerId,
-          name: cust?.name || "Customer",
+          name: cust?.name || (convType === "seller_admin" ? "Platform Admin" : "Customer"),
           email: cust?.email || "",
         },
         seller: {
@@ -142,7 +168,8 @@ export async function GET(req: NextRequest) {
 
 // --------------------------------------------------------------------------
 // POST /api/chat/conversations
-// Find or create conversation with a seller (optional productId context)
+// 1) Customer initiates or retrieves Customer ↔ Seller chat
+// 2) Seller initiates or retrieves Seller ↔ Admin chat
 // --------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
@@ -151,6 +178,82 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Unauthorized. Please log in to chat." }, { status: 401 });
     }
 
+    const body = await req.json().catch(() => ({}));
+    const convType = body.type || (body.sellerId ? "customer_seller" : "seller_admin");
+
+    await connectToDatabase();
+    const db = mongoose.connection.db;
+    if (!db) {
+      return NextResponse.json({ message: "Database not connected" }, { status: 500 });
+    }
+
+    // -----------------------------------------------------------------------
+    // FLOW A: Seller ↔ Admin Chat
+    // -----------------------------------------------------------------------
+    if (convType === "seller_admin") {
+      const isSeller = user.role?.name?.toLowerCase() === "seller";
+      if (!isSeller) {
+        return NextResponse.json({ message: "Only registered sellers can contact Platform Admin Support" }, { status: 403 });
+      }
+
+      const sellerDoc = await db.collection("sellers").findOne({ userId: user.id });
+      if (!sellerDoc) {
+        return NextResponse.json({ message: "Seller profile not found" }, { status: 404 });
+      }
+
+      let conversation = await db.collection("conversations").findOne({
+        type: "seller_admin",
+        $or: [{ sellerId: sellerDoc.id }, { sellerUserId: user.id }],
+      });
+
+      if (!conversation) {
+        const newId = await getNextId(db.collection("conversations"));
+        const newDoc = {
+          id: newId,
+          type: "seller_admin",
+          sellerId: sellerDoc.id,
+          sellerUserId: user.id,
+          adminId: null,
+          lastMessageText: "Conversation opened with GAZAARABIA Admin Support",
+          lastMessageAt: new Date(),
+          lastMessageSenderId: user.id,
+          lastMessageSenderRole: "seller",
+          unreadCountCustomer: 0,
+          unreadCountSeller: 0,
+          unreadCountAdmin: 0,
+          status: "active",
+          isFlagged: false,
+          isArchived: false,
+          isMonitored: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        await db.collection("conversations").insertOne(newDoc);
+        conversation = newDoc;
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          ...conversation,
+          seller: {
+            id: sellerDoc.id,
+            shopName: sellerDoc.shopName || "Your Store",
+            storeName: sellerDoc.shopName || "Your Store",
+            logo: sellerDoc.logo || null,
+          },
+          admin: {
+            name: "GAZAARABIA Platform Support",
+            badge: "Official Support Team",
+          },
+        },
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // FLOW B: Customer ↔ Seller Chat
+    // -----------------------------------------------------------------------
     const customerId = Number(user.id);
     const sellerId = Number(body.sellerId);
     const productId = body.productId ? Number(body.productId) : null;
@@ -159,25 +262,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Valid sellerId is required" }, { status: 400 });
     }
 
-    await connectToDatabase();
-    const db = mongoose.connection.db;
-    if (!db) {
-      return NextResponse.json({ message: "Database not connected" }, { status: 500 });
-    }
-
-    // Resolve seller
     const seller = await db.collection("sellers").findOne({ id: sellerId });
     const sellerUserId = seller?.userId || null;
     const shopName = seller?.shopName || "GAZAARABIA Verified Store";
 
-    // Check if conversation already exists between this customer and seller
     let conversation = await db.collection("conversations").findOne({
       customerId: customerId,
       sellerId: sellerId,
     });
 
     if (conversation) {
-      // If productId was passed and conversation didn't have one, or new product context is provided
       if (productId && conversation.productId !== productId) {
         await db.collection("conversations").updateOne(
           { id: conversation.id },
@@ -186,10 +280,10 @@ export async function POST(req: NextRequest) {
         conversation.productId = productId;
       }
     } else {
-      // Create new conversation
       const newId = await getNextId(db.collection("conversations"));
       const newDoc = {
         id: newId,
+        type: "customer_seller",
         customerId: user.id,
         sellerId: sellerId,
         sellerUserId: sellerUserId,
@@ -197,9 +291,14 @@ export async function POST(req: NextRequest) {
         lastMessageText: "",
         lastMessageAt: new Date(),
         lastMessageSenderId: user.id,
+        lastMessageSenderRole: "customer",
         unreadCountCustomer: 0,
         unreadCountSeller: 0,
+        unreadCountAdmin: 0,
+        status: "active",
+        isFlagged: false,
         isArchived: false,
+        isMonitored: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -208,7 +307,6 @@ export async function POST(req: NextRequest) {
       conversation = newDoc;
     }
 
-    // Resolve product details if context exists
     let productData: any = null;
     if (conversation.productId) {
       const prod = await db.collection("products").findOne(

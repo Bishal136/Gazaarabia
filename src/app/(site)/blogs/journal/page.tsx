@@ -7,9 +7,29 @@ import Pagination from "@/components/Pagination";
 // import { blogCategoryService } from "@/lib/services/blogCategoryService";
 import { blogsService } from "@/lib/services/front-end/blogsService";
 
-function stripHtmlToExcerpt(html: string, maxLength: number = 160): string {
+function stripHtmlToExcerpt(html: string, maxLength: number = 140): string {
     if (!html) return "";
-    const clean = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    const withoutNav = html
+        .replace(/<!--[\s\S]*?-->/g, " ")
+        .replace(/<header\b[^>]*>[\s\S]*?<\/header>/gi, " ")
+        .replace(/<nav\b[^>]*>[\s\S]*?<\/nav>/gi, " ")
+        .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+        .replace(/<h1\b[^>]*>[\s\S]*?<\/h1>/gi, " ");
+
+    const clean = withoutNav
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&rsaquo;/gi, "›")
+        .replace(/&mdash;/gi, "—")
+        .replace(/&ndash;/gi, "–")
+        .replace(/&rsquo;/gi, "'")
+        .replace(/&lsquo;/gi, "'")
+        .replace(/&rdquo;/gi, '"')
+        .replace(/&ldquo;/gi, '"')
+        .replace(/&amp;/gi, "&")
+        .replace(/\s+/g, " ")
+        .trim();
+
     return clean.length > maxLength ? `${clean.substring(0, maxLength)}...` : clean;
 }
 
@@ -164,45 +184,53 @@ export default function BlogsPage() {
                             {currentBlogs.map((blog) => (
                                 <div
                                     key={blog.id}
-                                    className="group relative bg-white rounded-2xl shadow-sm border border-[var(--mid-gray)] overflow-hidden hover:shadow-xl hover:-translate-y-2 transition-all duration-500"
+                                    className="group relative bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden hover:shadow-xl hover:-translate-y-2 transition-all duration-500 flex flex-col"
                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-br from-[var(--brand-secondary)] to-[var(--brand-primary)] opacity-0 group-hover:opacity-15 transition-opacity duration-500"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-br from-[var(--brand-secondary)] to-[var(--brand-primary)] opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none"></div>
 
-                                    <div className="relative h-56 w-full overflow-hidden bg-gray-100">
+                                    {/* Image with object-top for full portrait silhouette */}
+                                    <div className="relative h-64 w-full overflow-hidden bg-stone-100">
                                         <img
                                             src={blog.image || "/images/home/hero-desktop-1.jpg"}
                                             alt={blog.title}
-                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                            className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700"
                                         />
+                                        {blog.category?.name && (
+                                            <span className="absolute top-3 left-3 bg-slate-950/85 backdrop-blur-md text-white text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-2xs">
+                                                {blog.category.name}
+                                            </span>
+                                        )}
                                     </div>
 
-                                    <div className="relative z-10 p-6 flex flex-col gap-3">
-                                        <div className="flex items-center gap-4 text-[var(--text-muted)] text-xs">
-                                            <span className="flex items-center gap-1">
-                                                <FaCalendarAlt size={12} />
-                                                {new Date(blog.createdAt).toLocaleDateString()}
-                                            </span>
-                                            <span className="flex items-center gap-1">
-                                                <FaUserAlt size={12} /> Admin
-                                            </span>
+                                    <div className="relative z-10 p-6 flex flex-col gap-3 flex-1 justify-between">
+                                        <div>
+                                            <div className="flex items-center gap-4 text-stone-400 text-xs mb-1">
+                                                <span className="flex items-center gap-1.5 font-medium">
+                                                    <FaCalendarAlt size={11} className="text-stone-400" />
+                                                    {new Date(blog.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                                </span>
+                                                <span className="flex items-center gap-1.5 font-medium">
+                                                    <FaUserAlt size={10} className="text-stone-400" /> Gazaarabia Editorial
+                                                </span>
+                                            </div>
+
+                                            <h3
+                                                className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-[var(--brand-primary)] transition-colors line-clamp-2 leading-snug"
+                                            >
+                                                {blog.title}
+                                            </h3>
+
+                                            <p className="text-slate-600 text-sm line-clamp-2 leading-relaxed mt-1 font-light">
+                                                {stripHtmlToExcerpt(blog.content, 140)}
+                                            </p>
                                         </div>
-
-                                        <h3
-                                            className="text-lg font-semibold text-[var(--black)] group-hover:text-[var(--brand-primary)] transition-colors truncate"
-                                        >
-                                            {blog.title}
-                                        </h3>
-
-                                        <p className="text-[var(--text-secondary)] text-sm line-clamp-3 leading-relaxed">
-                                            {stripHtmlToExcerpt(blog.content, 140)}
-                                        </p>
 
                                         <a
                                             href={`/blogs/journal/${blog.slug}`}
-                                            className="mt-2 inline-flex items-center gap-2 text-[var(--brand-secondary)] font-semibold hover:gap-3 transition-all"
+                                            className="mt-2 inline-flex items-center gap-2 text-emerald-700 font-semibold hover:gap-3 transition-all text-xs uppercase tracking-wider"
                                         >
-                                            Read More
-                                            <FaChevronRight size={12} />
+                                            <span>Read Essay</span>
+                                            <FaChevronRight size={11} />
                                         </a>
                                     </div>
 

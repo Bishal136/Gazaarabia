@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import AdminHeader from "../admin/AdminHeader";
 import AdminSidebar from "../admin/AdminSidebar";
 
@@ -8,6 +9,8 @@ const SIDEBAR_FULL = 256;
 const SIDEBAR_COLLAPSED = 80;
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isFixedViewport = pathname === "/admin/messages";
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -44,7 +47,7 @@ const [isMobile, setIsMobile] = useState(false);
   
 
   return (
-    <div className="flex min-h-screen bg-[#f5f6fa] relative">
+    <div className={`flex ${isFixedViewport ? "h-screen overflow-hidden" : "min-h-screen"} bg-[#f5f6fa] relative`}>
       {/* Sidebar */}
       <AdminSidebar
         isOpen={sidebarOpen}
@@ -57,35 +60,29 @@ const [isMobile, setIsMobile] = useState(false);
 
       {/* Main Content Area */}
       <div
-        className={`flex flex-col flex-1 min-h-screen relative z-10 transition-all duration-300 ease-in-out`}
+        className={`flex flex-col flex-1 ${isFixedViewport ? "h-screen overflow-hidden" : "min-h-screen"} relative z-10 transition-all duration-300 ease-in-out`}
         style={{
           //  Shifts content when sidebar expands/collapses
           marginLeft: sidebarOpen && collapsed ? "80px" : (!sidebarOpen && !collapsed ? "256px" : (!isMobile && !sidebarOpen && collapsed ? "80px" : !isMobile ? "256px" : "")),
         }}
-
-    
       >
-{/* <div
-  className={`flex flex-col flex-1 min-h-screen relative z-10 transition-all duration-300
-    ${isMobile
-      ? "ml-0"
-      : sidebarOpen
-        ? collapsed
-          ? "ml-[80px]"
-          : "ml-64"
-        : "ml-0"
-    }
-  `}
-> */}
-        {/* Header */}
-        <AdminHeader onMenuToggle={() => {
-          console.log('sidebarOpen:>', !sidebarOpen);
-          setSidebarOpen(!sidebarOpen)
-          console.log("isMobile:>", isMobile)
-        }} />
+        {/* Header (Skipped for fixed-viewport app like /admin/messages to allow sleek edge-to-edge toolbar) */}
+        {!isFixedViewport && (
+          <AdminHeader onMenuToggle={() => {
+            console.log('sidebarOpen:>', !sidebarOpen);
+            setSidebarOpen(!sidebarOpen)
+            console.log("isMobile:>", isMobile)
+          }} />
+        )}
 
         {/* Main Area */}
-        <main className="flex-1 p-6 bg-[#f5f6fa] overflow-y-auto">
+        <main
+          className={`flex-1 ${
+            isFixedViewport
+              ? "p-0 overflow-hidden flex flex-col min-h-0 bg-[#FAFAFA]"
+              : "p-6 overflow-y-auto bg-[#f5f6fa]"
+          }`}
+        >
           {children}
         </main>
       </div>

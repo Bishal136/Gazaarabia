@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gazaarabia — Admin Messages & Live Monitoring (Figma Design Prototype)</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              red: '#E82C3F',
+              redHover: '#D32436',
+              navy: '#1E2A4A',
+              navyDark: '#141D33',
+              navyLight: '#28375C',
+              green: '#009639',
+              amber: '#D97706',
+              amberBg: '#FFFDF7',
+              surface: '#FAFAFA',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', -apple-system, 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background-color: #FAFAFA;
+      color: #0F172A;
+    }
+    .tabular-nums { font-variant-numeric: tabular-nums; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+  </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col bg-[#F8FAFC] text-slate-900 select-none">
+
+  <!-- Top Figma Spec Bar (For UI/UX Designers & Devs) -->
+  <aside class="h-9 shrink-0 bg-slate-900 border-b border-slate-800 px-4 text-xs text-slate-300 flex items-center justify-between z-30">
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-1.5 font-semibold text-white tracking-wide">
+        <svg class="w-3.5 h-3.5 text-[#E82C3F]" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/>
+        </svg>
+        <span>FIGMA DESIGN SYSTEM · GAZAARABIA COMMAND CENTER</span>
+      </div>
+      <span class="text-slate-600">|</span>
+      <span class="text-slate-400 hidden sm:inline">Frame: <strong class="text-slate-200">1440 × 900px Desktop HD</strong></span>
+      <span class="text-slate-600 hidden sm:inline">|</span>
+      <span class="text-slate-400 hidden md:inline">Tokens: <span class="inline-block w-2.5 h-2.5 rounded-full bg-[#E82C3F] align-middle mr-1"></span>#E82C3F (Crimson) <span class="inline-block w-2.5 h-2.5 rounded-full bg-[#1E2A4A] align-middle mx-1"></span>#1E2A4A (Navy) <span class="inline-block w-2.5 h-2.5 rounded-full bg-[#009639] align-middle mx-1"></span>#009639 (Green)</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">Figma Auto-Layout Ready</span>
+      <button onclick="alert('Tip: Use Figma Plugin \'HTML to Design\' or \'Builder.io\' to import this URL or file directly into your Figma Canvas!')" class="text-[11px] bg-[#E82C3F] hover:bg-[#D32436] text-white px-2.5 py-0.5 rounded font-medium transition-colors">
+        Import to Figma
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Body: Sidebar + Workspace -->
+  <div class="flex-1 flex min-h-0 overflow-hidden">
+
+    <!-- Gazaarabia Admin Sidebar (Exact 240px Desktop Navigation) -->
+    <aside class="w-60 shrink-0 bg-[#1E2A4A] text-slate-200 flex flex-col justify-between border-r border-slate-800 z-20">
+      <div>
+        <!-- Brand Header -->
+        <div class="h-14 px-5 border-b border-white/10 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-lg bg-[#E82C3F] text-white font-bold text-sm flex items-center justify-center shadow-xs">
+              G
+            </div>
+            <div>
+              <div class="text-sm font-bold text-white tracking-tight leading-none">Gazaarabia</div>
+              <div class="text-[10px] text-slate-400 tracking-wider uppercase font-semibold mt-0.5">Admin Central</div>
+            </div>
+          </div>
+          <button class="text-slate-400 hover:text-white transition-colors" title="Collapse sidebar">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Sidebar Navigation -->
+        <nav class="p-3 space-y-1 text-xs font-medium">
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+            </svg>
+            <span>Dashboard</span>
+          </a>
+
+          <!-- Active Item: Live Chat & Monitoring -->
+          <a href="#" class="flex items-center justify-between px-3 py-2 rounded-lg bg-[#E82C3F] text-white font-semibold shadow-xs">
+            <div class="flex items-center gap-3">
+              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span>Live Chat & Monitoring</span>
+            </div>
+            <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+          </a>
+
+          <a href="#" class="flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+              <span>Store Orders</span>
+            </div>
+            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+
+          <a href="#" class="flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              <span>Products Catalog</span>
+            </div>
+            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+
+          <a href="#" class="flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <span>Users & Sellers</span>
+            </div>
+            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+
+          <a href="#" class="flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Finance & Payouts</span>
+            </div>
+            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span>Platform Settings</span>
+          </a>
+        </nav>
+      </div>
+
+      <!-- User Footnote -->
+      <div class="p-3 border-t border-white/10 flex items-center justify-between text-xs">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-full bg-slate-700 text-white font-medium flex items-center justify-center text-xs">
+            A
+          </div>
+          <div class="min-w-0">
+            <div class="font-medium text-white truncate">Super Admin</div>
+            <div class="text-[10px] text-slate-400">admin@gazaarabia.com</div>
+          </div>
+        </div>
+        <button class="text-slate-400 hover:text-white transition-colors" title="Logout">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Center & Right: Messages Command Center Workspace -->
+    <div class="flex-1 flex flex-col min-w-0 min-h-0 bg-white">
+
+      <!-- Header Toolbar: Title, Tabs & Action Controls -->
+      <header class="h-14 shrink-0 bg-white border-b border-slate-200 px-6 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-6 overflow-x-auto h-full">
+          <!-- Page Title Breadcrumbs -->
+          <div class="flex items-center gap-2 shrink-0">
+            <span class="text-sm font-bold tracking-tight text-slate-900">Messages</span>
+            <span class="text-slate-300">/</span>
+            <span class="text-xs font-medium text-slate-500">Moderation Queue</span>
+          </div>
+
+          <!-- Underline Filter Tabs -->
+          <nav id="filter-tabs" class="flex items-center gap-6 h-full shrink-0 text-xs">
+            <button class="h-full border-b-2 border-slate-900 font-semibold text-slate-900 flex items-center gap-1.5 px-0.5">
+              <span>All</span>
+              <span class="px-1.5 py-0.2 rounded-full bg-slate-100 text-[10px] font-bold text-slate-700">4</span>
+            </button>
+            <button class="h-full border-b-2 border-transparent hover:border-slate-300 text-slate-500 hover:text-slate-800 font-medium flex items-center gap-1.5 px-0.5 transition-colors">
+              <span>Disputes & Flagged</span>
+              <span class="px-1.5 py-0.2 rounded-full bg-rose-50 text-[10px] font-bold text-rose-600">0</span>
+            </button>
+            <button class="h-full border-b-2 border-transparent hover:border-slate-300 text-slate-500 hover:text-slate-800 font-medium flex items-center gap-1.5 px-0.5 transition-colors">
+              <span>Seller Support</span>
+              <span class="px-1.5 py-0.2 rounded-full bg-sky-50 text-[10px] font-bold text-sky-600">1</span>
+            </button>
+            <button class="h-full border-b-2 border-transparent hover:border-slate-300 text-slate-500 hover:text-slate-800 font-medium flex items-center gap-1.5 px-0.5 transition-colors">
+              <span>Buyer Inquiries</span>
+              <span class="px-1.5 py-0.2 rounded-full bg-slate-100 text-[10px] font-bold text-slate-600">3</span>
+            </button>
+          </nav>
+        </div>
+
+        <!-- Right Header Actions -->
+        <div class="flex items-center gap-2.5 shrink-0">
+          <button type="button" title="Refresh Live Queue" class="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+          <button type="button" class="h-8 px-3.5 inline-flex items-center gap-1.5 rounded-lg bg-[#1E2A4A] hover:bg-[#141D33] text-white text-xs font-semibold shadow-xs transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>+ New Seller Chat</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- 3-Pane Core Workspace -->
+      <div class="flex-1 flex min-h-0 overflow-hidden bg-white">
+
+        <!-- PANE 1: Conversation Queue List (Width: 320px) -->
+        <aside class="w-80 shrink-0 border-r border-slate-200 flex flex-col bg-[#F8FAFC]/50 min-h-0">
+          <!-- Queue Search Box -->
+          <div class="p-3 border-b border-slate-200 bg-white">
+            <div class="relative">
+              <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 105.65 5.65a7.5 7.5 0 0011 11z" />
+              </svg>
+              <input type="text" placeholder="Search customers, stores, messages..." value=""
+                class="w-full h-8 pl-9 pr-3 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-400 transition-colors" />
+            </div>
+          </div>
+
+          <!-- Thread Items Stack -->
+          <div class="flex-1 overflow-y-auto divide-y divide-slate-100">
+
+            <!-- Active Thread Item (Selected) -->
+            <div class="p-3.5 bg-white border-l-4 border-l-[#E82C3F] shadow-xs cursor-pointer hover:bg-slate-50 transition-colors">
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                  <div class="w-7 h-7 rounded-full bg-rose-50 text-[#E82C3F] font-bold text-xs flex items-center justify-center shrink-0 border border-rose-100">
+                    T
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-xs font-semibold text-slate-900 truncate">Tufayel Ahmed</div>
+                    <div class="text-[11px] text-slate-500 truncate">demo shop</div>
+                  </div>
+                </div>
+                <span class="text-[10px] font-medium text-slate-400 shrink-0">12:43 AM</span>
+              </div>
+              <p class="text-xs text-slate-600 line-clamp-1 mt-1.5 pl-9">
+                Can I contact you on whatsapp or pay via paypal to your...
+              </p>
+              <div class="flex items-center gap-1.5 mt-2 pl-9">
+                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-[10px] font-semibold text-emerald-700 border border-emerald-200/60">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Resolved
+                </span>
+                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-[10px] font-medium text-amber-800 border border-amber-200/60">
+                  <svg class="w-2.5 h-2.5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                  </svg>
+                  2 Notes
+                </span>
+                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-[10px] font-medium text-rose-700 border border-rose-200/60">
+                  ⚠ Policy Watch
+                </span>
+              </div>
+            </div>
+
+            <!-- Thread Item 2: Seller Direct Channel -->
+            <div class="p-3.5 bg-transparent cursor-pointer hover:bg-slate-50 transition-colors">
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                  <div class="w-7 h-7 rounded-full bg-sky-50 text-sky-600 font-bold text-xs flex items-center justify-center shrink-0 border border-sky-100">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z" />
+                    </svg>
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-xs font-semibold text-slate-900 truncate">demo shop</div>
+                    <div class="text-[11px] text-slate-500 truncate">Platform Admin Channel</div>
+                  </div>
+                </div>
+                <span class="text-[10px] font-medium text-slate-400 shrink-0">2m ago</span>
+              </div>
+              <p class="text-xs text-slate-600 line-clamp-1 mt-1.5 pl-9">
+                Payouts are processed every Thursday morning...
+              </p>
+              <div class="flex items-center gap-1.5 mt-2 pl-9">
+                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-sky-50 text-[10px] font-semibold text-sky-700 border border-sky-200/60">
+                  Seller Support
+                </span>
+              </div>
+            </div>
+
+            <!-- Thread Item 3: Regular Inquiry -->
+            <div class="p-3.5 bg-transparent cursor-pointer hover:bg-slate-50 transition-colors">
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                  <div class="w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0">
+                    B
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-xs font-semibold text-slate-900 truncate">Bishal Biswas</div>
+                    <div class="text-[11px] text-slate-500 truncate">GAZAARABIA</div>
+                  </div>
+                </div>
+                <span class="text-[10px] font-medium text-slate-400 shrink-0">Nov 13</span>
+              </div>
+              <p class="text-xs text-slate-600 line-clamp-1 mt-1.5 pl-9">
+                gg · Butter Yellow Embellished Abaya
+              </p>
+              <div class="flex items-center gap-1.5 mt-2 pl-9">
+                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-[10px] font-medium text-slate-600">
+                  Open
+                </span>
+              </div>
+            </div>
+
+            <!-- Thread Item 4: Media Inquiry -->
+            <div class="p-3.5 bg-transparent cursor-pointer hover:bg-slate-50 transition-colors">
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                  <div class="w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0">
+                    B
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-xs font-semibold text-slate-900 truncate">Bishal Biswas</div>
+                    <div class="text-[11px] text-slate-500 truncate">Gambo12</div>
+                  </div>
+                </div>
+                <span class="text-[10px] font-medium text-slate-400 shrink-0">Oct 29</span>
+              </div>
+              <p class="text-xs text-slate-600 line-clamp-1 mt-1.5 pl-9 flex items-center gap-1">
+                <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span>Shared photos · Abaya Normal Pink</span>
+              </p>
+              <div class="flex items-center gap-1.5 mt-2 pl-9">
+                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-[10px] font-medium text-slate-600">
+                  Open
+                </span>
+              </div>
+            </div>
+
+          </div>
+        </aside>
+
+        <!-- PANE 2: Active Conversation Stream (Width: Flex 1) -->
+        <main class="flex-1 flex flex-col min-w-0 min-h-0 bg-white">
+
+          <!-- Chat Top Action Header -->
+          <div class="h-14 shrink-0 px-6 border-b border-slate-200 flex items-center justify-between gap-3 bg-white">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2.5">
+                <h1 class="text-sm font-bold text-slate-900 truncate">Tufayel Ahmed / demo shop</h1>
+                <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-full shrink-0">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                  Resolved
+                </span>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-0.5 tabular-nums">Thread #4 · Customer ↔ Seller Monitoring · Started Nov 21, 2026</p>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <button type="button" class="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors">
+                <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2z" />
+                </svg>
+                <span>Flag Dispute</span>
+              </button>
+              <button type="button" class="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg border border-emerald-600 bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors">
+                <span>Reopen Thread</span>
+              </button>
+              <button type="button" title="Toggle Dossier Inspector" class="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Message Stream Timeline -->
+          <div class="flex-1 overflow-y-auto px-6 lg:px-10 py-6 space-y-5 bg-[#FAFAFA]/70">
+
+            <!-- Message 1: Customer Message -->
+            <div class="flex items-start gap-3 max-w-2xl">
+              <div class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0">
+                T
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-baseline gap-2 mb-1">
+                  <span class="text-xs font-semibold text-slate-900">Tufayel Ahmed</span>
+                  <span class="text-[11px] text-slate-400 tabular-nums">11:59 PM</span>
+                </div>
+                <div class="bg-white border border-slate-200/90 rounded-2xl rounded-tl-sm px-4 py-2.5 text-xs text-slate-800 shadow-2xs leading-relaxed">
+                  Hi, is this modest dress true to UK sizing?
+                </div>
+              </div>
+            </div>
+
+            <!-- Message 2: OFFICIAL MODERATOR NOTICE (Gazaarabia Platform Intervention) -->
+            <div class="max-w-2xl mx-auto my-3">
+              <div class="bg-white border-l-4 border-l-[#E82C3F] border border-slate-200 rounded-xl p-4 shadow-2xs">
+                <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 mb-2">
+                  <div class="flex items-center gap-2">
+                    <div class="w-5 h-5 rounded-md bg-rose-50 text-[#E82C3F] flex items-center justify-center">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                    </div>
+                    <span class="text-xs font-bold text-slate-900 uppercase tracking-wide">Official Platform Moderator Notice</span>
+                  </div>
+                  <span class="text-[11px] font-medium text-slate-400 tabular-nums">12:00 AM · Visible to All</span>
+                </div>
+                <p class="text-xs text-slate-700 leading-relaxed">
+                  Official Moderator Notice: Please check the standard size guide on the item page. All transactions and discussions must remain on the platform.
+                </p>
+                <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                  <span>Issued by Gazaarabia Trust & Safety Team</span>
+                  <span class="text-emerald-700 font-semibold flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                    Verified Platform Stamp
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Message 3: CONFIDENTIAL INTERNAL STAFF NOTE (Admin Staff Only) -->
+            <div class="max-w-2xl mx-auto my-3">
+              <div class="bg-[#FFFDF7] border-l-4 border-l-amber-500 border border-amber-200/80 rounded-xl p-4 shadow-2xs">
+                <div class="flex items-center justify-between gap-2 border-b border-amber-200/50 pb-2 mb-2">
+                  <div class="flex items-center gap-2">
+                    <div class="w-5 h-5 rounded-md bg-amber-100 text-amber-800 flex items-center justify-center">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    </div>
+                    <span class="text-xs font-bold text-amber-900 tracking-wide uppercase">Confidential Internal Staff Note (Staff Only)</span>
+                  </div>
+                  <span class="text-[11px] font-medium text-amber-700 tabular-nums">12:05 AM · Hidden</span>
+                </div>
+                <p class="text-xs text-amber-950 font-mono leading-relaxed break-all bg-amber-50/60 p-2 rounded border border-amber-200/40">
+                  Internal audit check: INTERNAL_CONFIDENTIAL_AUDIT_KEY_77492 · Customer accounts verified. Seller delivery metric within SLA.
+                </p>
+                <div class="mt-2 pt-1.5 flex items-center justify-between text-[11px] text-amber-700">
+                  <span>Author: Super Admin</span>
+                  <span>Logged in immutable audit ledger</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Message 4: Flagged Customer Message (Policy Alert) -->
+            <div class="flex items-start gap-3 max-w-2xl">
+              <div class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0">
+                T
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-baseline gap-2 mb-1">
+                  <span class="text-xs font-semibold text-slate-900">Tufayel Ahmed</span>
+                  <span class="text-[11px] text-slate-400 tabular-nums">12:15 AM</span>
+                </div>
+                <div class="bg-white border border-rose-200 rounded-2xl rounded-tl-sm px-4 py-2.5 text-xs text-slate-800 shadow-2xs leading-relaxed">
+                  Can I contact you on whatsapp or pay via paypal to your email customer@gmail.com?
+                  <!-- Flagged Warning Pill -->
+                  <div class="mt-2 pt-2 border-t border-rose-100 flex items-center gap-1.5 text-[11px] font-medium text-rose-700">
+                    <svg class="w-3.5 h-3.5 text-rose-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                    <span>System Policy Flag: Off-platform payment / external contact detected</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Message 5: Seller Response -->
+            <div class="flex items-start gap-3 max-w-2xl ml-auto flex-row-reverse">
+              <div class="w-8 h-8 rounded-full bg-[#1E2A4A] text-white font-bold text-xs flex items-center justify-center shrink-0">
+                S
+              </div>
+              <div class="min-w-0 text-right">
+                <div class="flex items-baseline justify-end gap-2 mb-1">
+                  <span class="text-[11px] text-slate-400 tabular-nums">12:17 AM</span>
+                  <span class="text-xs font-semibold text-slate-900">demo shop (Seller)</span>
+                </div>
+                <div class="bg-[#1E2A4A] text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-xs text-left shadow-2xs leading-relaxed">
+                  Hello! All orders and transactions must go directly through Gazaarabia checkout. We cannot accept PayPal or WhatsApp directly.
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Pinned Moderation Composer (Dual-Mode: Public Notice vs Internal Note) -->
+          <div class="shrink-0 border-t border-slate-200 bg-white px-6 py-4">
+            <!-- Mode Switch & Preset Toolbar -->
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-2.5">
+              <div class="inline-flex items-center rounded-lg bg-slate-100 p-0.5 border border-slate-200/80">
+                <button type="button" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all bg-[#E82C3F] text-white shadow-xs flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                  </svg>
+                  <span>Public Moderator Notice</span>
+                </button>
+                <button type="button" class="px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <span>Private Internal Note</span>
+                </button>
+              </div>
+
+              <!-- Quick Presets Dropdown -->
+              <select class="h-8 px-3 text-xs bg-white border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:border-slate-400 font-medium">
+                <option value="">Insert preset notice template...</option>
+                <option value="size">Size guide reminder</option>
+                <option value="policy">Off-platform payment warning</option>
+                <option value="dispute">Dispute review confirmation</option>
+              </select>
+            </div>
+
+            <!-- Composer Input Textarea -->
+            <div class="relative">
+              <textarea rows="2" placeholder="Write an official moderator notice (visible to both customer and seller with Verified Platform Stamp)..."
+                class="w-full resize-none rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-400 focus:ring-1 focus:ring-slate-300 transition-all leading-relaxed"></textarea>
+            </div>
+
+            <!-- Composer Footer -->
+            <div class="mt-2.5 flex items-center justify-between gap-3">
+              <p class="text-[11px] text-slate-500 flex items-center gap-1">
+                <span class="inline-block w-1.5 h-1.5 rounded-full bg-[#E82C3F]"></span>
+                <span>Visible to both Customer and Seller as an authoritative Gazaarabia Moderation decree.</span>
+              </p>
+              <button type="button" class="h-8 px-4 inline-flex items-center gap-2 rounded-lg bg-[#E82C3F] hover:bg-[#D32436] text-white text-xs font-bold shadow-xs transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                <span>Post Official Notice</span>
+              </button>
+            </div>
+          </div>
+
+        </main>
+
+        <!-- PANE 3: Participant Dossier & Staff Notes (Width: 320px) -->
+        <aside class="w-80 shrink-0 border-l border-slate-200 flex flex-col bg-white min-h-0 overflow-y-auto divide-y divide-slate-100">
+
+          <!-- Section: Customer Profile -->
+          <div class="p-5">
+            <div class="flex items-center justify-between text-xs mb-3">
+              <span class="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Customer Profile</span>
+              <span class="text-[11px] font-mono text-slate-400">#4</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-slate-100 text-slate-800 font-bold text-sm flex items-center justify-center border border-slate-200">
+                T
+              </div>
+              <div class="min-w-0">
+                <div class="text-xs font-bold text-slate-900 truncate">Tufayel Ahmed</div>
+                <div class="text-[11px] text-slate-500 truncate">atufayel549@gmail.com</div>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mt-3.5">
+              <div class="bg-slate-50 border border-slate-200/80 rounded-lg p-2.5 text-center">
+                <div class="text-[10px] uppercase font-semibold text-slate-400">Total Orders</div>
+                <div class="text-base font-bold text-slate-900 mt-0.5">2</div>
+              </div>
+              <div class="bg-slate-50 border border-slate-200/80 rounded-lg p-2.5 text-center">
+                <div class="text-[10px] uppercase font-semibold text-slate-400">Total Spent</div>
+                <div class="text-base font-bold text-slate-900 mt-0.5">£0.00</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Seller Store Profile -->
+          <div class="p-5">
+            <div class="flex items-center justify-between text-xs mb-3">
+              <span class="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Seller Store</span>
+              <span class="text-[11px] font-mono text-slate-400">#1</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="min-w-0">
+                <div class="text-xs font-bold text-slate-900 truncate">demo shop</div>
+                <div class="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Active Merchant
+                </div>
+              </div>
+              <button class="text-xs text-slate-400 hover:text-slate-800 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </button>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mt-3.5">
+              <div class="bg-slate-50 border border-slate-200/80 rounded-lg p-2.5 text-center">
+                <div class="text-[10px] uppercase font-semibold text-slate-400">Active Products</div>
+                <div class="text-base font-bold text-slate-900 mt-0.5">0</div>
+              </div>
+              <div class="bg-slate-50 border border-slate-200/80 rounded-lg p-2.5 text-center">
+                <div class="text-[10px] uppercase font-semibold text-slate-400">Store Rating</div>
+                <div class="text-base font-bold text-slate-900 mt-0.5">★ 5.0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Referenced Product Context -->
+          <div class="p-5">
+            <div class="flex items-center justify-between text-xs mb-2">
+              <span class="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Inquiry Product</span>
+            </div>
+            <div class="flex items-center gap-3 p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+              <div class="w-10 h-10 rounded-md bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0 font-bold text-xs">
+                IMG
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="text-xs font-semibold text-slate-900 truncate">Modest Dress Inquiry</div>
+                <div class="text-[11px] font-bold text-emerald-700 mt-0.5">£49.99</div>
+              </div>
+              <button class="text-slate-400 hover:text-slate-700">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Section: Staff Notes Ledger (4 Notes) -->
+          <div class="p-5 flex-1">
+            <div class="flex items-center justify-between text-xs mb-3">
+              <div class="flex items-center gap-1.5 font-bold text-slate-800">
+                <svg class="w-3.5 h-3.5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                </svg>
+                <span>STAFF AUDIT NOTES</span>
+              </div>
+              <span class="px-1.5 py-0.5 rounded-full bg-amber-100 text-[10px] font-bold text-amber-800">2</span>
+            </div>
+
+            <div class="space-y-2.5">
+              <div class="p-2.5 rounded-lg bg-[#FFFDF7] border border-amber-200 text-xs">
+                <div class="flex items-center justify-between text-[10px] text-amber-700 font-semibold mb-1">
+                  <span>Super Admin</span>
+                  <span>11/22/2026</span>
+                </div>
+                <p class="font-mono text-[11px] text-amber-950 break-all">
+                  Internal audit check: INTERNAL_CONFIDENTIAL_AUDIT_KEY_77492
+                </p>
+              </div>
+
+              <div class="p-2.5 rounded-lg bg-[#FFFDF7] border border-amber-200 text-xs">
+                <div class="flex items-center justify-between text-[10px] text-amber-700 font-semibold mb-1">
+                  <span>Super Admin</span>
+                  <span>11/21/2026</span>
+                </div>
+                <p class="text-[11px] text-amber-950">
+                  Flagged off-platform WhatsApp/PayPal mention for policy watch.
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </aside>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</body>
+</html>

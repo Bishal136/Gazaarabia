@@ -1,0 +1,326 @@
+<svg width="1440" height="900" viewBox="0 0 1440 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- FIGMA METADATA: Gazaarabia Admin Messages & Live Monitoring Redesign -->
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap');
+      text { font-family: 'Inter', -apple-system, sans-serif; }
+      .mono { font-family: 'JetBrains Mono', monospace; }
+    </style>
+    <!-- Shadows & Filters -->
+    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="110%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#0F172A" flood-opacity="0.05" />
+    </filter>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="1440" height="900" fill="#F8FAFC" />
+
+  <!-- 1. LEFT ADMIN SIDEBAR (x=0, y=0, w=240, h=900) -->
+  <g id="Sidebar" transform="translate(0, 0)">
+    <rect width="240" height="900" fill="#1E2A4A" />
+    
+    <!-- Sidebar Header -->
+    <line x1="0" y1="56" x2="240" y2="56" stroke="rgba(255,255,255,0.1)" stroke-width="1" />
+    <rect x="20" y="14" width="28" height="28" rx="8" fill="#E82C3F" />
+    <text x="29" y="33" fill="#FFFFFF" font-size="14" font-weight="700">G</text>
+    <text x="56" y="27" fill="#FFFFFF" font-size="13" font-weight="700">Gazaarabia</text>
+    <text x="56" y="39" fill="#94A3B8" font-size="9" font-weight="600" letter-spacing="0.05em">ADMIN CENTRAL</text>
+    
+    <!-- Nav Items -->
+    <!-- Dashboard -->
+    <rect x="12" y="72" width="216" height="36" rx="8" fill="transparent" />
+    <text x="44" y="94" fill="#94A3B8" font-size="12" font-weight="500">Dashboard</text>
+
+    <!-- Live Chat & Monitoring (Active) -->
+    <rect x="12" y="116" width="216" height="38" rx="8" fill="#E82C3F" filter="url(#card-shadow)" />
+    <!-- Chat Icon -->
+    <path d="M26 130 H36 A4 4 0 0 1 40 134 V140 A4 4 0 0 1 36 144 H30 L26 147 V130 Z" fill="#FFFFFF" />
+    <text x="46" y="140" fill="#FFFFFF" font-size="12" font-weight="600">Live Chat &amp; Monitoring</text>
+    <circle cx="216" cy="135" r="3" fill="#FFFFFF" />
+
+    <!-- Other Nav Links -->
+    <rect x="12" y="162" width="216" height="36" rx="8" fill="transparent" />
+    <text x="44" y="184" fill="#94A3B8" font-size="12" font-weight="500">Store Orders</text>
+
+    <rect x="12" y="206" width="216" height="36" rx="8" fill="transparent" />
+    <text x="44" y="228" fill="#94A3B8" font-size="12" font-weight="500">Products Catalog</text>
+
+    <rect x="12" y="250" width="216" height="36" rx="8" fill="transparent" />
+    <text x="44" y="272" fill="#94A3B8" font-size="12" font-weight="500">Users &amp; Sellers</text>
+
+    <rect x="12" y="294" width="216" height="36" rx="8" fill="transparent" />
+    <text x="44" y="316" fill="#94A3B8" font-size="12" font-weight="500">Finance &amp; Payouts</text>
+
+    <rect x="12" y="338" width="216" height="36" rx="8" fill="transparent" />
+    <text x="44" y="360" fill="#94A3B8" font-size="12" font-weight="500">Platform Settings</text>
+
+    <!-- Sidebar Footer -->
+    <line x1="0" y1="840" x2="240" y2="840" stroke="rgba(255,255,255,0.1)" stroke-width="1" />
+    <circle cx="36" cy="870" r="14" fill="#334155" />
+    <text x="32" y="874" fill="#FFFFFF" font-size="11" font-weight="600">A</text>
+    <text x="58" y="867" fill="#FFFFFF" font-size="11" font-weight="600">Super Admin</text>
+    <text x="58" y="879" fill="#94A3B8" font-size="10">admin@gazaarabia.com</text>
+  </g>
+
+  <!-- 2. TOP TOOLBAR HEADER (x=240, y=0, w=1200, h=56) -->
+  <g id="TopHeader" transform="translate(240, 0)">
+    <rect width="1200" height="56" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+
+    <!-- Breadcrumb -->
+    <text x="24" y="32" fill="#0F172A" font-size="14" font-weight="700">Messages</text>
+    <text x="96" y="32" fill="#CBD5E1" font-size="14">/</text>
+    <text x="108" y="32" fill="#64748B" font-size="12" font-weight="500">Moderation Queue</text>
+
+    <!-- Tabs -->
+    <g transform="translate(240, 0)">
+      <!-- Tab 1: All -->
+      <line x1="0" y1="54" x2="52" y2="54" stroke="#0F172A" stroke-width="2" />
+      <text x="0" y="32" fill="#0F172A" font-size="12" font-weight="600">All</text>
+      <rect x="22" y="20" width="20" height="16" rx="8" fill="#F1F5F9" />
+      <text x="29" y="32" fill="#334155" font-size="10" font-weight="700">4</text>
+
+      <!-- Tab 2: Disputes -->
+      <text x="80" y="32" fill="#64748B" font-size="12" font-weight="500">Disputes &amp; Flagged</text>
+      <rect x="195" y="20" width="18" height="16" rx="8" fill="#FFF1F2" />
+      <text x="201" y="32" fill="#E11D48" font-size="10" font-weight="700">0</text>
+
+      <!-- Tab 3: Seller Support -->
+      <text x="235" y="32" fill="#64748B" font-size="12" font-weight="500">Seller Support</text>
+      <rect x="320" y="20" width="18" height="16" rx="8" fill="#F0F9FF" />
+      <text x="326" y="32" fill="#0284C7" font-size="10" font-weight="700">1</text>
+
+      <!-- Tab 4: Buyer Inquiries -->
+      <text x="360" y="32" fill="#64748B" font-size="12" font-weight="500">Buyer Inquiries</text>
+      <rect x="448" y="20" width="18" height="16" rx="8" fill="#F1F5F9" />
+      <text x="454" y="32" fill="#475569" font-size="10" font-weight="700">3</text>
+    </g>
+
+    <!-- Actions: Refresh & New Seller Chat -->
+    <rect x="1010" y="12" width="32" height="32" rx="6" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    <path d="M1022 24 A4 4 0 1 1 1022 30" stroke="#475569" stroke-width="1.8" fill="none" stroke-linecap="round" />
+
+    <rect x="1052" y="12" width="124" height="32" rx="6" fill="#1E2A4A" filter="url(#card-shadow)" />
+    <text x="1066" y="32" fill="#FFFFFF" font-size="11" font-weight="600">+ New Seller Chat</text>
+  </g>
+
+  <!-- 3. PANE 1: CONVERSATION QUEUE LIST (x=240, y=56, w=300, h=844) -->
+  <g id="QueuePane" transform="translate(240, 56)">
+    <rect width="300" height="844" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+
+    <!-- Search Box -->
+    <rect x="12" y="12" width="276" height="32" rx="6" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    <circle cx="26" cy="28" r="5" stroke="#94A3B8" stroke-width="1.5" fill="none" />
+    <line x1="30" y1="32" x2="35" y2="37" stroke="#94A3B8" stroke-width="1.5" />
+    <text x="42" y="32" fill="#94A3B8" font-size="11">Search customers, stores, messages...</text>
+
+    <!-- Active Item: Tufayel Ahmed (Selected with Gaza Red accent) -->
+    <rect x="0" y="56" width="300" height="86" fill="#FFFFFF" />
+    <rect x="0" y="56" width="4" height="86" fill="#E82C3F" />
+    <circle cx="28" cy="82" r="14" fill="#FFF1F2" />
+    <text x="24" y="86" fill="#E82C3F" font-size="11" font-weight="700">T</text>
+    <text x="50" y="78" fill="#0F172A" font-size="12" font-weight="600">Tufayel Ahmed</text>
+    <text x="50" y="92" fill="#64748B" font-size="11">demo shop</text>
+    <text x="245" y="78" fill="#94A3B8" font-size="10">12:43 AM</text>
+    <text x="50" y="110" fill="#475569" font-size="11">Can I contact you on whatsapp or pay via paypal...</text>
+    
+    <!-- Badges -->
+    <rect x="50" y="120" width="60" height="16" rx="4" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1" />
+    <text x="56" y="132" fill="#047857" font-size="9" font-weight="600">● Resolved</text>
+    <rect x="116" y="120" width="56" height="16" rx="4" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1" />
+    <text x="122" y="132" fill="#B45309" font-size="9" font-weight="600">🔒 2 Notes</text>
+
+    <!-- Item 2: demo shop (Seller Channel) -->
+    <line x1="0" y1="142" x2="300" y2="142" stroke="#F1F5F9" stroke-width="1" />
+    <rect x="0" y="143" width="300" height="76" fill="#F8FAFC" />
+    <circle cx="28" cy="168" r="14" fill="#F0F9FF" />
+    <text x="24" y="172" fill="#0284C7" font-size="11" font-weight="700">S</text>
+    <text x="50" y="164" fill="#0F172A" font-size="12" font-weight="600">demo shop</text>
+    <text x="50" y="178" fill="#64748B" font-size="11">Platform Admin Channel</text>
+    <text x="250" y="164" fill="#94A3B8" font-size="10">2m ago</text>
+    <text x="50" y="196" fill="#64748B" font-size="11">Payouts are processed every Thursday morning...</text>
+
+    <!-- Item 3: Bishal Biswas -->
+    <line x1="0" y1="219" x2="300" y2="219" stroke="#F1F5F9" stroke-width="1" />
+    <rect x="0" y="220" width="300" height="76" fill="#F8FAFC" />
+    <circle cx="28" cy="245" r="14" fill="#F1F5F9" />
+    <text x="24" y="249" fill="#475569" font-size="11" font-weight="700">B</text>
+    <text x="50" y="241" fill="#0F172A" font-size="12" font-weight="600">Bishal Biswas</text>
+    <text x="50" y="255" fill="#64748B" font-size="11">GAZAARABIA</text>
+    <text x="248" y="241" fill="#94A3B8" font-size="10">Nov 13</text>
+    <text x="50" y="273" fill="#64748B" font-size="11">gg · Butter Yellow Embellished Abaya</text>
+  </g>
+
+  <!-- 4. PANE 2: ACTIVE CONVERSATION STREAM & COMPOSER (x=540, y=56, w=600, h=844) -->
+  <g id="ChatStreamPane" transform="translate(540, 56)">
+    <rect width="600" height="844" fill="#FFFFFF" />
+
+    <!-- Stream Header -->
+    <rect width="600" height="56" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    <text x="24" y="28" fill="#0F172A" font-size="14" font-weight="700">Tufayel Ahmed / demo shop</text>
+    <rect x="220" y="16" width="70" height="20" rx="10" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1" />
+    <text x="230" y="30" fill="#047857" font-size="10" font-weight="600">● Resolved</text>
+    <text x="24" y="44" fill="#64748B" font-size="11">Thread #4 · Customer ↔ Seller Monitoring · Started Nov 21, 2026</text>
+
+    <!-- Header Actions -->
+    <rect x="410" y="14" width="84" height="28" rx="6" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    <text x="424" y="32" fill="#334155" font-size="11" font-weight="500">Flag Dispute</text>
+    <rect x="502" y="14" width="74" height="28" rx="6" fill="#059669" filter="url(#card-shadow)" />
+    <text x="514" y="32" fill="#FFFFFF" font-size="11" font-weight="600">Reopen</text>
+
+    <!-- Messages Timeline Stream (Canvas Background: #FAFAFA) -->
+    <rect y="56" width="600" height="630" fill="#FAFAFA" />
+
+    <!-- Message 1: Customer (Incoming) -->
+    <g transform="translate(24, 76)">
+      <circle cx="14" cy="14" r="14" fill="#E2E8F0" />
+      <text x="10" y="18" fill="#475569" font-size="11" font-weight="600">T</text>
+      <text x="36" y="10" fill="#0F172A" font-size="11" font-weight="600">Tufayel Ahmed</text>
+      <text x="120" y="10" fill="#94A3B8" font-size="10">11:59 PM</text>
+      <rect x="36" y="18" width="300" height="34" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+      <text x="48" y="40" fill="#1E293B" font-size="12">Hi, is this modest dress true to UK sizing?</text>
+    </g>
+
+    <!-- Message 2: OFFICIAL MODERATOR NOTICE (Gaza Red Brand Highlight) -->
+    <g transform="translate(48, 150)">
+      <rect width="504" height="88" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+      <rect width="4" height="88" rx="2" fill="#E82C3F" />
+      <text x="16" y="24" fill="#0F172A" font-size="11" font-weight="700" letter-spacing="0.04em">🛡 OFFICIAL PLATFORM MODERATOR NOTICE</text>
+      <text x="380" y="24" fill="#94A3B8" font-size="10">12:00 AM · Visible to All</text>
+      <line x1="16" y1="34" x2="488" y2="34" stroke="#F1F5F9" stroke-width="1" />
+      <text x="16" y="52" fill="#334155" font-size="11">Official Moderator Notice: Please check the standard size guide on the item page.</text>
+      <text x="16" y="68" fill="#334155" font-size="11">All buyer-seller communication must remain on Gazaarabia for buyer protection.</text>
+      <text x="16" y="82" fill="#059669" font-size="9" font-weight="600">✓ Verified Gazaarabia Trust &amp; Safety Stamp</text>
+    </g>
+
+    <!-- Message 3: CONFIDENTIAL INTERNAL STAFF NOTE (Hidden from Customer & Seller) -->
+    <g transform="translate(48, 254)">
+      <rect width="504" height="84" rx="10" fill="#FFFDF7" stroke="#FDE68A" stroke-width="1" />
+      <rect width="4" height="84" rx="2" fill="#D97706" />
+      <text x="16" y="24" fill="#92400E" font-size="11" font-weight="700">🔒 CONFIDENTIAL INTERNAL STAFF NOTE (STAFF ONLY)</text>
+      <text x="388" y="24" fill="#B45309" font-size="10">12:05 AM · Hidden</text>
+      <line x1="16" y1="34" x2="488" y2="34" stroke="#FEF3C7" stroke-width="1" />
+      <text x="16" y="54" fill="#78350F" font-size="11" class="mono">Internal audit check: INTERNAL_CONFIDENTIAL_AUDIT_KEY_77492</text>
+      <text x="16" y="70" fill="#78350F" font-size="11">Customer account verified · Order count checked against seller SLA.</text>
+    </g>
+
+    <!-- Message 4: Flagged Customer Inquiry (Warning Policy Pill) -->
+    <g transform="translate(24, 354)">
+      <circle cx="14" cy="14" r="14" fill="#E2E8F0" />
+      <text x="10" y="18" fill="#475569" font-size="11" font-weight="600">T</text>
+      <text x="36" y="10" fill="#0F172A" font-size="11" font-weight="600">Tufayel Ahmed</text>
+      <text x="120" y="10" fill="#94A3B8" font-size="10">12:15 AM</text>
+      <rect x="36" y="18" width="440" height="56" rx="12" fill="#FFFFFF" stroke="#FECDD3" stroke-width="1" />
+      <text x="48" y="38" fill="#1E293B" font-size="12">Can I contact you on whatsapp or pay via paypal to your email?</text>
+      <line x1="48" y1="48" x2="464" y2="48" stroke="#FFE4E6" stroke-width="1" />
+      <text x="48" y="64" fill="#E11D48" font-size="10" font-weight="600">⚠ System Policy Flag: Off-platform contact attempt detected</text>
+    </g>
+
+    <!-- Message 5: Seller Response (Right-aligned Deep Navy) -->
+    <g transform="translate(180, 436)">
+      <rect x="0" y="18" width="370" height="42" rx="12" fill="#1E2A4A" filter="url(#card-shadow)" />
+      <text x="16" y="42" fill="#FFFFFF" font-size="12">Hello! All orders and transactions must go via Gazaarabia.</text>
+      <circle cx="390" cy="36" r="14" fill="#1E2A4A" />
+      <text x="386" y="40" fill="#FFFFFF" font-size="11" font-weight="700">S</text>
+      <text x="260" y="12" fill="#0F172A" font-size="11" font-weight="600">demo shop (Seller)</text>
+      <text x="210" y="12" fill="#94A3B8" font-size="10">12:17 AM</text>
+    </g>
+
+    <!-- DOCKED COMPOSER (y=686, h=158) -->
+    <g id="Composer" transform="translate(0, 686)">
+      <rect width="600" height="158" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+
+      <!-- Mode Selector Tabs -->
+      <rect x="24" y="14" width="320" height="30" rx="6" fill="#F1F5F9" />
+      <rect x="26" y="16" width="160" height="26" rx="5" fill="#E82C3F" />
+      <text x="36" y="33" fill="#FFFFFF" font-size="11" font-weight="700">● Public Moderator Notice</text>
+      <text x="200" y="33" fill="#64748B" font-size="11" font-weight="500">🔒 Private Staff Note</text>
+
+      <!-- Preset Selector -->
+      <rect x="390" y="14" width="186" height="30" rx="6" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+      <text x="402" y="33" fill="#64748B" font-size="11">Insert preset notice...</text>
+
+      <!-- Textarea Box -->
+      <rect x="24" y="52" width="552" height="54" rx="8" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1" />
+      <text x="36" y="74" fill="#94A3B8" font-size="11">Write official moderator decree (visible to customer &amp; seller)...</text>
+
+      <!-- Footer Action -->
+      <circle cx="30" cy="128" r="3" fill="#E82C3F" />
+      <text x="38" y="131" fill="#64748B" font-size="10">Visible to both Customer and Seller with Official Moderation badge.</text>
+
+      <rect x="444" y="114" width="132" height="32" rx="6" fill="#E82C3F" filter="url(#card-shadow)" />
+      <text x="462" y="134" fill="#FFFFFF" font-size="11" font-weight="700">Post Official Notice</text>
+    </g>
+  </g>
+
+  <!-- 5. PANE 3: PARTICIPANT DOSSIER & AUDIT NOTES (x=1140, y=56, w=300, h=844) -->
+  <g id="DossierPane" transform="translate(1140, 56)">
+    <rect width="300" height="844" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+
+    <!-- Section 1: Customer Profile -->
+    <g transform="translate(20, 20)">
+      <text x="0" y="10" fill="#94A3B8" font-size="9" font-weight="700" letter-spacing="0.08em">CUSTOMER PROFILE</text>
+      <text x="245" y="10" fill="#94A3B8" font-size="10" class="mono">#4</text>
+      <circle cx="16" cy="36" r="16" fill="#F1F5F9" />
+      <text x="11" y="41" fill="#1E293B" font-size="13" font-weight="700">T</text>
+      <text x="42" y="32" fill="#0F172A" font-size="12" font-weight="700">Tufayel Ahmed</text>
+      <text x="42" y="46" fill="#64748B" font-size="11">atufayel549@gmail.com</text>
+
+      <!-- Metrics -->
+      <rect x="0" y="64" width="124" height="48" rx="6" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+      <text x="32" y="80" fill="#94A3B8" font-size="9" font-weight="600">TOTAL ORDERS</text>
+      <text x="56" y="102" fill="#0F172A" font-size="14" font-weight="700">2</text>
+
+      <rect x="136" y="64" width="124" height="48" rx="6" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+      <text x="168" y="80" fill="#94A3B8" font-size="9" font-weight="600">TOTAL SPENT</text>
+      <text x="178" y="102" fill="#0F172A" font-size="14" font-weight="700">£0.00</text>
+    </g>
+
+    <!-- Section 2: Seller Store -->
+    <line x1="0" y1="156" x2="300" y2="156" stroke="#F1F5F9" stroke-width="1" />
+    <g transform="translate(20, 176)">
+      <text x="0" y="10" fill="#94A3B8" font-size="9" font-weight="700" letter-spacing="0.08em">SELLER STORE</text>
+      <text x="245" y="10" fill="#94A3B8" font-size="10" class="mono">#1</text>
+      <text x="0" y="34" fill="#0F172A" font-size="13" font-weight="700">demo shop</text>
+      <text x="0" y="50" fill="#059669" font-size="11" font-weight="600">● Active Merchant</text>
+
+      <rect x="0" y="66" width="124" height="48" rx="6" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+      <text x="26" y="82" fill="#94A3B8" font-size="9" font-weight="600">ACTIVE PRODUCTS</text>
+      <text x="56" y="104" fill="#0F172A" font-size="14" font-weight="700">0</text>
+
+      <rect x="136" y="66" width="124" height="48" rx="6" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+      <text x="166" y="82" fill="#94A3B8" font-size="9" font-weight="600">STORE RATING</text>
+      <text x="176" y="104" fill="#0F172A" font-size="14" font-weight="700">★ 5.0</text>
+    </g>
+
+    <!-- Section 3: Referenced Product -->
+    <line x1="0" y1="316" x2="300" y2="316" stroke="#F1F5F9" stroke-width="1" />
+    <g transform="translate(20, 334)">
+      <text x="0" y="10" fill="#94A3B8" font-size="9" font-weight="700" letter-spacing="0.08em">INQUIRY PRODUCT</text>
+      <rect x="0" y="22" width="260" height="52" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+      <rect x="10" y="30" width="36" height="36" rx="4" fill="#E2E8F0" />
+      <text x="18" y="52" fill="#64748B" font-size="9" font-weight="700">IMG</text>
+      <text x="56" y="44" fill="#0F172A" font-size="11" font-weight="600">Modest Dress Inquiry</text>
+      <text x="56" y="58" fill="#059669" font-size="11" font-weight="700">£49.99</text>
+    </g>
+
+    <!-- Section 4: Staff Notes Ledger -->
+    <line x1="0" y1="430" x2="300" y2="430" stroke="#F1F5F9" stroke-width="1" />
+    <g transform="translate(20, 448)">
+      <text x="0" y="10" fill="#92400E" font-size="10" font-weight="700">🔒 STAFF AUDIT NOTES</text>
+      <rect x="235" y="0" width="24" height="16" rx="8" fill="#FEF3C7" />
+      <text x="244" y="12" fill="#92400E" font-size="10" font-weight="700">2</text>
+
+      <!-- Note 1 -->
+      <rect x="0" y="24" width="260" height="66" rx="6" fill="#FFFDF7" stroke="#FDE68A" stroke-width="1" />
+      <text x="10" y="40" fill="#B45309" font-size="10" font-weight="600">Super Admin · 11/22/2026</text>
+      <text x="10" y="58" fill="#78350F" font-size="10" class="mono">Internal audit check: KEY_77492</text>
+      <text x="10" y="74" fill="#78350F" font-size="10">Verified payment audit rules.</text>
+
+      <!-- Note 2 -->
+      <rect x="0" y="98" width="260" height="62" rx="6" fill="#FFFDF7" stroke="#FDE68A" stroke-width="1" />
+      <text x="10" y="114" fill="#B45309" font-size="10" font-weight="600">Super Admin · 11/21/2026</text>
+      <text x="10" y="132" fill="#78350F" font-size="10">Flagged off-platform WhatsApp mention.</text>
+      <text x="10" y="146" fill="#78350F" font-size="10">Monitoring active buyer thread.</text>
+    </g>
+  </g>
+</svg>

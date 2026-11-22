@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useState, useEffect } from "react";
-import { Check, ImageIcon, Info, DollarSign, Shirt, Eye, AlertCircle, ShoppingBag, ChevronRight, ChevronLeft, Sparkles, Tag, X, Plus } from "lucide-react";
+import { Check, ImageIcon, Info, DollarSign, Shirt, Eye, AlertCircle, ShoppingBag, ChevronRight, ChevronLeft, Sparkles, Tag, X, Plus, Loader2, Wand2 } from "lucide-react";
 import PopupAlert from "@/components/PopupAlert";
 import AlertMessage from "@/components/AlertMessage";
 import { PopUpInterface, AlertInterface } from "@/lib/types";
@@ -22,6 +22,7 @@ import RichTextEditor from "@/components/RichTextEditor";
 import { MediaUploader } from "@/components/seller/MediaUploader";
 import { VariantVideoUploader } from "@/components/seller/VariantVideoUploader";
 import { VariantsTikTokStyle } from "@/components/seller/VariantsTikTokStyle";
+import InlineAutoCompleteInput from "@/components/ui/InlineAutoCompleteInput";
 // import { ProductPreviewCard } from "@/components/seller/ProductPreviewCard";
 
 function ProductFormContent() {
@@ -43,6 +44,7 @@ function ProductFormContent() {
 
   const [form, setForm] = useState({
     title: "",
+    slug: "",
     shortDescription: "",
     description: "",
     fitType: "",
@@ -61,6 +63,11 @@ function ProductFormContent() {
   });
 
   const [tagInput, setTagInput] = useState("");
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
+  const [isOptimizingSeo, setIsOptimizingSeo] = useState(false);
+  const [isSlugEdited, setIsSlugEdited] = useState(false);
+  const [aiPricingAdvice, setAiPricingAdvice] = useState<any | null>(null);
 
   const [images, setImages] = useState<any[]>([]);
   const [productVideo, setProductVideo] = useState<any>(null);
@@ -113,6 +120,15 @@ function ProductFormContent() {
     },
   };
 
+  const generateSlug = (text: string) => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-");
+  };
+
   const fetchDropdownData = async () => {
     try {
       const [
@@ -129,13 +145,19 @@ function ProductFormContent() {
         sizeService.getAll(token),
       ]);
 
-      setBrands(brandsData.data ?? brandsData);
-      setCategories(categoriesData.data ?? categoriesData);
-      const subList = subcatData.data ?? subcatData;
+      const toArr = (data: any) => {
+        if (Array.isArray(data)) return data;
+        if (data && Array.isArray(data.data)) return data.data;
+        return [];
+      };
+
+      setBrands(toArr(brandsData));
+      setCategories(toArr(categoriesData));
+      const subList = toArr(subcatData);
       setSubcategories(subList);
       setAllSubcategories(subList);
-      setColors(colorsData.data ?? colorsData);
-      setSizes(sizesData.data ?? sizesData);
+      setColors(toArr(colorsData));
+      setSizes(toArr(sizesData));
     } catch {
       setAlertMessage({
         isOpen: true,
@@ -177,11 +199,41 @@ function ProductFormContent() {
         url: data.videoUrl || "",
         thumbnail: data.videoThumbnail || "",
       });
+      // Group variants by color so each color card shows all its sizes in one card
+      const rawVars = data.productvariant || [];
+      const groupedByColor = new Map<string, any>();
+
+      for (const v of rawVars) {
+        const cName = v.colorName || v.color?.name || (v.colorId ? colors.find((c: any) => String(c.id) === String(v.colorId))?.name : "") || "Default";
+        const sName = v.sizeName || v.size?.name || (v.sizeId ? sizes.find((s: any) => String(s.id) === String(v.sizeId))?.name : "") || "";
+        const cKey = String(v.colorId || cName).trim().toLowerCase();
+
+        if (!groupedByColor.has(cKey)) {
+          groupedByColor.set(cKey, {
+            ...v,
+            colorName: cName,
+            colorId: v.colorId || "",
+            hexCode: v.color?.hexCode || v.hexCode || "",
+            sizeNames: sName ? [sName] : [],
+            sizeName: sName,
+            images: v.variantImages || v.images || (v.imageUrl ? [{ url: v.imageUrl }] : []),
+          });
+        } else {
+          const existing = groupedByColor.get(cKey);
+          if (sName && !existing.sizeNames.includes(sName)) {
+            existing.sizeNames.push(sName);
+            existing.sizeName = existing.sizeNames.join(", ");
+          }
+        }
+      }
+
       setVariants(
-        (data.productvariant || []).map((v: any) => ({
-          ...v,
-          images: v.variantImages || [],
-        }))
+        groupedByColor.size > 0
+          ? Array.from(groupedByColor.values())
+          : rawVars.map((v: any) => ({
+              ...v,
+              images: v.variantImages || v.images || [],
+            }))
       );
       setWearWith(data.wearWith || []);
     } catch {
@@ -202,9 +254,24 @@ function ProductFormContent() {
 
   const handleInputChange = async (e: any) => {
     const { name, value, type, checked } = e.target;
+    const finalVal = type === "checkbox" ? checked : value;
+
+    if (name === "title" && !isSlugEdited && !isEditMode) {
+      setForm((prev) => ({
+        ...prev,
+        title: value,
+        slug: generateSlug(value),
+      }));
+      return;
+    }
+
+    if (name === "slug") {
+      setIsSlugEdited(true);
+    }
+
     setForm((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: finalVal,
     }));
 
     if (name === "categoryId") {
@@ -219,6 +286,237 @@ function ProductFormContent() {
       } else {
         setSubcategories([]);
       }
+    }
+
+    if (name === "costPrice") {
+      const num = parseFloat(value);
+      if (!isNaN(num) && num > 0) {
+        const selling = Math.round(num * 2.4);
+        const discount = Math.round(selling * 0.88);
+        setAiPricingAdvice({
+          recommendedSellingPrice: selling,
+          recommendedDiscountPrice: discount,
+          grossMarginPercent: Math.round(((selling - num) / selling) * 100),
+        });
+      } else {
+        setAiPricingAdvice(null);
+      }
+    }
+  };
+
+  const applyCascadeData = (cascade: any) => {
+    setForm((prev) => {
+      const updated = { ...prev };
+      if (!prev.categoryId && cascade.categoryId) {
+        updated.categoryId = String(cascade.categoryId);
+        if (token) {
+          subcategoryService.getByCategory(token, Number(cascade.categoryId)).then((res: any) => {
+            setSubcategories(res.data ?? []);
+          }).catch(() => {});
+        }
+      }
+      if ((!prev.subcategoryId || !prev.categoryId) && cascade.subcategoryId) {
+        updated.subcategoryId = String(cascade.subcategoryId);
+      }
+      if (!prev.shortDescription && cascade.shortDescription) {
+        updated.shortDescription = `<p>${cascade.shortDescription}</p>`;
+      }
+      if (!prev.fitType && cascade.fitType) {
+        updated.fitType = cascade.fitType;
+      }
+      if (Array.isArray(cascade.tags) && cascade.tags.length > 0 && prev.tags.length === 0) {
+        updated.tags = cascade.tags.slice(0, 5);
+      }
+      return updated;
+    });
+
+    if (cascade.pricing) {
+      setAiPricingAdvice(cascade.pricing);
+    }
+  };
+
+  const handleTitleAccept = async (completedTitle: string, cascade?: any) => {
+    setForm((prev) => ({
+      ...prev,
+      title: completedTitle,
+      slug: !isSlugEdited ? (cascade?.slug || generateSlug(completedTitle)) : prev.slug,
+    }));
+
+    if (cascade && (cascade.categoryId || cascade.shortDescription)) {
+      applyCascadeData(cascade);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/ai/product-copilot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "cascade",
+          data: {
+            title: completedTitle,
+            costPrice: form.costPrice ? Number(form.costPrice) : undefined,
+            categoryId: form.categoryId ? Number(form.categoryId) : undefined,
+          },
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.cascade) {
+          applyCascadeData(data.cascade);
+        }
+      }
+    } catch (err) {
+      console.warn("Cascade fetch error:", err);
+    }
+  };
+
+  const handleGenerateAiDescription = async () => {
+    if (!form.title.trim()) {
+      setAlertMessage({
+        isOpen: true,
+        type: "error",
+        message: "Please enter a product title first.",
+      });
+      return;
+    }
+
+    setIsGeneratingDescription(true);
+    try {
+      const currentCat = categories.find((c) => String(c.id) === String(form.categoryId));
+      const res = await fetch("/api/ai/product-copilot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "description",
+          data: {
+            title: form.title,
+            categoryName: currentCat?.name || "Modest Apparel",
+            fitType: form.fitType || "Modest / Loose Fit",
+            shortDescription: form.shortDescription,
+            tags: form.tags,
+          },
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to generate description");
+      const data = await res.json();
+      if (data.success && data.html) {
+        setForm((prev) => ({ ...prev, description: data.html }));
+        setAlertMessage({
+          isOpen: true,
+          type: "success",
+          message: "Product description drafted successfully!",
+        });
+      }
+    } catch (err: any) {
+      setAlertMessage({
+        isOpen: true,
+        type: "error",
+        message: err.message || "Failed to draft description.",
+      });
+    } finally {
+      setIsGeneratingDescription(false);
+    }
+  };
+
+  const handleAnalyzeImage = async (customUrl?: string) => {
+    const targetUrl = customUrl || (images.length > 0 ? (typeof images[0] === "string" ? images[0] : images[0]?.url) : "");
+    if (!targetUrl) {
+      setAlertMessage({
+        isOpen: true,
+        type: "error",
+        message: "Please upload a product photo first to enable image analysis.",
+      });
+      return;
+    }
+
+    setIsAnalyzingImage(true);
+    try {
+      const res = await fetch("/api/ai/product-copilot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "image-guess",
+          data: { imageUrl: targetUrl },
+        }),
+      });
+
+      if (!res.ok) throw new Error("Vision analysis failed");
+      const data = await res.json();
+      if (data.success && data.guessed) {
+        const g = data.guessed;
+        setForm((prev) => {
+          const updated = {
+            ...prev,
+            title: g.title || prev.title,
+            slug: g.slug || prev.slug,
+            shortDescription: g.shortDescription ? `<p>${g.shortDescription}</p>` : prev.shortDescription,
+            description: g.description || prev.description,
+            fitType: g.fitType || prev.fitType,
+            categoryId: String(g.categoryId || prev.categoryId),
+            subcategoryId: String(g.subcategoryId || prev.subcategoryId),
+            tags: (Array.isArray(g.tags) && g.tags.length > 0 && prev.tags.length === 0)
+              ? g.tags.slice(0, 5)
+              : prev.tags,
+          };
+          return updated;
+        });
+
+        if (token && g.categoryId) {
+          subcategoryService.getByCategory(token, Number(g.categoryId)).then((res: any) => {
+            setSubcategories(res.data ?? res ?? []);
+          }).catch(() => {});
+        }
+
+        setAlertMessage({
+          isOpen: true,
+          type: "success",
+          message: "AI analyzed garment photo and auto-filled product specifications!",
+        });
+      }
+    } catch (err: any) {
+      setAlertMessage({
+        isOpen: true,
+        type: "error",
+        message: err.message || "Failed to analyze product image.",
+      });
+    } finally {
+      setIsAnalyzingImage(false);
+    }
+  };
+
+  const handleOptimizeSeo = async () => {
+    if (!form.title.trim()) return;
+    setIsOptimizingSeo(true);
+    try {
+      const res = await fetch("/api/ai/product-copilot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "seo",
+          data: {
+            title: form.title,
+            shortDescription: form.shortDescription,
+          },
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.seo) {
+          setForm((prev) => ({ ...prev, slug: data.seo.slug }));
+          setIsSlugEdited(true);
+          setAlertMessage({
+            isOpen: true,
+            type: "success",
+            message: "URL slug optimized for Google SEO!",
+          });
+        }
+      }
+    } catch {
+      // Ignore
+    } finally {
+      setIsOptimizingSeo(false);
     }
   };
 
@@ -312,7 +610,8 @@ function ProductFormContent() {
 
   // Calculate total quantity from all variants (supports multi-color and multi-size variants)
   const calculateTotalVariantQuantity = () => {
-    return variants.reduce((total, v) => {
+    const list = Array.isArray(variants) ? variants : [];
+    return list.reduce((total, v) => {
       const qty = parseInt(String(v.stock)) || 0;
       const cCount = (v.colorName || "").split(",").map((c: string) => c.trim()).filter(Boolean).length || 1;
       const sCount = (v.sizeName || "").split(",").map((s: string) => s.trim()).filter(Boolean).length || 1;
@@ -339,7 +638,6 @@ function ProductFormContent() {
     }
   };
 
-
   const handleSubmit = async (e: any) => {
     e.preventDefault();
 
@@ -361,18 +659,47 @@ function ProductFormContent() {
       return;
     }
 
-    if (variants.length === 0) {
+    if (form.shortDescription) {
+      const plainLen = form.shortDescription
+        .replace(/<[^>]*>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim().length;
+      if (plainLen > 120) {
+        setPopup({
+          isOpen: true,
+          type: "error",
+          message: `Specifications summary cannot exceed 120 characters (currently ${plainLen} characters). Please shorten it before saving.`,
+        });
+        return;
+      }
+    }
+
+    const activeVariants = variants.filter(
+      (v) =>
+        (v.colorName && v.colorName.trim()) ||
+        (v.sizeName && v.sizeName.trim()) ||
+        v.colorId ||
+        v.sizeId
+    );
+
+    if (activeVariants.length === 0) {
       setPopup({
         isOpen: true,
         type: "error",
-        message: "Please add at least one product variant.",
+        message: "Please add at least one product variant (type Color or Sizes).",
       });
       return;
     }
 
-    // Validate each variant
-    for (let i = 0; i < variants.length; i++) {
-      const v = variants[i];
+    // Extract valid product image URLs for variant fallback
+    const validProductImgs = (Array.isArray(images) ? images : [])
+      .map((img: any) => (typeof img === "string" ? img : (img?.url || img?.imageUrl || "")))
+      .filter(Boolean);
+
+    // Validate each active variant
+    for (let i = 0; i < activeVariants.length; i++) {
+      const v = activeVariants[i];
       const errors: string[] = [];
 
       const hasColor = Boolean(v.colorId || v.colorName);
@@ -383,10 +710,10 @@ function ProductFormContent() {
       if (!v.price) errors.push("Price");
       if (v.stock === "" || v.stock === undefined) errors.push("Stock");
       if (!v.images || v.images.length === 0) {
-        if (images && images.length > 0) {
+        if (validProductImgs.length > 0) {
           // Auto-fallback to product-level photos
-          v.images = images.map((img: any) => ({
-            url: typeof img === "string" ? img : img.url,
+          v.images = validProductImgs.map((u: string) => ({
+            url: u,
             alt: form.title || "",
           }));
           v.imageUrl = v.images[0]?.url || null;
@@ -405,7 +732,17 @@ function ProductFormContent() {
       }
     }
 
-    if (!form.costPrice || !form.sellingPrice || !form.baseQty) {
+    // Auto-fill base inventory if user configured variants with stock
+    let effectiveBaseQty = form.baseQty;
+    if (!effectiveBaseQty || effectiveBaseQty === "0") {
+      const totalVariantQty = calculateTotalVariantQuantity();
+      if (totalVariantQty > 0) {
+        effectiveBaseQty = String(totalVariantQty);
+        setForm((prev) => ({ ...prev, baseQty: effectiveBaseQty }));
+      }
+    }
+
+    if (!form.costPrice || !form.sellingPrice || !effectiveBaseQty) {
       setPopup({
         isOpen: true,
         type: "error",
@@ -417,20 +754,26 @@ function ProductFormContent() {
     try {
       setSubmitting(true);
 
+      const safeColorsList = Array.isArray(colors) ? colors : [];
+      const safeSizesList = Array.isArray(sizes) ? sizes : [];
+
       // Expand any variant with multiple comma-separated colors or sizes into individual SKU combinations
       const expandedVariants: any[] = [];
-      for (const v of variants) {
-        const colorNames = (v.colorName || "")
+      for (const v of activeVariants) {
+        const rawCName = v.colorName || v.color?.name || (v.colorId ? safeColorsList.find((c: any) => String(c.id) === String(v.colorId))?.name : "") || "";
+        const rawSName = v.sizeName || v.size?.name || (v.sizeId ? safeSizesList.find((s: any) => String(s.id) === String(v.sizeId))?.name : "") || "";
+
+        const colorNames = rawCName
           .split(",")
           .map((c: string) => c.trim())
           .filter(Boolean);
-        const sizeNames = (v.sizeName || "")
+        const sizeNames = rawSName
           .split(",")
           .map((s: string) => s.trim())
           .filter(Boolean);
 
-        const effectiveColors = colorNames.length > 0 ? colorNames : [v.colorName || ""];
-        const effectiveSizes = sizeNames.length > 0 ? sizeNames : [v.sizeName || ""];
+        const effectiveColors = colorNames.length > 0 ? colorNames : [rawCName];
+        const effectiveSizes = sizeNames.length > 0 ? sizeNames : [rawSName];
 
         for (const cName of effectiveColors) {
           for (const sName of effectiveSizes) {
@@ -447,13 +790,33 @@ function ProductFormContent() {
             const discPrice = parseFloat(form.discountPrice || "0");
             const hasPromo = discPrice > 0 && regPrice > discPrice;
 
+            // Resolve colorId from database catalog if matching by name
+            const matchedColor = safeColorsList.find(
+              (c: any) =>
+                String(c.name).trim().toLowerCase() === String(cName).trim().toLowerCase() ||
+                String(c.id) === String(cName)
+            );
+            const resolvedColorId = matchedColor?.id
+              ? String(matchedColor.id)
+              : (colorNames.length <= 1 && v.colorId ? String(v.colorId) : "");
+
+            // Resolve sizeId from database catalog if matching by name
+            const matchedSize = safeSizesList.find(
+              (s: any) =>
+                String(s.name).trim().toLowerCase() === String(sName).trim().toLowerCase() ||
+                String(s.id) === String(sName)
+            );
+            const resolvedSizeId = matchedSize?.id
+              ? String(matchedSize.id)
+              : (sizeNames.length <= 1 && v.sizeId ? String(v.sizeId) : "");
+
             expandedVariants.push({
               ...v,
               price: v.price || (hasPromo ? form.discountPrice : form.sellingPrice),
               compareAtPrice: v.compareAtPrice || (hasPromo ? form.sellingPrice : undefined),
-              colorId: colorNames.length > 1 ? "" : v.colorId,
+              colorId: resolvedColorId,
               colorName: cName,
-              sizeId: sizeNames.length > 1 ? "" : v.sizeId,
+              sizeId: resolvedSizeId,
               sizeName: sName,
               sku: effectiveColors.length === 1 && effectiveSizes.length === 1 && v.sku ? v.sku : autoSku,
             });
@@ -463,6 +826,7 @@ function ProductFormContent() {
 
       const payload = {
         ...form,
+        baseQty: effectiveBaseQty,
         images,
         variants: expandedVariants,
         wearWith: wearWith.map((w) => w.id),
@@ -618,6 +982,36 @@ function ProductFormContent() {
                   />
                 </div>
 
+                {images.length > 0 && (
+                  <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                    <div className="flex items-center gap-2.5 text-xs text-slate-700">
+                      <Sparkles size={16} className="text-blue-600 shrink-0" />
+                      <div>
+                        <span className="font-semibold text-slate-900">AI Vision Auto-Fill:</span>{" "}
+                        Analyze your uploaded garment to automatically guess title, category, modest fit, specifications, and descriptions.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleAnalyzeImage()}
+                      disabled={isAnalyzingImage}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-colors shadow-xs cursor-pointer shrink-0 self-start sm:self-auto"
+                    >
+                      {isAnalyzingImage ? (
+                        <>
+                          <Loader2 size={13} className="animate-spin text-white" />
+                          <span>Analyzing image...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={13} />
+                          <span>Auto-fill details from photo</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+
                 <div className="bg-blue-50/50 rounded-xl p-4 flex gap-3 items-start border border-blue-100">
                   <Info className="text-blue-500 shrink-0 mt-0.5" size={20} />
                   <div className="text-sm text-blue-900">
@@ -639,21 +1033,54 @@ function ProductFormContent() {
               <div className="space-y-6">
                 {/* Product Details Card */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-8">
-                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                    <Info className="text-blue-600" size={24} />
-                    Product Details
-                  </h2>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
+                      <Info className="text-blue-600" size={24} />
+                      Product Details
+                    </h2>
+                  </div>
 
                   <div className="space-y-6">
-                    <TextField
+                    <InlineAutoCompleteInput
                       label={<RequiredLabel text="Product Name" />}
                       name="title"
                       value={form.title}
                       onChange={handleInputChange}
+                      onAccept={handleTitleAccept}
+                      categoryId={form.categoryId}
                       fullWidth
                       sx={fieldStyle}
-                      placeholder="e.g., Premium Cotton T-Shirt"
+                      placeholder="e.g., Sakina Embroidered Black Abaya"
+                      helperText="💡 Type 2-3 characters: Smart Compose suggests completions. Press Tab ⇥ or Right Arrow to accept & auto-cascade."
                     />
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-semibold text-gray-700">URL Slug</span>
+                        <button
+                          type="button"
+                          onClick={handleOptimizeSeo}
+                          disabled={isOptimizingSeo || !form.title.trim()}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 disabled:opacity-45 disabled:pointer-events-none transition-colors duration-150 shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1 cursor-pointer"
+                          title="Generate SEO optimized URL slug without stop words"
+                        >
+                          {isOptimizingSeo ? (
+                            <Loader2 size={12} className="animate-spin text-blue-600" />
+                          ) : (
+                            <Wand2 size={12} className="text-slate-500" />
+                          )}
+                          <span>{isOptimizingSeo ? "Optimizing..." : "Optimize slug"}</span>
+                        </button>
+                      </div>
+                      <TextField
+                        name="slug"
+                        value={form.slug}
+                        onChange={handleInputChange}
+                        fullWidth
+                        sx={fieldStyle}
+                        helperText="Unique product URL path (auto-generated from product title)"
+                      />
+                    </div>
 
                     <div className="relative">
                       <TextField
@@ -769,6 +1196,24 @@ function ProductFormContent() {
                     </div>
 
                     <TextField
+                      select
+                      label="Modest Fit Type"
+                      name="fitType"
+                      value={form.fitType}
+                      onChange={handleInputChange}
+                      fullWidth
+                      sx={fieldStyle}
+                      helperText="Recommended silhouette for customer sizing & modest drape"
+                    >
+                      <MenuItem value="">Select Fit Type</MenuItem>
+                      <MenuItem value="Modest / Loose Fit">Modest / Loose Fit</MenuItem>
+                      <MenuItem value="A-Line Silhouette">A-Line Silhouette</MenuItem>
+                      <MenuItem value="Tailored Fit">Tailored Fit</MenuItem>
+                      <MenuItem value="Oversized Fit">Oversized Fit</MenuItem>
+                      <MenuItem value="Regular Fit">Regular Fit</MenuItem>
+                    </TextField>
+
+                    <TextField
                       label={<RequiredLabel text="Brand" />}
                       select
                       name="brandId"
@@ -783,17 +1228,38 @@ function ProductFormContent() {
                     </TextField>
 
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">Specifications (Add 4 or 5 key Benefits and Features) <span className="text-red-500">*</span></label>
+                      <div className="flex items-center justify-between">
+                        <label className="block text-sm font-medium text-gray-700">Specifications (Add 4 or 5 key Benefits and Features) <span className="text-red-500">*</span></label>
+                        <span className="text-xs text-gray-400 font-medium">Max 120 characters</span>
+                      </div>
                       <RichTextEditor
                         value={form.shortDescription}
                         onChange={(value) => setForm((prev) => ({ ...prev, shortDescription: value }))}
                         minHeight={250}
                         placeholder="Brief summary for specifications..."
+                        maxLength={120}
+                        helperText="Brief summary for specifications (Maximum 120 characters)"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">Full Description <span className="text-red-500">*</span></label>
+                      <div className="flex items-center justify-between">
+                        <label className="block text-sm font-medium text-gray-700">Full Description <span className="text-red-500">*</span></label>
+                        <button
+                          type="button"
+                          onClick={handleGenerateAiDescription}
+                          disabled={isGeneratingDescription || !form.title.trim()}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 disabled:opacity-45 disabled:pointer-events-none transition-colors duration-150 shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1 cursor-pointer"
+                          title="Auto-generate editorial product description"
+                        >
+                          {isGeneratingDescription ? (
+                            <Loader2 size={13} className="animate-spin text-blue-600" />
+                          ) : (
+                            <Sparkles size={13} className="text-blue-600" />
+                          )}
+                          <span>{isGeneratingDescription ? "Drafting description..." : "Auto-generate description"}</span>
+                        </button>
+                      </div>
                       <RichTextEditor
                         value={form.description}
                         onChange={(value) => setForm((prev) => ({ ...prev, description: value }))}
@@ -912,6 +1378,30 @@ function ProductFormContent() {
                   <p className="text-gray-500 mt-1">Set your base product pricing, promotional discounts, and tracking information.</p>
                 </div>
 
+                {/* AI Margin Advisor Banner */}
+                {aiPricingAdvice && form.costPrice && (
+                  <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-blue-900 shadow-xs">
+                    <div className="flex items-start sm:items-center gap-2.5">
+                      <Sparkles size={18} className="text-blue-600 shrink-0 mt-0.5 sm:mt-0" />
+                      <div>
+                        <span className="font-bold text-blue-950">AI Margin Advisor:</span> Based on £{form.costPrice} cost, recommended RRP is{" "}
+                        <span className="font-bold text-blue-700">£{aiPricingAdvice.recommendedSellingPrice}</span> ({aiPricingAdvice.grossMarginPercent}% gross margin), and promo discount price is{" "}
+                        <span className="font-bold text-indigo-700">£{aiPricingAdvice.recommendedDiscountPrice}</span>.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleRegularPriceChange(String(aiPricingAdvice.recommendedSellingPrice));
+                        handleDiscountPriceChange(String(aiPricingAdvice.recommendedDiscountPrice));
+                      }}
+                      className="shrink-0 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition cursor-pointer self-start sm:self-auto"
+                    >
+                      Apply Recommended Prices
+                    </button>
+                  </div>
+                )}
+
                 {/* 1. Base Pricing */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <TextField
@@ -1021,8 +1511,10 @@ function ProductFormContent() {
                         </p>
                         <div className="text-xs text-blue-800 space-y-1.5 max-h-32 overflow-y-auto">
                           {variants.map((v, idx) => {
-                            const colorName = v.colorName || colors.find((c) => String(c.id) === String(v.colorId))?.name || "Universal";
-                            const sizeName = v.sizeName || sizes.find((s) => String(s.id) === String(v.sizeId))?.name || "Universal";
+                            const safeColorsList = Array.isArray(colors) ? colors : [];
+                            const safeSizesList = Array.isArray(sizes) ? sizes : [];
+                            const colorName = v.colorName || safeColorsList.find((c) => String(c.id) === String(v.colorId))?.name || "Universal";
+                            const sizeName = v.sizeName || safeSizesList.find((s) => String(s.id) === String(v.sizeId))?.name || "Universal";
                             const qty = parseInt(String(v.stock)) || 0;
                             const cCount = (v.colorName || "").split(",").map((c: string) => c.trim()).filter(Boolean).length || 1;
                             const sCount = (v.sizeName || "").split(",").map((s: string) => s.trim()).filter(Boolean).length || 1;
