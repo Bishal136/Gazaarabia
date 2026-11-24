@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X, Search, User, Heart, ShoppingBag, Loader, ChevronRight, ArrowLeft } from "lucide-react";
+import { Menu, X, Search, User, Heart, ShoppingBag, Loader, ChevronRight, ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useCart } from "@/app/context/CartContext";
 import { FaFacebookF, FaInstagram, FaYoutube, FaTiktok } from "react-icons/fa";
@@ -83,8 +83,8 @@ export default function Header() {
   // Navigation State
   const [menus, setMenus] = useState<MenuItem[]>(() => clientMenuMemoryCache?.data || []);
   const [activeMenu, setActiveMenu] = useState<MenuItem | null>(null);
-  const [activeSubmenu, setActiveSubmenu] = useState<Submenu | null>(null);
-  const [activeCategory, setActiveCategory] = useState<Category | null>(null);
+  const [selectedSubmenuTab, setSelectedSubmenuTab] = useState<number | "all">("all");
+  const [hoveredCategory, setHoveredCategory] = useState<Category | null>(null);
 
   // UI State
   const [toolbarText, setToolbarText] = useState<string>(() => clientMenuMemoryCache?.headerText || "");
@@ -117,40 +117,25 @@ export default function Header() {
     return `/shop/${link.slug}`;
   }, []);
 
-  // Toggle Handlers (Click-based)
-  // Toggle Handlers (Click-based)
   const closeAllMenus = useCallback(() => {
     if (hoverOpenRef.current) clearTimeout(hoverOpenRef.current);
     if (hoverCloseRef.current) clearTimeout(hoverCloseRef.current);
 
     setActiveMenu(null);
-    setActiveSubmenu(null);
-    setActiveCategory(null);
+    setSelectedSubmenuTab("all");
+    setHoveredCategory(null);
   }, []);
 
   const handleMenuHover = (menu: MenuItem) => {
     if (hoverCloseRef.current) clearTimeout(hoverCloseRef.current);
     if (hoverOpenRef.current) clearTimeout(hoverOpenRef.current);
 
-    // Intent delay for top level - reduced for snappier feel
+    // Intent delay (40ms) for snappy, flicker-free opening
     hoverOpenRef.current = setTimeout(() => {
       setActiveMenu(menu);
-      setActiveSubmenu(null);
-      setActiveCategory(null);
-    }, 20);
-  };
-
-
-  const handleSubmenuHover = (sub: Submenu) => {
-    if (hoverOpenRef.current) clearTimeout(hoverOpenRef.current);
-
-    // Snappier but still debounced for sub-levels
-    setActiveSubmenu(sub);
-    setActiveCategory(null);
-  };
-
-  const handleCategoryHover = (cat: Category) => {
-    setActiveCategory(cat);
+      setSelectedSubmenuTab("all");
+      setHoveredCategory(null);
+    }, 40);
   };
 
   const cancelClose = useCallback(() => {
@@ -161,10 +146,43 @@ export default function Header() {
     if (hoverOpenRef.current) clearTimeout(hoverOpenRef.current);
     if (hoverCloseRef.current) clearTimeout(hoverCloseRef.current);
 
+    // 160ms grace period so mouse can glide between header and dropdown smoothly
     hoverCloseRef.current = setTimeout(() => {
       closeAllMenus();
-    }, 20);
+    }, 160);
   }, [closeAllMenus]);
+
+  // Aggregate categories for instant Mega-Grid display
+  const displayedCategories = useMemo(() => {
+    if (!activeMenu?.dropdown?.submenus) return [];
+    if (selectedSubmenuTab === "all") {
+      const allCats: Category[] = [];
+      for (const sub of activeMenu.dropdown.submenus) {
+        if (Array.isArray(sub.categories)) {
+          for (const cat of sub.categories) {
+            if (!allCats.some((c) => c.id === cat.id)) {
+              allCats.push(cat);
+            }
+          }
+        }
+      }
+      return allCats;
+    }
+    const foundSub = activeMenu.dropdown.submenus.find((s) => s.id === selectedSubmenuTab);
+    return foundSub?.categories || [];
+  }, [activeMenu, selectedSubmenuTab]);
+
+  // Selected submenu information for active tab
+  const selectedSubmenu = useMemo(() => {
+    if (selectedSubmenuTab === "all" || !activeMenu?.dropdown?.submenus) return null;
+    return activeMenu.dropdown.submenus.find((s) => s.id === selectedSubmenuTab) || null;
+  }, [activeMenu, selectedSubmenuTab]);
+
+  // Active category for the live frosted preview card (defaults to first category with an image)
+  const activeCategoryPreview = useMemo(() => {
+    if (hoveredCategory) return hoveredCategory;
+    return displayedCategories.find((c) => c.image) || displayedCategories[0] || null;
+  }, [hoveredCategory, displayedCategories]);
 
 
 
@@ -317,7 +335,7 @@ export default function Header() {
             {/* Smooth Continuous Marquee on a single line — single message copy */}
             <div className="flex-1 overflow-hidden relative select-none [container-type:inline-size]">
               <div className="animate-announcement-marquee inline-block whitespace-nowrap">
-                <span className="inline-block">
+                <span suppressHydrationWarning className="inline-block">
                   {toolbarText || "Free UK shipping over £60 | Free international over £120"}
                 </span>
               </div>
@@ -392,8 +410,8 @@ export default function Header() {
               </button>
               <button onClick={() => openCartDrawer()} className="relative p-2 hover:bg-black/5 rounded-full transition">
                 <ShoppingBag size={22} />
-                {cartCount > 0 && (
-                  <span className="absolute top-1 right-1 bg-[var(--brand-primary)] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
+                {mounted && cartCount > 0 && (
+                  <span suppressHydrationWarning className="absolute top-1 right-1 bg-[var(--brand-primary)] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
                     {cartCount}
                   </span>
                 )}
@@ -401,130 +419,327 @@ export default function Header() {
             </div>
           </div>
 
-          {/* MEGA MENU: Stage 2 (Submenu Strip) */}
+          {/* MODERN MEGA MENU: Frosted Glass & Dynamic Authentic Preview (Zara / Net-A-Porter Style) */}
           <div
-            className={`absolute top-full left-0 w-full bg-white border-b border-gray-100 shadow-2xl transition-all duration-300 ease-out z-50 will-change-transform ${activeMenu && activeMenu.dropdown?.submenus?.length ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
-              }`}
+            className={`absolute top-full left-0 w-full bg-[#fbfaf8]/90 backdrop-blur-2xl border-b border-white/60 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.07),0_10px_20px_-5px_rgba(0,0,0,0.04)] transition-all duration-200 ease-out z-50 will-change-transform ${
+              activeMenu && (displayedCategories.length > 0 || (activeMenu.dropdown?.banners && activeMenu.dropdown.banners.length > 0) || activeMenu.type === "blog" || (activeMenu.dropdown?.submenus && activeMenu.dropdown.submenus.length > 0))
+                ? "opacity-100 translate-y-0 pointer-events-auto"
+                : "opacity-0 -translate-y-2 pointer-events-none"
+            }`}
             onMouseEnter={cancelClose}
+            onMouseLeave={scheduleClose}
           >
-            <div className="max-w-[1600px] mx-auto px-10 flex gap-6 overflow-x-auto no-scrollbar py-4">
-              {activeMenu?.dropdown?.submenus.map((sub) => (
-                <button
-                  key={sub.id}
-                  type="button"
-                  onMouseEnter={() => handleSubmenuHover(sub)}
-                  className={`px-6 py-2.5 rounded-full text-[12px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${activeSubmenu?.id === sub.id ? "bg-gray-900 text-white shadow-lg scale-105" : "text-gray-500 hover:bg-gray-100"
-                    }`}
-                >
-                  {sub.name}
-                </button>
-              ))}
-            </div>
-
-            {/* MEGA MENU: Stage 3 (Categories + Subcategories + Banners) */}
-            <div className={`bg-gray-50/50 transition-all duration-300 ease-out overflow-hidden ${activeMenu && activeSubmenu ? "max-h-[600px]" : "max-h-0"}`}>
-              <div className="max-w-[1600px] mx-auto px-10 py-10 grid grid-cols-5 gap-12">
-                {/* Categories Column */}
-                <div className="col-span-1 space-y-1">
-                  <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Collections</h4>
-                  {activeSubmenu?.categories.map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onMouseEnter={() => handleCategoryHover(cat)}
-                      className={`w-full flex items-center justify-between text-[13px] uppercase tracking-wide py-2.5 px-4 rounded-lg transition-all duration-200 cursor-pointer ${activeCategory?.id === cat.id ? "bg-white shadow-md text-[var(--brand-primary)] font-bold translate-x-1" : "text-gray-600 hover:text-black hover:bg-white/50"
-                        }`}
-                    >
-                      <span>{cat.name}</span>
-                      {activeCategory?.id === cat.id && <ChevronRight size={14} className="animate-in fade-in slide-in-from-left-1" />}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Subcategories Column */}
-                <div className="col-span-1 ">
-                  <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">
-                    {activeCategory?.name || "Shop By"}
-                  </h4>
-                  <div className="grid grid-cols-1 gap-1">
-                    {activeCategory && (
-                      <Link
-                        href={`/shop/${activeCategory.slug}`}
-                        className="text-[12px] font-bold text-[var(--brand-primary)] py-2 px-3 mt-2 inline-flex items-center gap-1 group"
-                        onClick={() => closeAllMenus()}
-                      >
-                        View All <ChevronRight size={14} className="group-hover:translate-x-1 transition" />
-                      </Link>
-                    )}
-                    {activeCategory?.subcategories.map((subcat) => (
-                      <Link
-                        key={subcat.id}
-                        href={`/shop/${subcat.slug}`}
-                        className="text-[13px] text-gray-600 hover:text-[var(--brand-primary)] py-2 px-3 rounded-md transition hover:bg-white/50"
-                        onClick={() => closeAllMenus()}
-                      >
-                        {subcat.name}
-                      </Link>
-                    ))}
-                    
+            {activeMenu && (
+              <div className="max-w-[1600px] mx-auto px-6 sm:px-10 py-7">
+                {/* 1. Header Bar inside Mega Menu: Department Title + Submenu Filters */}
+                <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-gray-200/50 mb-6">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2 h-2 rounded-full bg-[var(--brand-primary)]"></span>
+                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-gray-900">
+                      {activeMenu.name} COLLECTION
+                    </h3>
                   </div>
+
+                  {/* Submenu Filter Pills (Frosted Glass Buttons) */}
+                  {activeMenu.dropdown?.submenus?.length > 1 && (
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSubmenuTab("all");
+                          setHoveredCategory(null);
+                        }}
+                        onMouseEnter={() => {
+                          setSelectedSubmenuTab("all");
+                          setHoveredCategory(null);
+                        }}
+                        className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all duration-150 cursor-pointer ${
+                          selectedSubmenuTab === "all"
+                            ? "bg-[var(--text-primary)] text-white shadow-xs backdrop-blur-md"
+                            : "bg-white/70 text-gray-700 hover:bg-white hover:text-black border border-white/80 shadow-xs backdrop-blur-md"
+                        }`}
+                      >
+                        All Collections
+                      </button>
+                      {activeMenu.dropdown.submenus.map((sub) => (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedSubmenuTab(sub.id);
+                            setHoveredCategory(null);
+                          }}
+                          onMouseEnter={() => {
+                            setSelectedSubmenuTab(sub.id);
+                            setHoveredCategory(null);
+                          }}
+                          className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all duration-150 cursor-pointer ${
+                            selectedSubmenuTab === sub.id
+                              ? "bg-[var(--text-primary)] text-white shadow-xs backdrop-blur-md"
+                              : "bg-white/70 text-gray-700 hover:bg-white hover:text-black border border-white/80 shadow-xs backdrop-blur-md"
+                          }`}
+                        >
+                          {sub.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Quick Link to View All */}
+                  <Link
+                    href={getMenuLink(activeMenu)}
+                    onClick={closeAllMenus}
+                    className="text-xs font-bold uppercase tracking-wider text-[var(--brand-primary)] hover:underline inline-flex items-center gap-1 group"
+                  >
+                    <span>View All {activeMenu.name}</span>
+                    <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
+                  </Link>
                 </div>
 
-                {/* Banners Column */}
-                <div className="col-span-3 grid grid-cols-2 gap-6">
-                  {activeMenu?.dropdown.banners.slice(0, 2).map((banner, i) => (
-                    <Link
-                      key={i}
-                      href={banner.link}
-                      className="relative aspect-[16/9] rounded-xl overflow-hidden group shadow-md hover:shadow-xl transition-all duration-500"
-                    >
-                      <Image
-                        src={banner.image}
-                        alt={banner.title}
-                        fill
-                        sizes="(max-width: 1024px) 50vw, 33vw"
-                        className="object-cover group-hover:scale-110 transition-transform duration-700"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-6">
-                        <span className="text-white text-[18px] font-black uppercase tracking-widest">{banner.title}</span>
-                        <span className="text-white/80 text-[11px] uppercase font-bold tracking-widest mt-1">Explore Now</span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+                {/* 2. Main Content Grid */}
+                {activeMenu.type === "blog" ? (
+                  /* Blog Specialized Grid - 100% Real Database Categories from MongoDB */
+                  <div className="py-2">
+                    <div className="flex items-center justify-between pb-3 mb-4">
+                      <span className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400">
+                        Editorial Topics ({displayedCategories.length})
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {displayedCategories.map((cat) => (
+                        <Link
+                          key={cat.id}
+                          href={`/blogs/journal/${cat.slug}`}
+                          onClick={closeAllMenus}
+                          className="p-3.5 rounded-xl bg-white/70 hover:bg-white border border-white/80 shadow-xs hover:shadow-md transition-all duration-200 group flex items-center justify-between"
+                        >
+                          <span className="text-xs font-bold text-gray-800 group-hover:text-[var(--brand-primary)] transition-colors line-clamp-1">
+                            {cat.name}
+                          </span>
+                          <ChevronRight size={14} className="text-gray-400 group-hover:text-[var(--brand-primary)] group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  /* Standard Product Mega Grid: Real MongoDB Data + Frosted Glass + Dynamic Photo Preview */
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    {/* Category Columns (takes 8 or 9 cols) */}
+                    <div className="lg:col-span-8 xl:col-span-9">
+                      {displayedCategories.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                          {displayedCategories.map((cat) => {
+                            const isSelected = activeCategoryPreview?.id === cat.id;
+                            return (
+                              <div
+                                key={cat.id}
+                                onMouseEnter={() => setHoveredCategory(cat)}
+                                className={`space-y-2.5 p-3 rounded-xl transition-all duration-150 ${
+                                  isSelected ? "bg-white/80 shadow-xs ring-1 ring-black/5" : "hover:bg-white/50"
+                                }`}
+                              >
+                                <Link
+                                  href={`/shop/${cat.slug}`}
+                                  onClick={closeAllMenus}
+                                  className="text-xs font-black uppercase tracking-[0.15em] text-gray-900 hover:text-[var(--brand-primary)] flex items-center justify-between group transition-colors pb-1.5 border-b border-gray-200/60"
+                                >
+                                  <span>{cat.name}</span>
+                                  <ChevronRight
+                                    size={13}
+                                    className={`transition-all ${
+                                      isSelected
+                                        ? "text-[var(--brand-primary)] translate-x-0.5"
+                                        : "text-gray-400 group-hover:text-[var(--brand-primary)] group-hover:translate-x-0.5"
+                                    }`}
+                                  />
+                                </Link>
+
+                                <ul className="space-y-1.5 text-[13px] text-gray-600">
+                                  {cat.subcategories && cat.subcategories.length > 0 ? (
+                                    cat.subcategories.slice(0, 5).map((subcat) => (
+                                      <li key={subcat.id}>
+                                        <Link
+                                          href={`/shop/${subcat.slug}`}
+                                          onClick={closeAllMenus}
+                                          className="hover:text-[var(--brand-primary)] hover:translate-x-1 inline-block transition-transform duration-150 font-medium"
+                                        >
+                                          {subcat.name}
+                                        </Link>
+                                      </li>
+                                    ))
+                                  ) : (
+                                    <li>
+                                      <Link
+                                        href={`/shop/${cat.slug}`}
+                                        onClick={closeAllMenus}
+                                        className="text-gray-400 hover:text-gray-700 italic text-xs"
+                                      >
+                                        Explore collection
+                                      </Link>
+                                    </li>
+                                  )}
+
+                                  {cat.subcategories && cat.subcategories.length > 5 && (
+                                    <li className="pt-1">
+                                      <Link
+                                        href={`/shop/${cat.slug}`}
+                                        onClick={closeAllMenus}
+                                        className="text-[11px] font-bold text-[var(--brand-primary)] hover:underline inline-flex items-center gap-0.5"
+                                      >
+                                        View all ({cat.subcategories.length}) →
+                                      </Link>
+                                    </li>
+                                  )}
+                                </ul>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="py-12 px-6 rounded-2xl bg-white/70 backdrop-blur-md border border-white/80 text-center shadow-xs">
+                          <p className="text-xs font-bold uppercase tracking-widest text-gray-600">
+                            Explore all products in {selectedSubmenu?.name || activeMenu.name}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1 max-w-md mx-auto">
+                            Discover our curated collection tailored for {activeMenu.name.toLowerCase()} modest fashion.
+                          </p>
+                          <div className="mt-4">
+                            <Link
+                              href={selectedSubmenu?.slug ? `/shop/${selectedSubmenu.slug}` : getMenuLink(activeMenu)}
+                              onClick={closeAllMenus}
+                              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--brand-primary)] text-white text-xs font-bold uppercase tracking-widest hover:opacity-90 shadow-xs transition-opacity"
+                            >
+                              <span>Browse {selectedSubmenu?.name || activeMenu.name}</span>
+                              <ArrowRight size={13} />
+                            </Link>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right Column: Live Frosted Category Preview (100% Real Image from MongoDB, NO AI SLOP) */}
+                    <div className="lg:col-span-4 xl:col-span-3 hidden lg:block sticky top-0">
+                      {activeCategoryPreview ? (
+                        <div className="p-4 rounded-2xl bg-white/70 backdrop-blur-xl border border-white/90 shadow-[0_15px_35px_rgba(0,0,0,0.06)] transition-all duration-300">
+                          <div className="relative aspect-[3/4] rounded-xl overflow-hidden group bg-stone-100 shadow-xs">
+                            {activeCategoryPreview.image ? (
+                              <Image
+                                src={activeCategoryPreview.image}
+                                alt={activeCategoryPreview.name}
+                                fill
+                                sizes="(max-width: 1280px) 300px, 350px"
+                                className="object-cover group-hover:scale-105 transition-transform duration-700"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex flex-col items-center justify-center bg-stone-200 text-stone-500 p-4 text-center">
+                                <span className="text-xs font-black uppercase tracking-widest">{activeCategoryPreview.name}</span>
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent flex flex-col justify-end p-5">
+                              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/80">
+                                {activeMenu.name} • {selectedSubmenu?.name || "Collection"}
+                              </span>
+                              <h4 className="text-base font-black uppercase tracking-wider text-white mt-1">
+                                {activeCategoryPreview.name}
+                              </h4>
+                              <Link
+                                href={`/shop/${activeCategoryPreview.slug}`}
+                                onClick={closeAllMenus}
+                                className="mt-3 inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-white/95 hover:bg-white text-gray-900 text-[11px] font-black uppercase tracking-widest shadow-md transition-all group-hover:bg-[var(--brand-primary)] group-hover:text-white"
+                              >
+                                <span>Explore {activeCategoryPreview.name}</span>
+                                <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                              </Link>
+                            </div>
+                          </div>
+
+                          {activeCategoryPreview.subcategories && activeCategoryPreview.subcategories.length > 0 && (
+                            <div className="mt-3.5 pt-3 border-t border-gray-100">
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-2">
+                                Featured Sub-categories
+                              </span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {activeCategoryPreview.subcategories.slice(0, 4).map((sub) => (
+                                  <Link
+                                    key={sub.id}
+                                    href={`/shop/${sub.slug}`}
+                                    onClick={closeAllMenus}
+                                    className="px-2.5 py-1 rounded-md bg-stone-100/90 hover:bg-[var(--brand-primary)] hover:text-white text-[11px] font-semibold text-stone-700 transition-colors"
+                                  >
+                                    {sub.name}
+                                  </Link>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : activeMenu.dropdown?.banners?.length > 0 ? (
+                        <div className="p-4 rounded-2xl bg-white/70 backdrop-blur-xl border border-white/90 shadow-[0_15px_35px_rgba(0,0,0,0.06)]">
+                          <Link
+                            href={activeMenu.dropdown.banners[0].link || getMenuLink(activeMenu)}
+                            onClick={closeAllMenus}
+                            className="relative block aspect-[3/4] rounded-xl overflow-hidden group shadow-xs"
+                          >
+                            <Image
+                              src={activeMenu.dropdown.banners[0].image}
+                              alt={activeMenu.dropdown.banners[0].title || activeMenu.name}
+                              fill
+                              sizes="(max-width: 1280px) 300px, 350px"
+                              className="object-cover group-hover:scale-105 transition-transform duration-700"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent flex flex-col justify-end p-5">
+                              <span className="text-white text-sm font-black uppercase tracking-wider">
+                                {activeMenu.dropdown.banners[0].title || `${activeMenu.name} Collection`}
+                              </span>
+                              <span className="text-white/90 text-[11px] uppercase font-bold tracking-widest mt-2 inline-flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                                Explore Collection <ArrowRight size={12} />
+                              </span>
+                            </div>
+                          </Link>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </header>
 
-      {/* ADVANCED FULL-WIDTH SEARCH MODAL */}
-      <AdvancedSearchModal
-        isOpen={searchMode}
-        onClose={() => setSearchMode(false)}
-      />
-
       {/* MENU BACKDROP */}
       {activeMenu && (
         <div
-          className="fixed inset-0 bg-black/10 backdrop-blur-[2px] z-[90] transition-all duration-300 animate-in fade-in pointer-events-none"
+          onClick={closeAllMenus}
+          className="fixed inset-0 top-[70px] lg:top-[80px] bg-black/20 backdrop-blur-[2px] z-[40] transition-opacity duration-200 animate-in fade-in"
         />
       )}
 
+      {/* CLIENT-ONLY MODALS & DRAWERS (Guarded by mounted to prevent SSR & extension DOM injection hydration mismatch) */}
+      {mounted && (
+        <>
+          {/* ADVANCED FULL-WIDTH SEARCH MODAL */}
+          {searchMode && (
+            <AdvancedSearchModal
+              isOpen={searchMode}
+              onClose={() => setSearchMode(false)}
+            />
+          )}
 
+          {/* Mobile Menu Drawer */}
+          <MobileMenuDrawer
+            isOpen={isMobileMenuOpen}
+            onClose={() => setIsMobileMenuOpen(false)}
+            menus={menus}
+            getMenuLink={getMenuLink}
+            getSubmenuLink={getSubmenuLink}
+          />
 
-      {/* Mobile Menu Drawer */}
-      <MobileMenuDrawer
-        isOpen={isMobileMenuOpen}
-        onClose={() => setIsMobileMenuOpen(false)}
-        menus={menus}
-        getMenuLink={getMenuLink}
-        getSubmenuLink={getSubmenuLink}
-      />
-
-      {/* Other Drawers */}
-      <ProfileDrawer isOpen={profileDrawer} onClose={() => setProfileDrawer(false)} />
-      <CartDrawer isOpen={isCartDrawerOpen} onClose={() => closeCartDrawer()} />
+          {/* Other Drawers */}
+          <ProfileDrawer isOpen={profileDrawer} onClose={() => setProfileDrawer(false)} />
+          <CartDrawer isOpen={isCartDrawerOpen} onClose={() => closeCartDrawer()} />
+        </>
+      )}
     </>
   );
 }

@@ -52,15 +52,42 @@ export async function GET() {
     const db = mongoose.connection.db;
 
     if (db) {
-      const [menus, submenus, categories, subcategories, homepage] = await Promise.all([
+      const [menus, submenus, categories, subcategories, blogCategories, homepage] = await Promise.all([
         db.collection("menus").find().project({ id: 1, name: 1, slug: 1, type: 1, images: 1, position: 1 }).sort({ position: 1 }).toArray(),
         db.collection("submenus").find().project({ id: 1, menuId: 1, name: 1, slug: 1, position: 1 }).sort({ position: 1 }).toArray(),
         db.collection("categories").find().project({ id: 1, submenuId: 1, name: 1, slug: 1, image: 1, position: 1 }).sort({ position: 1 }).toArray(),
         db.collection("subcategories").find().project({ id: 1, categoryId: 1, name: 1, slug: 1 }).toArray(),
+        db.collection("blog_categories").find().project({ id: 1, name: 1, slug: 1 }).sort({ id: 1 }).toArray(),
         db.collection("homepage_settings").findOne({}, { projection: { headerText: 1 } }),
       ]);
 
       const formatted: FormattedMenu[] = menus.map((menu: any) => {
+        if (menu.type === "blog") {
+          return {
+            id: menu.id,
+            name: menu.name,
+            slug: menu.slug,
+            type: menu.type,
+            dropdown: {
+              submenus: [
+                {
+                  id: 999,
+                  name: "Journal Topics",
+                  slug: "journal",
+                  categories: blogCategories.map((bc: any) => ({
+                    id: bc.id,
+                    name: String(bc.name || "").trim(),
+                    slug: bc.slug,
+                    image: undefined,
+                    subcategories: [],
+                  })),
+                },
+              ],
+              banners: [],
+            },
+          };
+        }
+
         const menuSubmenus = submenus.filter((s: any) => s.menuId === menu.id);
         const submenusWithCats = menuSubmenus.map((submenu: any) => {
           const subCats = categories.filter((c: any) => c.submenuId === submenu.id);
