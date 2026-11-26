@@ -9,6 +9,7 @@ import "swiper/css/effect-fade";
 interface HeroSlide {
     desktop: string;
     mobile: string;
+    alt?: string;
 }
 
 interface HeroSliderProps {
@@ -46,7 +47,12 @@ export default function HeroSlider({ heroSlides }: HeroSliderProps) {
                                 <source media="(min-width: 1024px)" srcSet={slide.desktop} />
                                 <img
                                     src={slide.desktop}
-                                    alt={`Hero Slide ${index + 1}`}
+                                    alt={
+                                      slide.alt ||
+                                      (index === 0
+                                        ? "Gazaarabia UK Modest Fashion Collection — Luxury Abayas, Kaftans and Hijabs"
+                                        : `Gazaarabia Modest Fashion Lookbook Slide ${index + 1}`)
+                                    }
                                     className="object-cover object-center w-full h-full"
                                     fetchPriority={index === 0 ? "high" : "low"}
                                     loading={index === 0 ? "eager" : "lazy"}

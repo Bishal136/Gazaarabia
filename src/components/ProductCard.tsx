@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { Heart, Star } from "lucide-react";
 
@@ -39,19 +39,14 @@ export default function ProductCard({
   viewMode = "grid",
   priority = false,
 }: ProductCardProps) {
-  const router = useRouter();
   const [wishlist, setWishlist] = useState(Boolean(product.isInWishlist));
 
   // State to track hover for automatic video preview playback
   const [isHovered, setIsHovered] = useState(false);
   const videoUrl = extractProductVideoUrl(product);
 
-  const handleCardClick = () => {
-    onCardClick?.();
-    router.push(`/products/${product.slug}`);
-  };
-
   const handleWishlistClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     const newState = !wishlist;
     setWishlist(newState);
@@ -98,10 +93,9 @@ export default function ProductCard({
   if (viewMode === "list") {
     return (
       <div
-        onClick={handleCardClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className="group flex flex-col sm:flex-row items-stretch w-full bg-white border border-gray-200/80 hover:border-gray-300 rounded-2xl shadow-xs hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer p-4 sm:p-5 gap-5 sm:gap-6 min-w-0"
+        className="relative group flex flex-col sm:flex-row items-stretch w-full bg-white border border-gray-200/80 hover:border-gray-300 rounded-2xl shadow-xs hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer p-4 sm:p-5 gap-5 sm:gap-6 min-w-0"
       >
         {/* --- Image Section --- */}
         <div
@@ -197,9 +191,16 @@ export default function ProductCard({
               </span>
             )}
 
-            {/* Product Title */}
+            {/* Product Title (semantic stretched anchor covers whole card cleanly) */}
             <h3 className="text-base sm:text-lg font-semibold text-gray-900 group-hover:text-[#f85606] transition-colors line-clamp-2">
-              {product.title}
+              <Link
+                href={`/products/${product.slug}`}
+                prefetch={false}
+                onClick={onCardClick}
+                className="after:absolute after:inset-0 after:z-10"
+              >
+                {product.title}
+              </Link>
             </h3>
 
             {/* Rating Stars + Sold meta */}
@@ -284,13 +285,11 @@ export default function ProductCard({
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={handleCardClick}
-              className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[var(--brand-primary)] text-white text-xs font-semibold uppercase tracking-wider hover:opacity-90 transition shadow-xs"
+            <span
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[var(--brand-primary)] text-white text-xs font-semibold uppercase tracking-wider group-hover:opacity-90 transition shadow-xs"
             >
               View Details
-            </button>
+            </span>
           </div>
         </div>
       </div>
@@ -302,10 +301,9 @@ export default function ProductCard({
   // =========================================================================
   return (
     <div
-      onClick={handleCardClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="group flex flex-col w-full bg-white rounded-lg border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-200 overflow-hidden cursor-pointer h-full min-w-0"
+      className="relative group flex flex-col w-full bg-white rounded-lg border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-200 overflow-hidden cursor-pointer h-full min-w-0"
     >
       {/* --- Image Section (1:1 Square) --- */}
       <div className="relative w-full aspect-square overflow-hidden bg-gray-50 shrink-0">
@@ -379,12 +377,19 @@ export default function ProductCard({
       {/* --- Content Section (Daraz-style Left-aligned Layout) --- */}
       <div className="p-2.5 sm:p-3 flex flex-col flex-1 justify-between gap-1.5">
         <div>
-          {/* Product Title (2-line clamp with uniform min height) */}
+          {/* Product Title (2-line clamp with uniform min height + semantic link) */}
           <h3
             title={product.title}
             className="text-xs sm:text-[13px] md:text-sm font-normal text-[#212121] group-hover:text-[#f85606] transition-colors line-clamp-2 leading-snug min-h-[2.4em]"
           >
-            {product.title}
+            <Link
+              href={`/products/${product.slug}`}
+              prefetch={false}
+              onClick={onCardClick}
+              className="after:absolute after:inset-0 after:z-10"
+            >
+              {product.title}
+            </Link>
           </h3>
 
           {/* Pricing Row: Bold Orange Price (#f85606) */}

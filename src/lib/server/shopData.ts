@@ -218,7 +218,13 @@ export async function fetchShopData(
         orderBy: { name: "asc" },
       }),
     ]);
-    parentCategory = { id: 0, name: "All Products", slug: "all" };
+    parentCategory = {
+      id: 0,
+      name: "All Products",
+      slug: "all",
+      description:
+        "Explore Gazaarabia's curated UK modest fashion collection — handcrafted abayas, Moroccan kaftans, breathable hijabs, and ethically crafted attire.",
+    };
   } else {
     const menu = await prisma.menus.findFirst({ where: { slug } });
     if (menu) {
@@ -256,7 +262,12 @@ export async function fetchShopData(
           : menu.name.toUpperCase() === "MEN"
           ? "Men's Collection"
           : menu.name;
-      parentCategory = { id: menu.id, name: displayName, slug: menu.slug };
+      parentCategory = {
+        id: menu.id,
+        name: displayName,
+        slug: menu.slug,
+        description: `Explore our ${displayName} featuring ethically crafted modest fashion, abayas, kaftans, thobes, and accessories.`,
+      };
     } else {
       const submenu = await prisma.submenus.findFirst({ where: { slug } });
       if (submenu) {
@@ -282,11 +293,16 @@ export async function fetchShopData(
             orderBy: { name: "asc" },
           }),
         ]);
-        parentCategory = { id: submenu.id, name: submenu.name, slug: submenu.slug };
+        parentCategory = {
+          id: submenu.id,
+          name: submenu.name,
+          slug: submenu.slug,
+          description: `Explore our ${submenu.name} collection crafted with timeless modest elegance at Gazaarabia.`,
+        };
       } else {
         const category = await prisma.categories.findUnique({
           where: { slug },
-          select: { id: true, name: true, slug: true },
+          select: { id: true, name: true, slug: true, description: true },
         });
 
         if (category) {
@@ -310,7 +326,7 @@ export async function fetchShopData(
         } else {
           const subcategory = await prisma.subcategory.findUnique({
             where: { slug },
-            select: { id: true, categoryId: true, name: true, slug: true },
+            select: { id: true, categoryId: true, name: true, slug: true, description: true },
           });
 
           if (!subcategory) {
@@ -336,8 +352,15 @@ export async function fetchShopData(
 
           parentCategory = await prisma.categories.findUnique({
             where: { id: subcategory.categoryId },
-            select: { id: true, name: true, slug: true },
+            select: { id: true, name: true, slug: true, description: true },
           });
+          if (parentCategory) {
+            parentCategory = {
+              ...parentCategory,
+              activeSubcategoryName: subcategory.name,
+              activeSubcategoryDescription: subcategory.description,
+            };
+          }
         }
       }
     }

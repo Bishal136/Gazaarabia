@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Palette } from "lucide-react";
 
 interface ColorItem {
@@ -16,13 +16,7 @@ interface ShopByColorProps {
 }
 
 export default function ShopByColor({ colors }: ShopByColorProps) {
-  const router = useRouter();
-
   if (!colors || colors.length === 0) return null;
-
-  const handleColorClick = (colorId: number) => {
-    router.push(`/shop/all?colors[]=${colorId}`);
-  };
 
   const isLightColor = (hex: string): boolean => {
     const c = hex.replace("#", "");
@@ -67,41 +61,47 @@ export default function ShopByColor({ colors }: ShopByColorProps) {
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: Math.min(i * 0.06, 0.5), duration: 0.4, ease: "easeOut" }}
-                className="flex flex-col items-center gap-1.5 sm:gap-2.5 cursor-pointer group flex-shrink-0"
-                onClick={() => handleColorClick(color.id)}
+                className="flex-shrink-0"
               >
-                {/* Color Circle */}
-                <div className="relative">
-                  {/* Outer ring on hover */}
-                  <div
-                    className="absolute -inset-1 sm:-inset-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 group-hover:scale-110"
-                    style={{ border: `2px solid ${color.hexCode}` }}
-                  />
+                <Link
+                  href={`/shop/all?colors[]=${color.id}`}
+                  prefetch={false}
+                  className="flex flex-col items-center gap-1.5 sm:gap-2.5 group"
+                  aria-label={`Filter modestwear by ${color.name}`}
+                >
+                  {/* Color Circle */}
+                  <div className="relative">
+                    {/* Outer ring on hover */}
+                    <div
+                      className="absolute -inset-1 sm:-inset-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 group-hover:scale-110"
+                      style={{ border: `2px solid ${color.hexCode}` }}
+                    />
 
-                  {/* Main swatch */}
-                  <div
-                    className={`
-                      w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full shadow-md
-                      transition-all duration-500
-                      group-hover:shadow-xl group-hover:scale-105
-                      active:scale-95
-                      ${isLightColor(color.hexCode) ? "border-2 border-gray-200" : "border border-transparent"}
-                    `}
-                    style={{ backgroundColor: color.hexCode }}
-                  />
+                    {/* Main swatch */}
+                    <div
+                      className={`
+                        w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full shadow-md
+                        transition-all duration-500
+                        group-hover:shadow-xl group-hover:scale-105
+                        active:scale-95
+                        ${isLightColor(color.hexCode) ? "border-2 border-gray-200" : "border border-transparent"}
+                      `}
+                      style={{ backgroundColor: color.hexCode }}
+                    />
 
-                  {/* Product count badge */}
-                  {color._count && color._count.productvariant > 0 && (
-                    <div className="absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 bg-gray-900 text-white text-[8px] sm:text-[9px] font-bold w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center shadow-sm sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300">
-                      {color._count.productvariant > 99 ? "99+" : color._count.productvariant}
-                    </div>
-                  )}
-                </div>
+                    {/* Product count badge */}
+                    {color._count && color._count.productvariant > 0 && (
+                      <div className="absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 bg-gray-900 text-white text-[8px] sm:text-[9px] font-bold w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center shadow-sm sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300">
+                        {color._count.productvariant > 99 ? "99+" : color._count.productvariant}
+                      </div>
+                    )}
+                  </div>
 
-                {/* Color Name */}
-                <span className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-600 group-hover:text-gray-900 transition-colors duration-300 text-center max-w-[60px] sm:max-w-[80px] leading-tight">
-                  {color.name}
-                </span>
+                  {/* Color Name */}
+                  <span className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-600 group-hover:text-gray-900 transition-colors duration-300 text-center max-w-[60px] sm:max-w-[80px] leading-tight">
+                    {color.name}
+                  </span>
+                </Link>
               </motion.div>
             ))}
           </div>

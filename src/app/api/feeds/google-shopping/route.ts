@@ -15,7 +15,8 @@ export async function GET() {
           orderBy: { primary: "desc" },
         },
         productvariant: true,
-        category: true,
+        categories: true,
+        brand: true,
       },
       orderBy: { updatedAt: "desc" },
     });
@@ -23,20 +24,26 @@ export async function GET() {
     const baseUrl = "https://gazaarabia.com";
 
     const itemsXml = products
-      .map((product) => {
+      .map((product: any) => {
+        const regularPrice = Number(product.sellingPrice || product.price || 0);
+        if (regularPrice <= 0) return "";
+
+        const discountPrice = Number(product.discountPrice || 0);
+        const hasSale = discountPrice > 0 && discountPrice < regularPrice;
+
         const primaryImage =
-          product.productimage?.find((img) => img.primary)?.url ||
+          product.productimage?.find((img: any) => img.primary)?.url ||
           product.productimage?.[0]?.url ||
-          "";
+          "/images/og-banner.jpg";
 
         const fullImageUrl = primaryImage.startsWith("http")
           ? primaryImage
           : `${baseUrl}${primaryImage.startsWith("/") ? "" : "/"}${primaryImage}`;
 
-        const totalStock = product.productvariant.reduce(
-          (sum, v) => sum + (v.stock || 0),
-          0
-        );
+        const variantStock = Array.isArray(product.productvariant)
+          ? product.productvariant.reduce((sum: number, v: any) => sum + (v.stock || 0), 0)
+          : 0;
+        const totalStock = variantStock > 0 ? variantStock : Number(product.baseQty || 0);
         const availability = totalStock > 0 ? "in_stock" : "out_of_stock";
 
         // Clean description of HTML tags
@@ -47,7 +54,8 @@ export async function GET() {
           .trim()
           .slice(0, 5000);
 
-        const price = (product.price || 0).toFixed(2);
+        const brandName = product.brand?.name || "Gazaarabia";
+        const categoryName = product.categories?.name || "";
 
         return `
     <item>
@@ -57,12 +65,16 @@ export async function GET() {
       <g:link>${baseUrl}/products/${product.slug}</g:link>
       <g:image_link>${fullImageUrl}</g:image_link>
       <g:availability>${availability}</g:availability>
-      <g:price>${price} GBP</g:price>
-      <g:brand>Gazaarabia</g:brand>
+      <g:price>${regularPrice.toFixed(2)} GBP</g:price>
+      ${hasSale ? `<g:sale_price>${discountPrice.toFixed(2)} GBP</g:sale_price>` : ""}
+      <g:brand><![CDATA[${brandName}]]></g:brand>
       <g:condition>new</g:condition>
-      ${product.category?.name ? `<g:product_type><![CDATA[${product.category.name}]]></g:product_type>` : ""}
+      <g:identifier_exists>false</g:identifier_exists>
+      <g:google_product_category>Apparel &amp; Accessories &gt; Clothing</g:google_product_category>
+      ${categoryName ? `<g:product_type><![CDATA[${categoryName}]]></g:product_type>` : ""}
     </item>`;
       })
+      .filter(Boolean)
       .join("");
 
     const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -70,7 +82,7 @@ export async function GET() {
   <channel>
     <title>Gazaarabia Products Feed</title>
     <link>${baseUrl}</link>
-    <description>Official Google Shopping product catalog for Gazaarabia</description>
+    <description>Official Google Shopping product catalog for Gazaarabia UK</description>
     ${itemsXml}
   </channel>
 </rss>`;

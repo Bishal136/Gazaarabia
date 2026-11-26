@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function PaymentCallbackPage() {
+function PaymentCallbackContent() {
     const searchParams = useSearchParams();
     const redirectStatus = searchParams.get("redirect_status");
     
@@ -86,5 +86,13 @@ export default function PaymentCallbackPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function PaymentCallbackPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-50" />}>
+            <PaymentCallbackContent />
+        </Suspense>
     );
 }

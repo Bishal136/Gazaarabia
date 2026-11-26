@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession, getSession } from "next-auth/react";
@@ -63,7 +63,7 @@ const itemVariants = {
   },
 };
 
-export default function UnifiedLoginForm({
+function UnifiedLoginFormContent({
   initialRole,
   callbackUrl: propCallbackUrl,
   onOtpStepChange,
@@ -573,5 +573,13 @@ export default function UnifiedLoginForm({
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+export default function UnifiedLoginForm(props: UnifiedLoginFormProps) {
+  return (
+    <Suspense fallback={null}>
+      <UnifiedLoginFormContent {...props} />
+    </Suspense>
   );
 }

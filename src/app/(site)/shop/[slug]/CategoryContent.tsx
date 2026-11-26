@@ -324,8 +324,16 @@ export default function CategoryContent({ initialData }: { initialData?: any }) 
       {/* 1. CATEGORY HEADER & HERO TITLE */}
       <CategoryHeader
         selectedSlug={slug}
-        title={slug === "all" ? "All Collections" : slug.replace(/-/g, " ")}
-        description="Discover luxury modest attire and authentic heritage garments handcrafted with purposeful elegance."
+        title={
+          slug === "all"
+            ? "All Collections"
+            : parentCategory?.activeSubcategoryName || parentCategory?.name || slug.replace(/-/g, " ")
+        }
+        description={
+          parentCategory?.activeSubcategoryDescription ||
+          parentCategory?.description ||
+          "Discover luxury modest attire and authentic heritage garments handcrafted with purposeful elegance."
+        }
         parentCategory={parentCategory}
         categories={subcategories}
         onCategoryChange={(cat) => router.push(`/shop/${cat}`)}

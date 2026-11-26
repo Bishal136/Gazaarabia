@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 interface Category {
@@ -17,16 +17,6 @@ interface ShopByCategoryProps {
 }
 
 export default function ShopByCategory({ categories }: ShopByCategoryProps) {
-  const router = useRouter();
-
-  const handleCardClick = (item: any) => {
-    if (item?.slug) {
-      router.push(`/shop/${item.slug}`);
-    } else {
-      console.warn("Category slug is missing:", item);
-    }
-  };
-
   if (!categories || categories.length === 0) return null;
 
   return (
@@ -51,7 +41,7 @@ export default function ShopByCategory({ categories }: ShopByCategoryProps) {
           </p>
         </motion.div>
 
-        {/* Bento Grid Layout */}
+        {/* Bento Grid Layout with Semantic Links */}
         <div className="grid grid-cols-2 md:grid-cols-4 auto-rows-[160px] sm:auto-rows-[200px] md:auto-rows-[240px] gap-2 sm:gap-3 md:gap-4">
           {categories.map((cat, index) => {
             const isLarge = index === 0;
@@ -65,45 +55,52 @@ export default function ShopByCategory({ categories }: ShopByCategoryProps) {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: Math.min(index * 0.08, 0.4) }}
                 className={`
-                  relative group cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl
+                  relative group overflow-hidden rounded-xl sm:rounded-2xl
                   ${isLarge ? "row-span-2" : ""}
                   ${isWide ? "md:col-span-2" : ""}
                 `}
-                onClick={() => handleCardClick(cat)}
               >
-                {/* Image */}
-                <Image
-                  src={cat.image}
-                  alt={cat.name}
-                  fill
-                  loading="lazy"
-                  sizes={`${isLarge ? "(max-width:640px) 50vw, 360px" : isWide ? "(max-width:640px) 50vw, 500px" : "(max-width:640px) 50vw, 280px"}`}
-                  className="object-cover transition-transform duration-[1500ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-110"
-                />
+                <Link
+                  href={`/shop/${cat.slug}`}
+                  className="block w-full h-full relative"
+                  aria-label={`Shop ${cat.name}`}
+                >
+                  {/* Image */}
+                  <Image
+                    src={cat.image}
+                    alt={cat.name}
+                    fill
+                    loading="lazy"
+                    sizes={`${isLarge ? "(max-width:640px) 50vw, 360px" : isWide ? "(max-width:640px) 50vw, 500px" : "(max-width:640px) 50vw, 280px"}`}
+                    className="object-cover transition-transform duration-[1500ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-110"
+                  />
 
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent opacity-70 group-hover:opacity-90 transition-opacity duration-500" />
+                  {/* Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent opacity-70 group-hover:opacity-90 transition-opacity duration-500" />
 
-                {/* Text Content */}
-                <div className="absolute inset-0 flex flex-col items-center justify-end pb-4 sm:pb-6 md:pb-8 px-2 sm:px-4">
-                  <h3 className={`
-                    text-white font-semibold tracking-wide drop-shadow-lg text-center leading-tight
-                    ${isLarge ? "text-base sm:text-xl md:text-2xl mb-1 sm:mb-2" : "text-sm sm:text-base md:text-lg mb-1 sm:mb-1.5"}
-                  `}>
-                    {cat.name}
-                  </h3>
+                  {/* Text Content */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-end pb-4 sm:pb-6 md:pb-8 px-2 sm:px-4">
+                    <h3
+                      className={`
+                        text-white font-semibold tracking-wide drop-shadow-lg text-center leading-tight
+                        ${isLarge ? "text-base sm:text-xl md:text-2xl mb-1 sm:mb-2" : "text-sm sm:text-base md:text-lg mb-1 sm:mb-1.5"}
+                      `}
+                    >
+                      {cat.name}
+                    </h3>
 
-                  {/* Animated underline */}
-                  <div className="h-[2px] w-6 sm:w-8 bg-white/70 rounded-full group-hover:w-10 sm:group-hover:w-14 transition-all duration-500" />
+                    {/* Animated underline */}
+                    <div className="h-[2px] w-6 sm:w-8 bg-white/70 rounded-full group-hover:w-10 sm:group-hover:w-14 transition-all duration-500" />
 
-                  {/* Shop Now label on hover — hidden on mobile for cleaner look */}
-                  <div className="items-center gap-1.5 mt-2 sm:mt-3 opacity-0 group-hover:opacity-100 transform translate-y-3 group-hover:translate-y-0 transition-all duration-500 hidden sm:flex">
-                    <span className="text-white text-[10px] sm:text-xs font-medium uppercase tracking-wider">
-                      Shop Now
-                    </span>
-                    <ArrowRight size={12} className="text-white sm:w-3.5 sm:h-3.5" />
+                    {/* Shop Now label on hover — hidden on mobile for cleaner look */}
+                    <div className="items-center gap-1.5 mt-2 sm:mt-3 opacity-0 group-hover:opacity-100 transform translate-y-3 group-hover:translate-y-0 transition-all duration-500 hidden sm:flex">
+                      <span className="text-white text-[10px] sm:text-xs font-medium uppercase tracking-wider">
+                        Shop Now
+                      </span>
+                      <ArrowRight size={12} className="text-white sm:w-3.5 sm:h-3.5" />
+                    </div>
                   </div>
-                </div>
+                </Link>
               </motion.div>
             );
           })}

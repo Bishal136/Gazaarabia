@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import CategoryContent from "./CategoryContent";
 import { BreadcrumbSchema } from "@/components/BreadcrumbSchema";
@@ -57,18 +58,32 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!category) {
     return {
-      title: "Shop Modest Fashion | Gazaarabia",
-      description: "Explore our curated collections of modest fashion, thobes, and abayas.",
-      robots: { index: true, follow: true },
-      alternates: { canonical: `https://gazaarabia.com/shop/${slug}` },
+      title: "Collection Not Found",
+      description: "The requested modest fashion collection could not be found.",
+      robots: { index: false, follow: false },
     };
   }
 
+  const title =
+    slug === "all"
+      ? "Shop All Modest Fashion — Abayas, Kaftans & Hijabs UK"
+      : `${category.name} — Modest Fashion UK`;
+
+  const description =
+    category.description ||
+    `Shop our ${category.name} collection featuring ethically crafted modest fashion in the UK at Gazaarabia.`;
+
   return {
-    title: `${category.name} | Gazaarabia`,
-    description: category.description || `Discover our ${category.name} collection.`,
+    title,
+    description,
     robots: { index: true, follow: true },
     alternates: { canonical: `https://gazaarabia.com/shop/${slug}` },
+    openGraph: {
+      title: `${title} | GAZAARABIA`,
+      description,
+      url: `https://gazaarabia.com/shop/${slug}`,
+      type: "website",
+    },
   };
 }
 
@@ -78,6 +93,11 @@ export default async function Page({ params }: Props) {
     slug !== "all" ? getCategoryData(slug) : null,
     fetchShopData(slug, 1, 16).catch(() => null),
   ]);
+
+  if (slug !== "all" && !category) {
+    notFound();
+  }
+
   const categoryName = category?.name || initialData?.parentCategory?.name || "All Products";
 
   return (

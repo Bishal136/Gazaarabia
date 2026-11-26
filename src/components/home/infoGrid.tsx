@@ -2,21 +2,21 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function InfoGridSection() {
-  const router = useRouter();
   const cards = [
     {
       src: "/images/home/final1.jpg",
       title: "View Lookbook",
       desc: "Discover how effortless modest fashion can be — browse for timeless styling inspirations.",
+      link: "/shop/all",
     },
     {
       src: "/images/home/final2.jpg",
       title: "About Us",
       desc: "Modesty at the core of every design — blending tradition with modern elegance.",
-      link: "/about"
+      link: "/about",
     },
     {
       src: "/images/home/final3.jpg",
@@ -27,16 +27,9 @@ export default function InfoGridSection() {
       src: "/images/home/final4.jpg",
       title: "Journal",
       desc: "Explore our Journal for styling tips, fashion inspiration, and behind-the-scenes stories.",
-      link: "/blogs/journal"
+      link: "/blogs/journal",
     },
   ];
-
-  const goToNext = (link: any) => {
-    if (link) {
-      router.push(link)
-    }
-
-  }
 
   return (
     <section className="bg-[#ffffff] pt-6 pb-16 md:pt-8 md:pb-20">
@@ -56,39 +49,50 @@ export default function InfoGridSection() {
 
         {/* Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-          {cards.map((item, i) => (
-            <motion.div
-              key={i}
-              initial={false}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: i * 0.15 }}
-              className="group cursor-pointer flex flex-col items-center text-center"
-              onClick={() => { goToNext(item?.link) }}
-            >
-              {/* Image Container */}
-              <div className="relative overflow-hidden rounded-2xl w-full h-[400px] md:h-[450px] bg-[#F9F9F9] shadow-sm">
-                <Image
-                  src={item.src}
-                  alt={item.title}
-                  width={600}
-                  height={800}
-                  className="w-full h-full object-cover transition-transform duration-[1500ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-40 transition-opacity duration-500"></div>
-              </div>
+          {cards.map((item, i) => {
+            const inner = (
+              <>
+                <div className="relative overflow-hidden rounded-2xl w-full h-[400px] md:h-[450px] bg-[#F9F9F9] shadow-sm">
+                  <Image
+                    src={item.src}
+                    alt={item.title}
+                    width={600}
+                    height={800}
+                    className="w-full h-full object-cover transition-transform duration-[1500ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-40 transition-opacity duration-500"></div>
+                </div>
 
-              {/* Content */}
-              <div className="mt-5 px-3 max-w-[90%] mx-auto">
-                <h3 className="text-lg md:text-xl font-semibold text-[var(--text-primary)] mb-2 group-hover:text-[var(--brand-secondary)] transition-colors duration-300">
-                  {item.title}
-                </h3>
-                <p className="text-sm md:text-base text-[var(--text-muted)] leading-relaxed font-light">
-                  {item.desc}
-                </p>
-              </div>
-            </motion.div>
-          ))}
+                <div className="mt-5 px-3 max-w-[90%] mx-auto">
+                  <h3 className="text-lg md:text-xl font-semibold text-[var(--text-primary)] mb-2 group-hover:text-[var(--brand-secondary)] transition-colors duration-300">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm md:text-base text-[var(--text-muted)] leading-relaxed font-light">
+                    {item.desc}
+                  </p>
+                </div>
+              </>
+            );
+
+            return (
+              <motion.div
+                key={i}
+                initial={false}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: i * 0.15 }}
+                className="group flex flex-col items-center text-center"
+              >
+                {item.link ? (
+                  <Link href={item.link} className="flex flex-col items-center text-center w-full">
+                    {inner}
+                  </Link>
+                ) : (
+                  <div className="flex flex-col items-center text-center w-full">{inner}</div>
+                )}
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </section>

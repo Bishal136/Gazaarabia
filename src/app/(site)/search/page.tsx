@@ -13,18 +13,16 @@ export async function generateMetadata({
   const q = (params.q as string) || "";
 
   return {
-    title: q
-      ? `Search results for "${q}" | GAZAARABIA`
-      : "Search | GAZAARABIA",
+    title: q ? `Search Results for "${q}"` : "Search Modest Fashion",
     description: q
-      ? `Find beautiful modest fashion matching "${q}" - GAZAARABIA collection`
-      : "Search our collection of modest fashion, abayas, hijabs, and traditional wear",
+      ? `Browse modest fashion, abayas, kaftans and hijabs matching "${q}" at GAZAARABIA.`
+      : "Search Gazaarabia's curated collection of modest fashion, abayas, kaftans, and hijabs.",
     robots: {
-      index: true,
+      index: false,
       follow: true,
     },
     alternates: {
-      canonical: `https://gazaarabia.com/search${q ? `?q=${encodeURIComponent(q)}` : ""}`,
+      canonical: "https://gazaarabia.com/search",
     },
   };
 }

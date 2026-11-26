@@ -27,15 +27,21 @@ export async function middleware(request: NextRequest) {
     // Extract role
     const role = token?.role;
 
-    // Protected route groups (excluding login)
+    // Protected route groups (use exact match or trailing slash so sibling slugs like /ambassador-terms remain public)
     const isAdminRoute =
-        pathname.startsWith("/admin") && pathname !== "/admin/login";
+        (pathname === "/admin" || pathname.startsWith("/admin/")) && pathname !== "/admin/login";
     const isAffiliateRoute =
-        pathname.startsWith("/affiliate") && pathname !== "/affiliate/login" && pathname !== "/affiliate/register";
+        (pathname === "/affiliate" || pathname.startsWith("/affiliate/")) &&
+        pathname !== "/affiliate/login" &&
+        pathname !== "/affiliate/register";
     const isSellerRoute =
-        pathname.startsWith("/seller") && pathname !== "/seller/login" && pathname !== "/seller/register";
+        (pathname === "/seller" || pathname.startsWith("/seller/")) &&
+        pathname !== "/seller/login" &&
+        pathname !== "/seller/register";
     const isAmbassadorRoute =
-        pathname.startsWith("/ambassador") && pathname !== "/ambassador/login" && pathname !== "/ambassador/register";
+        (pathname === "/ambassador" || pathname.startsWith("/ambassador/")) &&
+        pathname !== "/ambassador/login" &&
+        pathname !== "/ambassador/register";
 
     // ================= ADMIN ROUTES ====================
     if (isAdminRoute) {

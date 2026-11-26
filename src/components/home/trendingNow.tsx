@@ -1,12 +1,12 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Navigation } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
-import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronLeft, ChevronRight, Flame } from "lucide-react";
 import { useRef, useState } from "react";
 import type { Swiper as SwiperType } from "swiper";
@@ -38,11 +38,9 @@ interface TrendingNowProps {
 function TrendingCard({
   product,
   index,
-  onClick,
 }: {
   product: TrendingProduct;
   index: number;
-  onClick: () => void;
 }) {
   const [isHovered, setIsHovered] = useState(false);
   const videoUrl = extractProductVideoUrl(product);
@@ -53,8 +51,7 @@ function TrendingCard({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ delay: Math.min(index * 0.08, 0.4), duration: 0.5 }}
-      className="group cursor-pointer"
-      onClick={onClick}
+      className="relative group cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -111,7 +108,13 @@ function TrendingCard({
       {/* Product Info */}
       <div className="pt-2 sm:pt-3 pb-1">
         <h3 className="text-xs sm:text-sm md:text-[15px] font-medium text-gray-900 line-clamp-2 min-h-[32px] sm:min-h-[40px] group-hover:text-[var(--brand-primary)] transition-colors duration-300 leading-tight">
-          {product.title}
+          <Link
+            href={`/products/${product.slug}`}
+            prefetch={false}
+            className="after:absolute after:inset-0 after:z-10"
+          >
+            {product.title}
+          </Link>
         </h3>
 
         <div className="flex items-center gap-1.5 sm:gap-2 mt-1 sm:mt-1.5">
@@ -158,7 +161,6 @@ function TrendingCard({
 }
 
 export default function TrendingNow({ products }: TrendingNowProps) {
-  const router = useRouter();
   const swiperRef = useRef<SwiperType | null>(null);
 
   const productList = Array.isArray(products) ? products : [];
@@ -167,10 +169,6 @@ export default function TrendingNow({ products }: TrendingNowProps) {
   // Max slidesPerView across breakpoints is 5 (at >=1400px).
   // Loop mode requires slide count to strictly exceed maximum slidesPerView (>= 6).
   const canLoop = productList.length >= 6;
-
-  const handleCardClick = (slug: string) => {
-    router.push(`/products/${slug}`);
-  };
 
   return (
     <section className="relative bg-white py-8 sm:py-10 md:py-16 overflow-hidden">
@@ -215,13 +213,13 @@ export default function TrendingNow({ products }: TrendingNowProps) {
               </button>
             </div>
 
-            <button
-              onClick={() => router.push("/shop/all?sort=new")}
+            <Link
+              href="/shop/all?sort=new"
               className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm font-medium text-gray-700 hover:text-black transition-colors group whitespace-nowrap"
             >
               View All
               <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform sm:w-4 sm:h-4" />
-            </button>
+            </Link>
           </div>
         </motion.div>
 
@@ -251,7 +249,6 @@ export default function TrendingNow({ products }: TrendingNowProps) {
                 <TrendingCard
                   product={p}
                   index={i}
-                  onClick={() => handleCardClick(p.slug)}
                 />
               </SwiperSlide>
             ))}

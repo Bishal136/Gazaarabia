@@ -1,17 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { FaFacebookF, FaInstagram, FaYoutube, FaPinterestP, FaTiktok } from "react-icons/fa";
 
 export default function Footer() {
-  //  All hooks must be defined first
-  const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState("");
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,9 +13,6 @@ export default function Footer() {
     alert(`Subscribed with: ${email}`);
     setEmail("");
   };
-
-  //  Safe early return AFTER hooks
-  if (!mounted) return null;
 
   return (
     <footer className="bg-[var(--foreground)] text-white">
@@ -67,7 +58,7 @@ export default function Footer() {
             {/* <li className="hover:underline cursor-pointer">Visit us</li> */}
             {/* <li className="hover:underline cursor-pointer">Careers</li> */}
             <li className="hover:underline cursor-pointer">
-              <Link href="/blogs" prefetch={false}>Blogs</Link>
+              <Link href="/blogs/journal" prefetch={false}>Blogs</Link>
             </li>
             <li className="hover:underline cursor-pointer">
               <Link href="/loyalty" prefetch={false}>Loyalty</Link>
@@ -190,8 +181,11 @@ export default function Footer() {
 
       {/* Bottom Copyright Row */}
       <div className="border-t border-white/20">
-        <div className="max-w-[1400px] mx-auto px-6 py-5 flex items-center justify-center text-center text-xs text-white/80">
-          &copy; {new Date().getFullYear()} Gazaarabia. All Rights Reserved.
+        <div
+          suppressHydrationWarning
+          className="max-w-[1400px] mx-auto px-6 py-5 flex items-center justify-center text-center text-xs text-white/80"
+        >
+          &copy; {new Date().getUTCFullYear()} Gazaarabia. All Rights Reserved.
         </div>
       </div>
     </footer >

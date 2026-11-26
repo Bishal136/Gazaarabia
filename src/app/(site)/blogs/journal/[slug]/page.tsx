@@ -1,5 +1,6 @@
 import { Metadata, ResolvingMetadata } from "next";
 import { notFound } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import moment from "moment";
 import {
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { ReadingProgressBar } from "@/components/front-end/blogs/BlogInteractionBar";
+import { BreadcrumbSchema } from "@/components/BreadcrumbSchema";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -77,22 +79,27 @@ export async function generateMetadata(
 
   if (!blog) {
     return {
-      title: "Blog Not Found | Gazaarabia Journal",
+      title: "Article Not Found",
+      robots: { index: false, follow: false },
     };
   }
 
   const excerpt = stripHtmlToExcerpt(blog.content, 160);
-  const ogImage = blog.image || "https://gazaarabia.com/images/logo.png";
+  const ogImage = blog.image
+    ? blog.image.startsWith("http")
+      ? blog.image
+      : `https://gazaarabia.com${blog.image.startsWith("/") ? "" : "/"}${blog.image}`
+    : "https://gazaarabia.com/images/og-banner.jpg";
   const canonicalUrl = `https://gazaarabia.com/blogs/journal/${slug}`;
 
   return {
-    title: `${blog.title} | Gazaarabia Journal`,
+    title: blog.title,
     description: excerpt,
     alternates: {
       canonical: canonicalUrl,
     },
     openGraph: {
-      title: `${blog.title} | Gazaarabia Journal`,
+      title: `${blog.title} | GAZAARABIA`,
       description: excerpt,
       url: canonicalUrl,
       type: "article",
@@ -109,7 +116,7 @@ export async function generateMetadata(
     },
     twitter: {
       card: "summary_large_image",
-      title: `${blog.title} | Gazaarabia Journal`,
+      title: `${blog.title} | GAZAARABIA`,
       description: excerpt,
       images: [ogImage],
     },
@@ -170,12 +177,18 @@ export default async function BlogDetailPage({ params }: Props) {
     relatedBlogs = [...relatedBlogs, ...additional];
   }
 
+  const absoluteBlogImage = blog.image
+    ? blog.image.startsWith("http")
+      ? blog.image
+      : `https://gazaarabia.com${blog.image.startsWith("/") ? "" : "/"}${blog.image}`
+    : "https://gazaarabia.com/images/og-banner.jpg";
+
   const articleSchema = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
     headline: blog.title,
     description: excerpt,
-    image: blog.image ? [blog.image] : undefined,
+    image: [absoluteBlogImage],
     datePublished: blog.createdAt.toISOString(),
     dateModified: blog.updatedAt.toISOString(),
     author: {
@@ -185,7 +198,7 @@ export default async function BlogDetailPage({ params }: Props) {
     },
     publisher: {
       "@type": "Organization",
-      name: "Gazaarabia",
+      name: "GAZAARABIA",
       logo: {
         "@type": "ImageObject",
         url: "https://gazaarabia.com/images/logo.png",
@@ -197,6 +210,12 @@ export default async function BlogDetailPage({ params }: Props) {
     },
   };
 
+  const breadcrumbItems = [
+    { name: "Home", url: "https://gazaarabia.com" },
+    { name: "Journal", url: "https://gazaarabia.com/blogs/journal" },
+    { name: blog.title, url: canonicalUrl },
+  ];
+
   const isStandaloneTemplate =
     sanitizedContent.includes("SITE HEADER") ||
     sanitizedContent.includes("<!-- ════════════");
@@ -206,16 +225,19 @@ export default async function BlogDetailPage({ params }: Props) {
       {/* 1. Global Reading Progress Bar */}
       <ReadingProgressBar />
 
-      {/* 2. Structured JSON-LD Schema */}
+      {/* 2. Structured JSON-LD Schema (Breadcrumbs + BlogPosting) */}
+      <BreadcrumbSchema items={breadcrumbItems} />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(articleSchema).replace(/</g, "\\u003c"),
+        }}
       />
 
       {/* 3. Luxury Magazine Styling */}
       <style>{`
         .font-editorial-serif {
-          font-family: 'Playfair Display', Didot, 'Cinzel', 'Bodoni MT', Georgia, 'Times New Roman', serif;
+          font-family: var(--font-serif), 'Playfair Display', Didot, Georgia, 'Times New Roman', serif;
         }
         .prose-gazaarabia {
           color: #292524;
@@ -225,7 +247,7 @@ export default async function BlogDetailPage({ params }: Props) {
         }
         .prose-gazaarabia > p:first-of-type::first-letter {
           float: left;
-          font-family: 'Playfair Display', Georgia, serif;
+          font-family: var(--font-serif), 'Playfair Display', Georgia, serif;
           font-size: 4.5rem;
           line-height: 0.82;
           margin-right: 0.75rem;
@@ -234,7 +256,7 @@ export default async function BlogDetailPage({ params }: Props) {
           font-weight: 700;
         }
         .prose-gazaarabia h2 {
-          font-family: 'Playfair Display', Georgia, serif;
+          font-family: var(--font-serif), 'Playfair Display', Georgia, serif;
           font-size: 2.125rem;
           font-weight: 600;
           color: #0c0a09;
@@ -246,7 +268,7 @@ export default async function BlogDetailPage({ params }: Props) {
           border-top: 1px solid #f5f5f4;
         }
         .prose-gazaarabia h3 {
-          font-family: 'Playfair Display', Georgia, serif;
+          font-family: var(--font-serif), 'Playfair Display', Georgia, serif;
           font-size: 1.5rem;
           font-weight: 600;
           color: #1c1917;
@@ -350,7 +372,7 @@ export default async function BlogDetailPage({ params }: Props) {
                   Home
                 </Link>
                 <span className="text-slate-300">/</span>
-                <Link href="/blogs" className="hover:text-slate-900 transition-colors">
+                <Link href="/blogs/journal" className="hover:text-slate-900 transition-colors">
                   Journal
                 </Link>
                 {blog.category && (
@@ -362,7 +384,7 @@ export default async function BlogDetailPage({ params }: Props) {
               </nav>
 
               <Link
-                href="/blogs"
+                href="/blogs/journal"
                 className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 transition-colors font-medium"
               >
                 <ArrowLeft size={13} />
@@ -443,9 +465,13 @@ export default async function BlogDetailPage({ params }: Props) {
           {blog.image && (
             <div className="max-w-4xl mx-auto px-4 sm:px-6 mb-12">
               <div className="relative w-full rounded-2xl overflow-hidden shadow-sm border border-slate-100 bg-slate-50">
-                <img
+                <Image
                   src={blog.image}
                   alt={blog.title}
+                  width={1200}
+                  height={630}
+                  priority
+                  sizes="(max-width: 896px) 100vw, 896px"
                   className="w-full h-auto max-h-[640px] object-cover object-center transition-transform duration-700 hover:scale-[1.01]"
                 />
               </div>
@@ -457,7 +483,7 @@ export default async function BlogDetailPage({ params }: Props) {
           )}
 
           {/* Main Article Content Container (Pure Canvas, No Boxed Cards!) */}
-          <main className="max-w-3xl mx-auto px-4 sm:px-6 pb-12">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 pb-12">
             <div className="prose-gazaarabia">
               <div dangerouslySetInnerHTML={{ __html: sanitizedContent }} />
             </div>
@@ -505,7 +531,7 @@ export default async function BlogDetailPage({ params }: Props) {
                     </p>
                     <div className="pt-3 flex items-center gap-3 flex-wrap">
                       <Link
-                        href="/shop"
+                        href="/shop/all"
                         className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-slate-950 text-white hover:bg-slate-800 text-xs font-bold transition shadow-xs cursor-pointer group"
                       >
                         <span>Explore Ethical Collection</span>
@@ -522,7 +548,7 @@ export default async function BlogDetailPage({ params }: Props) {
                 </div>
               </div>
             </section>
-          </main>
+          </div>
 
           {/* Curated Editorial Stories (Cool Slate Gallery Canvas - Clean & Modern) */}
           {relatedBlogs.length > 0 && (
@@ -541,7 +567,7 @@ export default async function BlogDetailPage({ params }: Props) {
                     </p>
                   </div>
                   <Link
-                    href="/blogs"
+                    href="/blogs/journal"
                     className="inline-flex items-center gap-1 text-xs font-bold text-slate-900 hover:text-rose-700 transition self-start sm:self-end"
                   >
                     <span>View Complete Archive</span>
@@ -562,10 +588,13 @@ export default async function BlogDetailPage({ params }: Props) {
                         {/* Image Container with object-top to ensure full portrait & face visibility */}
                         <div className="relative h-60 sm:h-64 w-full bg-slate-100 overflow-hidden">
                           {item.image ? (
-                            <img
+                            <Image
                               src={item.image}
                               alt={item.title}
-                              className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                              fill
+                              loading="lazy"
+                              sizes="(max-width: 768px) 100vw, 33vw"
+                              className="object-cover object-top transition-transform duration-700 group-hover:scale-105"
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center bg-slate-950 text-white/40 text-xs font-editorial-serif tracking-widest uppercase">

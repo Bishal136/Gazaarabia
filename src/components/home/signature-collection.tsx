@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
-import { useRouter } from "next/navigation";
 import ProductVideoHover from "@/components/ProductVideoHover";
 import { extractProductVideoUrl } from "@/lib/utils/productVideo";
 
@@ -30,23 +30,20 @@ interface SignatureProductsProps {
 function SignatureCard({
   product,
   index,
-  onClick,
 }: {
   product: Product;
   index: number;
-  onClick: () => void;
 }) {
   const [isHovered, setIsHovered] = useState(false);
   const videoUrl = extractProductVideoUrl(product);
 
   return (
     <motion.div
-      className="overflow-hidden rounded-2xl bg-[#F8F8F8] group shadow-sm hover:shadow-[0_8px_25px_rgba(0,0,0,0.08)] transition-all duration-700 cursor-pointer"
+      className="relative overflow-hidden rounded-2xl bg-[#F8F8F8] group shadow-sm hover:shadow-[0_8px_25px_rgba(0,0,0,0.08)] transition-all duration-700 cursor-pointer"
       initial={false}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ delay: index * 0.15 }}
-      onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -87,7 +84,17 @@ function SignatureCard({
       {/* Info */}
       <div className="p-5 text-center">
         <h3 className="font-medium text-[var(--text-primary)] text-base md:text-lg mb-1 group-hover:text-[var(--brand-secondary)] transition-colors duration-300 line-clamp-2 min-h-[48px]">
-          {product.title}
+          {product.slug ? (
+            <Link
+              href={`/products/${product.slug}`}
+              prefetch={false}
+              className="after:absolute after:inset-0 after:z-10"
+            >
+              {product.title}
+            </Link>
+          ) : (
+            product.title
+          )}
         </h3>
 
         <p className="text-[var(--brand-primary)] font-semibold text-sm md:text-base">
@@ -99,16 +106,6 @@ function SignatureCard({
 }
 
 export default function SignatureCollection({ products }: SignatureProductsProps) {
-  const router = useRouter();
-
-  const handleCardClick = (item: any) => {
-    if (item?.slug) {
-      router.push(`/products/${item.slug}`);
-    } else {
-      console.warn("⚠️ Item slug is missing:", item);
-    }
-  };
-
   const productList = Array.isArray(products) ? products : [];
   if (productList.length === 0) return null;
 
@@ -153,11 +150,10 @@ export default function SignatureCollection({ products }: SignatureProductsProps
             className="!overflow-visible w-full"
           >
             {productList.map((p, i) => (
-              <SwiperSlide key={i}>
+              <SwiperSlide key={p.id || i}>
                 <SignatureCard
                   product={p}
                   index={i}
-                  onClick={() => handleCardClick(p)}
                 />
               </SwiperSlide>
             ))}

@@ -2,10 +2,9 @@
 
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function WearTheChange() {
-  const router = useRouter();
   const stats = [
     { value: "£50,000+", label: "Raised for Gaza Communities (2026)" },
     { value: "2,500+", label: "Families Supported" },
@@ -61,25 +60,21 @@ export default function WearTheChange() {
           ))}
         </div>
 
-        {/* Buttons */}
+        {/* Semantic CTA Links */}
         <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-          <motion.button
-            onClick={() => { router.push("/#signature-collection") }}
-            whileHover={{ scale: 1.05 }}
-            transition={{ duration: 0.3 }}
-            className="bg-white text-[var(--brand-secondary)] font-medium px-8 py-3 rounded-full flex items-center justify-center gap-2 shadow-sm hover:shadow-md transition-all duration-300"
+          <Link
+            href="/#signature-collection"
+            className="bg-white text-[var(--brand-secondary)] font-medium px-8 py-3 rounded-full inline-flex items-center justify-center gap-2 shadow-sm hover:shadow-md hover:scale-105 transition-all duration-300"
           >
             Shop Collection <ArrowRight size={18} />
-          </motion.button>
+          </Link>
 
-          <motion.button
-            onClick={() => { router.push("/impact") }}
-            whileHover={{ scale: 1.05 }}
-            transition={{ duration: 0.3 }}
-            className="border border-white text-white font-medium px-8 py-3 rounded-full flex items-center justify-center gap-2 hover:bg-white/10 transition-all duration-300"
+          <Link
+            href="/impact"
+            className="border border-white text-white font-medium px-8 py-3 rounded-full inline-flex items-center justify-center gap-2 hover:bg-white/10 hover:scale-105 transition-all duration-300"
           >
             Learn More About Our Impact
-          </motion.button>
+          </Link>
         </div>
       </div>
     </section>

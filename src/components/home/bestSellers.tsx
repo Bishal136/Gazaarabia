@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
 import { ArrowRight, Award, TrendingUp } from "lucide-react";
 import ProductVideoHover from "@/components/ProductVideoHover";
 import { extractProductVideoUrl } from "@/lib/utils/productVideo";
@@ -33,11 +33,9 @@ interface BestSellersProps {
 function BestSellerFeaturedCard({
   product,
   index,
-  onClick,
 }: {
   product: BestSellerProduct;
   index: number;
-  onClick: () => void;
 }) {
   const [isHovered, setIsHovered] = useState(false);
   const videoUrl = extractProductVideoUrl(product);
@@ -49,7 +47,6 @@ function BestSellerFeaturedCard({
       viewport={{ once: true }}
       transition={{ delay: index * 0.15, duration: 0.6 }}
       className="group cursor-pointer relative overflow-hidden rounded-xl sm:rounded-2xl bg-white shadow-sm hover:shadow-xl transition-shadow duration-500"
-      onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -106,7 +103,13 @@ function BestSellerFeaturedCard({
       </div>
       <div className="p-2 sm:p-4 md:p-5 text-center">
         <h3 className="text-xs sm:text-base md:text-lg font-semibold text-gray-900 line-clamp-1 group-hover:text-[var(--brand-primary)] transition-colors leading-tight">
-          {product.title}
+          <Link
+            href={`/products/${product.slug}`}
+            prefetch={false}
+            className="after:absolute after:inset-0 after:z-10"
+          >
+            {product.title}
+          </Link>
         </h3>
         <div className="flex items-center justify-center gap-1.5 mt-1">
           {product.discountPrice && product.discountPrice < product.sellingPrice ? (
@@ -136,11 +139,9 @@ function BestSellerFeaturedCard({
 function BestSellerGridCard({
   product,
   index,
-  onClick,
 }: {
   product: BestSellerProduct;
   index: number;
-  onClick: () => void;
 }) {
   const [isHovered, setIsHovered] = useState(false);
   const videoUrl = extractProductVideoUrl(product);
@@ -151,8 +152,7 @@ function BestSellerGridCard({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ delay: Math.min(index * 0.08, 0.4), duration: 0.5 }}
-      className="group cursor-pointer overflow-hidden rounded-lg sm:rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-500"
-      onClick={onClick}
+      className="relative group cursor-pointer overflow-hidden rounded-lg sm:rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-500"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -197,7 +197,13 @@ function BestSellerGridCard({
       </div>
       <div className="p-2 sm:p-3 md:p-4 text-center">
         <h3 className="text-[11px] sm:text-sm font-medium text-gray-900 line-clamp-2 min-h-[28px] sm:min-h-[36px] group-hover:text-[var(--brand-primary)] transition-colors leading-tight">
-          {product.title}
+          <Link
+            href={`/products/${product.slug}`}
+            prefetch={false}
+            className="after:absolute after:inset-0 after:z-10"
+          >
+            {product.title}
+          </Link>
         </h3>
         <div className="flex items-center justify-center gap-1.5 mt-0.5 sm:mt-1">
           {product.discountPrice && product.discountPrice < product.sellingPrice ? (
@@ -222,10 +228,7 @@ function BestSellerGridCard({
 }
 
 export default function BestSellers({ products }: BestSellersProps) {
-  const router = useRouter();
   if (!products || products.length === 0) return null;
-
-  const handleCardClick = (slug: string) => router.push(`/products/${slug}`);
 
   const featured = products.slice(0, 2);
   const gridItems = products.slice(2, 8);
@@ -262,7 +265,6 @@ export default function BestSellers({ products }: BestSellersProps) {
                 key={p.id}
                 product={p}
                 index={i}
-                onClick={() => handleCardClick(p.slug)}
               />
             ))}
           </div>
@@ -276,7 +278,6 @@ export default function BestSellers({ products }: BestSellersProps) {
                 key={p.id}
                 product={p}
                 index={i}
-                onClick={() => handleCardClick(p.slug)}
               />
             ))}
           </div>
@@ -290,14 +291,14 @@ export default function BestSellers({ products }: BestSellersProps) {
           transition={{ delay: 0.3 }}
           className="text-center mt-6 sm:mt-8 md:mt-10"
         >
-          <button
-            onClick={() => router.push("/shop/all?sort=bestseller")}
+          <Link
+            href="/shop/all?sort=bestseller"
             className="inline-flex items-center gap-1.5 bg-gray-900 hover:bg-black text-white text-xs sm:text-sm font-semibold px-5 sm:px-8 py-2.5 sm:py-3.5 rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-gray-900/20 hover:-translate-y-0.5 active:translate-y-0"
           >
             <TrendingUp size={14} />
             Shop All Best Sellers
             <ArrowRight size={14} />
-          </button>
+          </Link>
         </motion.div>
       </div>
     </section>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -77,7 +77,7 @@ const itemVariants: any = {
   },
 };
 
-export default function UnifiedRegisterForm({
+function UnifiedRegisterFormContent({
   initialRole = "customer",
   callbackUrl: propCallbackUrl,
   onOtpStepChange,
@@ -668,5 +668,13 @@ export default function UnifiedRegisterForm({
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+export default function UnifiedRegisterForm(props: UnifiedRegisterFormProps) {
+  return (
+    <Suspense fallback={null}>
+      <UnifiedRegisterFormContent {...props} />
+    </Suspense>
   );
 }

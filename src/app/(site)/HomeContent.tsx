@@ -106,6 +106,18 @@ export default function HomeContent({ initialData }: { initialData?: any }) {
 
       <HeroSlider heroSlides={heroSlides} />
 
+      {/* Semantic Editorial H1 Heading Band (Establishes primary UK Modest Fashion topicality for SSR/crawlers) */}
+      <section className="bg-white border-b border-stone-100 py-5 sm:py-6 px-4 text-center">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-lg sm:text-xl md:text-2xl font-semibold tracking-tight text-gray-900">
+            UK&apos;s Ethical Modest Fashion Marketplace — Abayas, Kaftans &amp; Hijabs
+          </h1>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1 font-light">
+            Handcrafted modest wear from Muslim-owned brands — every order funds verified aid in Gaza, Sudan, Yemen &amp; beyond.
+          </p>
+        </div>
+      </section>
+
       {/* Trending Now — Horizontal Carousel */}
       <TrendingNow products={trendingProducts} />
 

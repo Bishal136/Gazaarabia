@@ -7,8 +7,12 @@ import Footer from "@/components/Footer";
 
 export default function SiteLayoutWrapper({
   children,
+  initialMenus = [],
+  initialHeaderText = "",
 }: {
   children: React.ReactNode;
+  initialMenus?: any[];
+  initialHeaderText?: string;
 }) {
   const pathname = usePathname();
 
@@ -27,7 +31,7 @@ export default function SiteLayoutWrapper({
 
   return (
     <>
-      <Header />
+      <Header initialMenus={initialMenus} initialHeaderText={initialHeaderText} />
       <main
         suppressHydrationWarning
         className={pathname === "/" || isMessagesPage ? "" : "pt-20"}

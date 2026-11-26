@@ -72,7 +72,13 @@ const CLIENT_MENU_CACHE_TTL_MS = 60 * 1000;
 // MAIN COMPONENT
 // ============================================================================
 
-export default function Header() {
+export default function Header({
+  initialMenus = [],
+  initialHeaderText = "",
+}: {
+  initialMenus?: MenuItem[];
+  initialHeaderText?: string;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const isHomePage = pathname === "/";
@@ -80,14 +86,18 @@ export default function Header() {
   const { data: session } = useSession();
   const { cartCount, isCartDrawerOpen, openCartDrawer, closeCartDrawer } = useCart();
 
-  // Navigation State
-  const [menus, setMenus] = useState<MenuItem[]>(() => clientMenuMemoryCache?.data || []);
+  // Navigation State (SSR-seeded so crawlers see navigation links on initial HTML)
+  const [menus, setMenus] = useState<MenuItem[]>(() =>
+    initialMenus.length > 0 ? initialMenus : clientMenuMemoryCache?.data || []
+  );
   const [activeMenu, setActiveMenu] = useState<MenuItem | null>(null);
   const [selectedSubmenuTab, setSelectedSubmenuTab] = useState<number | "all">("all");
   const [hoveredCategory, setHoveredCategory] = useState<Category | null>(null);
 
   // UI State
-  const [toolbarText, setToolbarText] = useState<string>(() => clientMenuMemoryCache?.headerText || "");
+  const [toolbarText, setToolbarText] = useState<string>(
+    () => initialHeaderText || clientMenuMemoryCache?.headerText || ""
+  );
   const [hovered, setHovered] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -214,9 +224,17 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    fetchMenus();
+    if (initialMenus.length > 0 && !clientMenuMemoryCache) {
+      clientMenuMemoryCache = {
+        data: initialMenus,
+        headerText: initialHeaderText || "",
+        timestamp: Date.now(),
+      };
+    } else {
+      fetchMenus();
+    }
     setMounted(true);
-  }, [fetchMenus]);
+  }, [fetchMenus, initialMenus, initialHeaderText]);
 
   // Handle Escape key to close menus
   useEffect(() => {
@@ -399,16 +417,16 @@ export default function Header() {
 
             {/* Right: Search, Account, Wishlist, Cart */}
             <div className={`flex items-center gap-2 lg:gap-5 ${textColorClass}`}>
-              <button onClick={() => setSearchMode(true)} className="hidden lg:flex p-2 hover:bg-black/5 rounded-full transition">
+              <button onClick={() => setSearchMode(true)} aria-label="Open search" className="hidden lg:flex p-2 hover:bg-black/5 rounded-full transition">
                 <Search size={20} />
               </button>
-              <button onClick={() => setProfileDrawer(true)} className="p-2 hover:bg-black/5 rounded-full transition">
+              <button onClick={() => setProfileDrawer(true)} aria-label="Account menu" className="p-2 hover:bg-black/5 rounded-full transition">
                 <User size={22} />
               </button>
-              <button onClick={() => router.push("/wishlist")} className="hidden lg:flex p-2 hover:bg-black/5 rounded-full transition">
+              <Link href="/wishlist" aria-label="Wishlist" className="hidden lg:flex p-2 hover:bg-black/5 rounded-full transition">
                 <Heart size={20} />
-              </button>
-              <button onClick={() => openCartDrawer()} className="relative p-2 hover:bg-black/5 rounded-full transition">
+              </Link>
+              <button onClick={() => openCartDrawer()} aria-label="Shopping bag" className="relative p-2 hover:bg-black/5 rounded-full transition">
                 <ShoppingBag size={22} />
                 {mounted && cartCount > 0 && (
                   <span suppressHydrationWarning className="absolute top-1 right-1 bg-[var(--brand-primary)] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow-sm">

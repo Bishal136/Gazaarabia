@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Pagination from "@/components/Pagination";
 import Loader from "@/components/Loader";
 import { solidarityReceiptPublicService } from "@/lib/services/solidarityReceiptPublicService";
 
-export default function PublicSolidarityReceiptsPage() {
+function PublicSolidarityReceiptsContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -240,5 +240,13 @@ export default function PublicSolidarityReceiptsPage() {
                 }
             `}</style>
         </div>
+    );
+}
+
+export default function PublicSolidarityReceiptsPage() {
+    return (
+        <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center"><Loader /></div>}>
+            <PublicSolidarityReceiptsContent />
+        </Suspense>
     );
 }
