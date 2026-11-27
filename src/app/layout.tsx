@@ -5,10 +5,6 @@ import { DEFAULT_OG_IMAGE, SITE_LOCALE, SITE_NAME, SITE_URL } from "@/lib/seo/me
 import SessionProviderWrapper from "./SessionProviderWrapper";
 import PayPalProviderWrapper from "@/components/PayPalProviderWrapper";
 import { CartProvider } from "./context/CartContext";
-import CookieConsentModal from "@/components/CookieConsentModal";
-import GoogleTagManager from "@/components/analytics/GoogleTagManager";
-import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
-import FacebookPixel from "@/components/analytics/FacebookPixel";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -153,15 +149,9 @@ export default function RootLayout({
             __html: JSON.stringify(globalJsonLd).replace(/</g, "\\u003c"),
           }}
         />
-        <GoogleTagManager />
-        <GoogleAnalytics />
-        <FacebookPixel />
         <SessionProviderWrapper>
           <PayPalProviderWrapper>
-            <CartProvider>
-              <CookieConsentModal />
-              {children}
-            </CartProvider>
+            <CartProvider>{children}</CartProvider>
           </PayPalProviderWrapper>
         </SessionProviderWrapper>
       </body>
