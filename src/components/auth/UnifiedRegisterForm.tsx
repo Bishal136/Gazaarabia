@@ -16,10 +16,7 @@ import {
   EyeOff,
   Loader2,
   AlertCircle,
-  Check,
   ArrowRight,
-  ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import GoogleAuthButton from "./GoogleAuthButton";
 import OtpVerificationScreen from "./OtpVerificationScreen";
@@ -33,46 +30,53 @@ interface UnifiedRegisterFormProps {
 
 type PublicRole = "customer" | "seller" | "affiliate";
 
-const ROLE_OPTIONS = [
+const ROLE_OPTIONS: {
+  id: PublicRole;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
   {
-    id: "customer" as PublicRole,
+    id: "customer",
     label: "Customer",
-    tagline: "Shop modest luxury & support causes",
     icon: ShoppingBag,
   },
   {
-    id: "seller" as PublicRole,
+    id: "seller",
     label: "Seller / Brand",
-    tagline: "Sell your boutique fashion & access buyers",
     icon: Store,
   },
 ];
 
-const containerVariants: any = {
+const INPUT_BASE_CLASS =
+  "no-focus-ring w-full py-2.5 text-sm text-[#111111] placeholder:text-[#9ca3af] bg-white/65 hover:bg-white/85 focus:bg-white backdrop-blur-md border border-black/[0.10] hover:border-black/[0.18] focus:border-[#111111]/45 focus:outline-none focus:ring-4 focus:ring-black/[0.06] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,0.9)] transition-all duration-200";
+
+const LABEL_CLASS =
+  "block text-[11px] font-medium text-[#525252] tracking-[0.04em] uppercase mb-1.5";
+
+const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.05,
+      staggerChildren: 0.035,
       delayChildren: 0.02,
     },
   },
   exit: {
     opacity: 0,
-    x: -12,
-    transition: { duration: 0.2 },
+    x: -10,
+    transition: { duration: 0.18 },
   },
 };
 
-const itemVariants: any = {
-  hidden: { opacity: 0, y: 10 },
+const itemVariants = {
+  hidden: { opacity: 0, y: 6 },
   visible: {
     opacity: 1,
     y: 0,
     transition: {
-      type: "spring",
-      stiffness: 400,
-      damping: 28,
+      duration: 0.24,
+      ease: [0.22, 1, 0.36, 1] as const,
     },
   },
 };
@@ -176,36 +180,28 @@ function UnifiedRegisterFormContent({
     }
   };
 
-  // Header info based on portal / role
+  // Editorial header info based on portal / role
   const getRoleHeader = () => {
     switch (initialRole) {
       case "seller":
         return {
-          badge: "Seller Onboarding",
-          badgeIcon: Store,
           title: "Create Seller Account",
-          subtitle: "Join our curated collective of UK modest fashion brands",
+          subtitle: "Apply to showcase your boutique on Gazaarabia.",
         };
       case "affiliate":
         return {
-          badge: "Partner Program",
-          badgeIcon: Sparkles,
-          title: "Affiliate Registration",
-          subtitle:
-            "Promote modest luxury collections & earn competitive commissions",
+          title: "Partner Registration",
+          subtitle: "Share curated collections and earn commissions.",
         };
       default:
         return {
-          badge: "Join the Movement",
-          badgeIcon: ShoppingBag,
-          title: "Create an Account",
-          subtitle: "Join Gazaarabia — The UK Modest Fashion Movement",
+          title: "Create Account",
+          subtitle: "Shop curated modest fashion and manage your orders.",
         };
     }
   };
 
   const roleInfo = getRoleHeader();
-  const BadgeIcon = roleInfo.badgeIcon;
 
   return (
     <div className="w-full">
@@ -213,10 +209,10 @@ function UnifiedRegisterFormContent({
         {pendingOtpEmail ? (
           <motion.div
             key="otp-step"
-            initial={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.28, ease: "easeOut" }}
+            exit={{ opacity: 0, x: -16 }}
+            transition={{ duration: 0.24, ease: "easeOut" }}
           >
             <OtpVerificationScreen
               email={pendingOtpEmail}
@@ -235,80 +231,48 @@ function UnifiedRegisterFormContent({
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="space-y-5"
+            className="space-y-3"
           >
             {/* Header */}
-            <motion.div variants={itemVariants} className="text-center">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-[#009639] border border-emerald-200/60 shadow-xs mb-2.5">
-                <BadgeIcon className="w-3.5 h-3.5" />
-                <span>{roleInfo.badge}</span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
+            <motion.div variants={itemVariants}>
+              <h1 className="font-serif text-[24px] sm:text-[26px] font-semibold text-[#111111] tracking-[-0.02em] leading-tight">
                 {roleInfo.title}
               </h1>
-              <p className="text-gray-500 text-xs sm:text-sm mt-1.5 max-w-sm mx-auto leading-relaxed">
+              <p className="text-[13px] text-[#666666] mt-1 leading-snug">
                 {roleInfo.subtitle}
               </p>
             </motion.div>
 
-            {/* Role Selection Cards (Visible if in generic registration) */}
+            {/* Sleek Frosted-Glass Segmented Role Switcher */}
             {initialRole !== "seller" && initialRole !== "affiliate" && (
               <motion.div variants={itemVariants}>
-                <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">
-                  Select Account Type
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div
+                  role="tablist"
+                  aria-label="Account type"
+                  className="grid grid-cols-2 p-1 rounded-xl bg-black/[0.04] backdrop-blur-md border border-black/[0.06] shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)]"
+                >
                   {ROLE_OPTIONS.map((opt) => {
                     const Icon = opt.icon;
                     const isSelected = selectedRole === opt.id;
                     return (
-                      <motion.button
+                      <button
                         key={opt.id}
                         type="button"
-                        whileHover={{ scale: 1.015 }}
-                        whileTap={{ scale: 0.99 }}
+                        role="tab"
+                        aria-selected={isSelected}
                         onClick={() => {
                           setSelectedRole(opt.id);
                           setErrorAlert(null);
                         }}
-                        className={`relative flex flex-col items-start text-left p-3 rounded-xl border transition-all duration-200 cursor-pointer ${
+                        className={`flex items-center justify-center gap-2 py-2 px-3 rounded-[9px] text-xs transition-all duration-200 cursor-pointer ${
                           isSelected
-                            ? "border-[#009639] bg-emerald-50/50 ring-2 ring-[#009639]/15 shadow-xs"
-                            : "border-gray-200 bg-gray-50/40 hover:bg-white hover:border-gray-300"
+                            ? "bg-white text-[#111111] font-medium shadow-[0_2px_8px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,1)] ring-1 ring-black/[0.05]"
+                            : "text-[#666666] hover:text-[#111111] font-normal"
                         }`}
                       >
-                        <div className="flex items-center justify-between w-full mb-1.5">
-                          <div
-                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
-                              isSelected
-                                ? "bg-[#009639] text-white shadow-xs"
-                                : "bg-gray-100 text-gray-500"
-                            }`}
-                          >
-                            <Icon className="w-3.5 h-3.5" />
-                          </div>
-                          {isSelected && (
-                            <motion.div
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              transition={{
-                                type: "spring",
-                                stiffness: 500,
-                                damping: 30,
-                              }}
-                              className="w-4 h-4 rounded-full bg-[#009639] text-white flex items-center justify-center shadow-xs"
-                            >
-                              <Check className="w-2.5 h-2.5 stroke-[3]" />
-                            </motion.div>
-                          )}
-                        </div>
-                        <span className="text-xs font-bold text-gray-900">
-                          {opt.label}
-                        </span>
-                        <span className="text-[11px] text-gray-500 mt-0.5 line-clamp-1 leading-tight">
-                          {opt.tagline}
-                        </span>
-                      </motion.button>
+                        <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>{opt.label}</span>
+                      </button>
                     );
                   })}
                 </div>
@@ -319,18 +283,18 @@ function UnifiedRegisterFormContent({
             <AnimatePresence mode="wait">
               {errorAlert && (
                 <motion.div
-                  initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                  initial={{ opacity: 0, y: -4, scale: 0.99 }}
                   animate={{
                     opacity: 1,
                     y: 0,
                     scale: 1,
-                    x: [0, -6, 6, -3, 3, 0],
+                    x: [0, -5, 5, -2, 2, 0],
                   }}
-                  exit={{ opacity: 0, y: -4, scale: 0.98 }}
-                  transition={{ duration: 0.3 }}
-                  className="p-3.5 rounded-xl bg-rose-50 border border-rose-200/80 text-rose-800 text-xs flex items-start gap-2.5 shadow-xs"
+                  exit={{ opacity: 0, y: -4, scale: 0.99 }}
+                  transition={{ duration: 0.28 }}
+                  className="rounded-xl bg-[#fff5f6]/90 backdrop-blur-md border border-[#E82C3F]/20 text-[#9f1239] text-xs px-3.5 py-2.5 flex items-start gap-2.5 shadow-[0_4px_12px_rgba(232,44,63,0.06)]"
                 >
-                  <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-4 h-4 text-[#E82C3F] flex-shrink-0 mt-0.5" />
                   <span className="leading-relaxed font-medium">
                     {errorAlert}
                   </span>
@@ -339,17 +303,14 @@ function UnifiedRegisterFormContent({
             </AnimatePresence>
 
             {/* Registration Form */}
-            <form onSubmit={handleSubmit} className="space-y-3.5">
+            <form onSubmit={handleSubmit} className="space-y-3">
               {/* Full Name */}
-              <motion.div variants={itemVariants} className="space-y-1.5">
-                <label
-                  htmlFor="reg-name"
-                  className="block text-xs font-semibold text-gray-700 tracking-wide"
-                >
-                  Full Name <span className="text-rose-500">*</span>
+              <motion.div variants={itemVariants}>
+                <label htmlFor="reg-name" className={LABEL_CLASS}>
+                  Full Name <span className="text-[#E82C3F]">*</span>
                 </label>
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[#009639] group-focus-within:scale-105 transition-all duration-200">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 z-10 flex items-center pointer-events-none text-[#8a8a8a] group-focus-within:text-[#111111] transition-colors duration-200">
                     <User className="w-4 h-4" />
                   </div>
                   <input
@@ -360,8 +321,8 @@ function UnifiedRegisterFormContent({
                     required
                     value={form.name}
                     onChange={handleChange}
-                    placeholder="e.g. Maryam Khan"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-900 text-sm placeholder-gray-400 focus:bg-white focus:outline-none focus:border-[#009639] focus:ring-4 focus:ring-[#009639]/10 transition-all duration-200"
+                    placeholder="Maryam Khan"
+                    className={`${INPUT_BASE_CLASS} pl-10 pr-4`}
                   />
                 </div>
               </motion.div>
@@ -371,15 +332,12 @@ function UnifiedRegisterFormContent({
                 variants={itemVariants}
                 className="grid grid-cols-1 sm:grid-cols-2 gap-3"
               >
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="reg-email"
-                    className="block text-xs font-semibold text-gray-700 tracking-wide"
-                  >
-                    Email Address <span className="text-rose-500">*</span>
+                <div>
+                  <label htmlFor="reg-email" className={LABEL_CLASS}>
+                    Email Address <span className="text-[#E82C3F]">*</span>
                   </label>
                   <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[#009639] group-focus-within:scale-105 transition-all duration-200">
+                    <div className="absolute inset-y-0 left-0 pl-3 z-10 flex items-center pointer-events-none text-[#8a8a8a] group-focus-within:text-[#111111] transition-colors duration-200">
                       <Mail className="w-4 h-4" />
                     </div>
                     <input
@@ -390,21 +348,18 @@ function UnifiedRegisterFormContent({
                       required
                       value={form.email}
                       onChange={handleChange}
-                      placeholder="name@example.com"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-900 text-sm placeholder-gray-400 focus:bg-white focus:outline-none focus:border-[#009639] focus:ring-4 focus:ring-[#009639]/10 transition-all duration-200"
+                      placeholder="you@email.com"
+                      className={`${INPUT_BASE_CLASS} pl-9 pr-3`}
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="reg-phone"
-                    className="block text-xs font-semibold text-gray-700 tracking-wide"
-                  >
+                <div>
+                  <label htmlFor="reg-phone" className={LABEL_CLASS}>
                     Phone Number
                   </label>
                   <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[#009639] group-focus-within:scale-105 transition-all duration-200">
+                    <div className="absolute inset-y-0 left-0 pl-3 z-10 flex items-center pointer-events-none text-[#8a8a8a] group-focus-within:text-[#111111] transition-colors duration-200">
                       <Phone className="w-4 h-4" />
                     </div>
                     <input
@@ -415,7 +370,7 @@ function UnifiedRegisterFormContent({
                       value={form.phone}
                       onChange={handleChange}
                       placeholder="+44 7123 456789"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-900 text-sm placeholder-gray-400 focus:bg-white focus:outline-none focus:border-[#009639] focus:ring-4 focus:ring-[#009639]/10 transition-all duration-200"
+                      className={`${INPUT_BASE_CLASS} pl-9 pr-3`}
                     />
                   </div>
                 </div>
@@ -428,17 +383,15 @@ function UnifiedRegisterFormContent({
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="space-y-1.5 overflow-hidden"
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
                   >
-                    <label
-                      htmlFor="reg-shop"
-                      className="block text-xs font-semibold text-gray-700 tracking-wide"
-                    >
+                    <label htmlFor="reg-shop" className={LABEL_CLASS}>
                       Boutique / Brand Name{" "}
-                      <span className="text-rose-500">*</span>
+                      <span className="text-[#E82C3F]">*</span>
                     </label>
                     <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[#009639] group-focus-within:scale-105 transition-all duration-200">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 z-10 flex items-center pointer-events-none text-[#8a8a8a] group-focus-within:text-[#111111] transition-colors duration-200">
                         <Store className="w-4 h-4" />
                       </div>
                       <input
@@ -447,8 +400,8 @@ function UnifiedRegisterFormContent({
                         name="shopName"
                         value={form.shopName}
                         onChange={handleChange}
-                        placeholder="e.g. Al-Noor Modestwear"
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-900 text-sm placeholder-gray-400 focus:bg-white focus:outline-none focus:border-[#009639] focus:ring-4 focus:ring-[#009639]/10 transition-all duration-200"
+                        placeholder="Al-Noor Modestwear"
+                        className={`${INPUT_BASE_CLASS} pl-10 pr-4`}
                       />
                     </div>
                   </motion.div>
@@ -459,16 +412,14 @@ function UnifiedRegisterFormContent({
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="space-y-1.5 overflow-hidden"
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
                   >
-                    <label
-                      htmlFor="reg-website"
-                      className="block text-xs font-semibold text-gray-700 tracking-wide"
-                    >
+                    <label htmlFor="reg-website" className={LABEL_CLASS}>
                       Website / Social Profile URL
                     </label>
                     <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[#009639] group-focus-within:scale-105 transition-all duration-200">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 z-10 flex items-center pointer-events-none text-[#8a8a8a] group-focus-within:text-[#111111] transition-colors duration-200">
                         <Share2 className="w-4 h-4" />
                       </div>
                       <input
@@ -478,7 +429,7 @@ function UnifiedRegisterFormContent({
                         value={form.website}
                         onChange={handleChange}
                         placeholder="https://instagram.com/yourhandle"
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-900 text-sm placeholder-gray-400 focus:bg-white focus:outline-none focus:border-[#009639] focus:ring-4 focus:ring-[#009639]/10 transition-all duration-200"
+                        className={`${INPUT_BASE_CLASS} pl-10 pr-4`}
                       />
                     </div>
                   </motion.div>
@@ -490,15 +441,12 @@ function UnifiedRegisterFormContent({
                 variants={itemVariants}
                 className="grid grid-cols-1 sm:grid-cols-2 gap-3"
               >
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="reg-password"
-                    className="block text-xs font-semibold text-gray-700 tracking-wide"
-                  >
-                    Password <span className="text-rose-500">*</span>
+                <div>
+                  <label htmlFor="reg-password" className={LABEL_CLASS}>
+                    Password <span className="text-[#E82C3F]">*</span>
                   </label>
                   <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[#009639] group-focus-within:scale-105 transition-all duration-200">
+                    <div className="absolute inset-y-0 left-0 pl-3 z-10 flex items-center pointer-events-none text-[#8a8a8a] group-focus-within:text-[#111111] transition-colors duration-200">
                       <Lock className="w-4 h-4" />
                     </div>
                     <input
@@ -509,8 +457,8 @@ function UnifiedRegisterFormContent({
                       required
                       value={form.password}
                       onChange={handleChange}
-                      placeholder="Min 8 characters"
-                      className="w-full pl-10 pr-11 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-900 text-sm placeholder-gray-400 focus:bg-white focus:outline-none focus:border-[#009639] focus:ring-4 focus:ring-[#009639]/10 transition-all duration-200"
+                      placeholder="Min 8 chars"
+                      className={`${INPUT_BASE_CLASS} pl-9 pr-9`}
                     />
                     <button
                       type="button"
@@ -518,34 +466,25 @@ function UnifiedRegisterFormContent({
                       aria-label={
                         showPassword ? "Hide password" : "Show password"
                       }
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-700 transition-colors focus:outline-none"
+                      className="absolute inset-y-0 right-0 pr-2 z-10 flex items-center text-[#8a8a8a] hover:text-[#111111] transition-colors focus:outline-none cursor-pointer"
                     >
-                      <motion.div
-                        key={showPassword ? "hide" : "show"}
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ duration: 0.15 }}
-                        className="p-1 rounded-md hover:bg-gray-100/80 transition-colors"
-                      >
+                      <span className="p-1 rounded-lg hover:bg-black/[0.05] transition-colors">
                         {showPassword ? (
                           <EyeOff className="w-4 h-4" />
                         ) : (
                           <Eye className="w-4 h-4" />
                         )}
-                      </motion.div>
+                      </span>
                     </button>
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="reg-confirm-password"
-                    className="block text-xs font-semibold text-gray-700 tracking-wide"
-                  >
-                    Confirm Password <span className="text-rose-500">*</span>
+                <div>
+                  <label htmlFor="reg-confirm-password" className={LABEL_CLASS}>
+                    Confirm Password <span className="text-[#E82C3F]">*</span>
                   </label>
                   <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[#009639] group-focus-within:scale-105 transition-all duration-200">
+                    <div className="absolute inset-y-0 left-0 pl-3 z-10 flex items-center pointer-events-none text-[#8a8a8a] group-focus-within:text-[#111111] transition-colors duration-200">
                       <Lock className="w-4 h-4" />
                     </div>
                     <input
@@ -556,8 +495,8 @@ function UnifiedRegisterFormContent({
                       required
                       value={form.confirmPassword}
                       onChange={handleChange}
-                      placeholder="Repeat password"
-                      className="w-full pl-10 pr-11 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-900 text-sm placeholder-gray-400 focus:bg-white focus:outline-none focus:border-[#009639] focus:ring-4 focus:ring-[#009639]/10 transition-all duration-200"
+                      placeholder="Re-enter"
+                      className={`${INPUT_BASE_CLASS} pl-9 pr-9`}
                     />
                     <button
                       type="button"
@@ -569,21 +508,15 @@ function UnifiedRegisterFormContent({
                           ? "Hide confirm password"
                           : "Show confirm password"
                       }
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-700 transition-colors focus:outline-none"
+                      className="absolute inset-y-0 right-0 pr-2 z-10 flex items-center text-[#8a8a8a] hover:text-[#111111] transition-colors focus:outline-none cursor-pointer"
                     >
-                      <motion.div
-                        key={showConfirmPassword ? "hide" : "show"}
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ duration: 0.15 }}
-                        className="p-1 rounded-md hover:bg-gray-100/80 transition-colors"
-                      >
+                      <span className="p-1 rounded-lg hover:bg-black/[0.05] transition-colors">
                         {showConfirmPassword ? (
                           <EyeOff className="w-4 h-4" />
                         ) : (
                           <Eye className="w-4 h-4" />
                         )}
-                      </motion.div>
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -592,50 +525,45 @@ function UnifiedRegisterFormContent({
               {/* Password Requirement Hint */}
               <motion.p
                 variants={itemVariants}
-                className="text-[11px] text-gray-400 leading-normal font-medium"
+                className="text-[11px] text-[#737373] leading-snug -mt-1"
               >
-                Must be at least 8 characters with a mix of letters and numbers.
+                Use at least 8 characters with a mix of letters and numbers.
               </motion.p>
 
               {/* Submit Button */}
-              <motion.div variants={itemVariants} className="pt-1">
+              <motion.div variants={itemVariants} className="pt-0.5">
                 <motion.button
                   type="submit"
                   disabled={loading}
-                  whileHover={loading ? {} : { scale: 1.012, y: -1 }}
-                  whileTap={loading ? {} : { scale: 0.988, y: 0 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                  className="group relative w-full overflow-hidden py-3 px-4 bg-gradient-to-r from-[#009639] via-[#008d35] to-[#007a2e] hover:from-[#008733] hover:to-[#007029] text-white rounded-xl font-semibold text-sm transition-all duration-200 shadow-md shadow-emerald-700/20 hover:shadow-lg hover:shadow-emerald-700/30 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                  whileHover={loading ? {} : { y: -1 }}
+                  whileTap={loading ? {} : { scale: 0.99 }}
+                  transition={{ duration: 0.16, ease: "easeOut" }}
+                  className="group w-full py-3 px-4 bg-[#111111] hover:bg-[#222222] active:bg-[#000000] text-white rounded-xl font-medium text-sm tracking-[0.02em] transition-all duration-200 shadow-[0_10px_24px_-8px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.14)] hover:shadow-[0_14px_28px_-8px_rgba(0,0,0,0.34)] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 pointer-events-none ease-in-out" />
-
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin text-white" />
-                      <span>Creating your account...</span>
+                      <span>Creating account...</span>
                     </>
                   ) : (
                     <>
-                      <span>Register & Verify Email</span>
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
+                      <span>Create Account</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform duration-200" />
                     </>
                   )}
                 </motion.button>
               </motion.div>
             </form>
 
-            {/* Social Divider & Google OAuth (Customer / public roles) */}
+            {/* Social Divider & Google OAuth (Customer role) */}
             {selectedRole === "customer" && (
-              <motion.div variants={itemVariants} className="space-y-4 pt-1">
-                <div className="relative my-3">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-200" />
-                  </div>
-                  <div className="relative flex justify-center text-[11px] uppercase tracking-wider font-semibold">
-                    <span className="bg-white px-3 text-gray-400">
-                      or sign up with
-                    </span>
-                  </div>
+              <motion.div variants={itemVariants} className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <span className="h-px flex-1 bg-black/[0.08]" />
+                  <span className="text-[11px] uppercase tracking-[0.14em] font-medium text-[#8a8a8a]">
+                    or
+                  </span>
+                  <span className="h-px flex-1 bg-black/[0.08]" />
                 </div>
 
                 <GoogleAuthButton
@@ -646,8 +574,8 @@ function UnifiedRegisterFormContent({
             )}
 
             {/* Switch to Login Link */}
-            <motion.div variants={itemVariants} className="pt-2">
-              <p className="text-center text-xs text-gray-500">
+            <motion.div variants={itemVariants} className="pt-0.5">
+              <p className="text-center text-xs text-[#666666]">
                 Already have an account?{" "}
                 <Link
                   href={`/account/login${
@@ -655,14 +583,11 @@ function UnifiedRegisterFormContent({
                       ? `?callbackUrl=${encodeURIComponent(callbackUrl)}`
                       : ""
                   }`}
-                  className="text-[#009639] font-semibold hover:underline"
+                  className="text-[#111111] hover:text-[#E82C3F] font-medium transition-colors"
                 >
-                  Log In
+                  Sign In
                 </Link>
               </p>
-
-              {/* Trust Badge */}
-              <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-400 pt-4 font-medium"></div>
             </motion.div>
           </motion.div>
         )}

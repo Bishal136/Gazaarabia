@@ -183,30 +183,30 @@ export default function OtpVerificationScreen({
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="w-full"
     >
-      <div className="text-center mb-8">
+      <div className="text-center mb-6">
         <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
+          initial={{ scale: 0.88, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-[#009639] shadow-inner"
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="w-12 h-12 sm:w-14 sm:h-14 mx-auto mb-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-black/[0.08] flex items-center justify-center text-[#111111] shadow-[0_8px_20px_-6px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,1)]"
         >
           {isVerified ? (
-            <CheckCircle2 className="w-8 h-8 text-[#009639]" />
+            <CheckCircle2 className="w-6 h-6 text-[#009639]" />
           ) : (
-            <Mail className="w-8 h-8" />
+            <Mail className="w-6 h-6" />
           )}
         </motion.div>
 
-        <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
-          {isVerified ? "Verification Complete!" : "Check Your Inbox"}
+        <h2 className="font-serif text-[24px] sm:text-[26px] font-semibold text-[#111111] tracking-[-0.02em] leading-tight">
+          {isVerified ? "Verification Complete" : "Check Your Inbox"}
         </h2>
-        <p className="text-gray-600 text-sm mt-1.5 max-w-sm mx-auto">
+        <p className="text-[#666666] text-[13px] mt-1.5 max-w-sm mx-auto">
           {isVerified
             ? "Your account has been activated. Redirecting to your dashboard..."
             : "Enter the 6-digit code sent to:"}
         </p>
         {!isVerified && (
-          <p className="font-semibold text-gray-900 text-sm mt-0.5">{email}</p>
+          <p className="font-medium text-[#111111] text-sm mt-1">{email}</p>
         )}
       </div>
 
@@ -216,9 +216,9 @@ export default function OtpVerificationScreen({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="mb-5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2.5"
+            className="mb-4 px-3.5 py-2.5 rounded-xl bg-[#fff5f6]/90 backdrop-blur-md border border-[#E82C3F]/20 text-[#9f1239] text-xs flex items-center gap-2.5 shadow-[0_4px_12px_rgba(232,44,63,0.06)]"
           >
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 text-[#E82C3F] flex-shrink-0" />
             <span>{errorMsg}</span>
           </motion.div>
         )}
@@ -228,9 +228,9 @@ export default function OtpVerificationScreen({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2.5"
+            className="mb-4 px-3.5 py-2.5 rounded-xl bg-[#f2fbf5]/90 backdrop-blur-md border border-[#009639]/20 text-[#065f46] text-xs flex items-center gap-2.5 shadow-[0_4px_12px_rgba(0,150,57,0.06)]"
           >
-            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-[#009639] flex-shrink-0" />
             <span>{successMsg}</span>
           </motion.div>
         )}
@@ -242,10 +242,10 @@ export default function OtpVerificationScreen({
             e.preventDefault();
             submitOtp();
           }}
-          className="space-y-6"
+          className="space-y-5"
         >
           {/* 6 Digit Inputs */}
-          <div className="flex justify-center gap-2 sm:gap-3 my-4">
+          <div className="flex justify-center gap-2 sm:gap-2.5 my-3">
             {digits.map((digit, idx) => (
               <input
                 key={idx}
@@ -261,7 +261,7 @@ export default function OtpVerificationScreen({
                 onKeyDown={(e) => handleKeyDown(idx, e)}
                 onPaste={handlePaste}
                 disabled={loading}
-                className="w-11 h-14 sm:w-12 sm:h-14 text-center text-2xl font-bold rounded-xl border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#009639] focus:border-[#009639] transition-all shadow-sm"
+                className="no-focus-ring w-11 h-12 sm:w-12 sm:h-14 text-center text-2xl font-semibold rounded-xl border border-black/[0.10] bg-white/75 hover:bg-white/90 focus:bg-white backdrop-blur-md text-[#111111] shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,1)] focus:outline-none focus:ring-4 focus:ring-black/[0.06] focus:border-[#111111]/45 transition-all"
               />
             ))}
           </div>
@@ -269,29 +269,28 @@ export default function OtpVerificationScreen({
           <motion.button
             type="submit"
             disabled={loading || digits.join("").length !== 6}
-            whileHover={loading || digits.join("").length !== 6 ? {} : { scale: 1.012, y: -1 }}
-            whileTap={loading || digits.join("").length !== 6 ? {} : { scale: 0.988, y: 0 }}
-            transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            className="group relative w-full overflow-hidden py-3.5 px-4 bg-gradient-to-r from-[#009639] via-[#008d35] to-[#007a2e] hover:from-[#008733] hover:to-[#007029] text-white rounded-xl font-semibold text-sm transition-all duration-200 shadow-md shadow-emerald-700/20 hover:shadow-lg hover:shadow-emerald-700/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            whileHover={loading || digits.join("").length !== 6 ? {} : { y: -1 }}
+            whileTap={loading || digits.join("").length !== 6 ? {} : { scale: 0.99 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="w-full py-3 px-4 bg-[#111111] hover:bg-[#222222] active:bg-[#000000] text-white rounded-xl font-medium text-sm tracking-[0.02em] transition-all duration-200 shadow-[0_10px_24px_-8px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.14)] hover:shadow-[0_14px_28px_-8px_rgba(0,0,0,0.34)] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
-            <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 pointer-events-none ease-in-out" />
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-white" />
                 <span>Verifying code...</span>
               </>
             ) : (
-              <span>Verify & Continue</span>
+              <span>Verify &amp; Continue</span>
             )}
           </motion.button>
 
           {/* Resend and Countdown */}
-          <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-100">
+          <div className="flex items-center justify-between text-xs text-[#666666] pt-3 border-t border-black/[0.08]">
             {onBack ? (
               <button
                 type="button"
                 onClick={onBack}
-                className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 font-medium hover:underline transition-colors"
+                className="flex items-center gap-1.5 text-[#525252] hover:text-[#111111] font-medium hover:underline transition-colors"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Edit email</span>
@@ -302,15 +301,15 @@ export default function OtpVerificationScreen({
 
             <div>
               {countdown > 0 ? (
-                <span className="text-gray-400">
-                  Resend code in <strong className="text-gray-700">{countdown}s</strong>
+                <span className="text-[#666666]">
+                  Resend code in <strong className="text-[#111111]">{countdown}s</strong>
                 </span>
               ) : (
                 <button
                   type="button"
                   onClick={handleResend}
                   disabled={resending}
-                  className="flex items-center gap-1 text-[#009639] hover:text-[#007a2e] font-semibold hover:underline transition-colors"
+                  className="flex items-center gap-1 text-[#111111] hover:text-[#E82C3F] font-semibold hover:underline transition-colors"
                 >
                   <RotateCw className={`w-3.5 h-3.5 ${resending ? "animate-spin" : ""}`} />
                   <span>Resend Code</span>
