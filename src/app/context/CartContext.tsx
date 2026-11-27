@@ -1,9 +1,38 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import { usePathname } from "next/navigation";
 import { cartService } from "@/lib/services/front-end/cartService";
 import { useSession } from "next-auth/react";
-import { localCartService } from "@/lib/services/front-end/localCartService";
+
+const SKIP_CART_PREFIXES = [
+  "/affiliate",
+  "/ambassador",
+  "/admin",
+  "/seller",
+  "/payment",
+  "/shopify",
+  "/login",
+  "/unauthorized",
+] as const;
+
+/**
+ * Matches internal panels and auth/payment routes via exact path or trailing slash
+ * so storefront sibling slugs like `/ambassador-terms` still initialize the cart.
+ */
+function shouldSkipCartFetch(pathname: string | null): boolean {
+  if (!pathname) return false;
+  return SKIP_CART_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
 
 interface CartContextProps {
   cart: any[];
@@ -20,20 +49,27 @@ interface CartContextProps {
 const CartContext = createContext<CartContextProps | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const skipCart = shouldSkipCartFetch(pathname);
   const { data: session } = useSession();
   const token = session?.user?.token || null;
 
   const [cart, setCart] = useState<any[]>([]);
   const [subtotal, setSubtotal] = useState(0);
   const [cartCount, setCartCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!skipCart);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
 
   const openCartDrawer = () => setIsCartDrawerOpen(true);
   const closeCartDrawer = () => setIsCartDrawerOpen(false);
 
   // Unified refreshCart
-  const refreshCart = async () => {
+  const refreshCart = useCallback(async () => {
+    if (skipCart) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const data = await cartService.getAll(token);
@@ -48,12 +84,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [skipCart, token]);
 
-  // Load when user logs in/out
+  // Load when user logs in/out or enters storefront routes
   useEffect(() => {
+    if (skipCart) {
+      setLoading(false);
+      return;
+    }
     refreshCart();
-  }, [token]);
+  }, [skipCart, refreshCart]);
 
   return (
     <CartContext.Provider
