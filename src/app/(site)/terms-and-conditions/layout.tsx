@@ -1,18 +1,14 @@
 import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Terms & Conditions",
   description:
     "Review Gazaarabia's Terms & Conditions governing marketplace orders, product pricing, delivery, intellectual property, and UK consumer rights.",
-  alternates: { canonical: "https://gazaarabia.com/terms-and-conditions" },
-  openGraph: {
-    title: "Terms & Conditions | GAZAARABIA",
-    description:
-      "Gazaarabia marketplace terms of service and UK consumer rights.",
-    url: "https://gazaarabia.com/terms-and-conditions",
-    type: "website",
-  },
-};
+  path: "/terms-and-conditions",
+  ogDescription:
+    "Gazaarabia marketplace terms of service and UK consumer rights.",
+});
 
 export default function TermsLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;

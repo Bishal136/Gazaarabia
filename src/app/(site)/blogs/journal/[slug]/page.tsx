@@ -1,4 +1,4 @@
-import { Metadata, ResolvingMetadata } from "next";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -16,6 +16,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { ReadingProgressBar } from "@/components/front-end/blogs/BlogInteractionBar";
 import { BreadcrumbSchema } from "@/components/BreadcrumbSchema";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -62,10 +63,7 @@ function calculateReadingTime(html: string): number {
   return Math.max(2, Math.ceil(wordCount / 220));
 }
 
-export async function generateMetadata(
-  { params }: Props,
-  parent: ResolvingMetadata
-): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
 
   const blog = await prisma.blogs.findUnique({
@@ -85,42 +83,17 @@ export async function generateMetadata(
   }
 
   const excerpt = stripHtmlToExcerpt(blog.content, 160);
-  const ogImage = blog.image
-    ? blog.image.startsWith("http")
-      ? blog.image
-      : `https://gazaarabia.com${blog.image.startsWith("/") ? "" : "/"}${blog.image}`
-    : "https://gazaarabia.com/images/og-banner.jpg";
-  const canonicalUrl = `https://gazaarabia.com/blogs/journal/${slug}`;
 
-  return {
+  return buildPageMetadata({
     title: blog.title,
     description: excerpt,
-    alternates: {
-      canonical: canonicalUrl,
-    },
-    openGraph: {
-      title: `${blog.title} | GAZAARABIA`,
-      description: excerpt,
-      url: canonicalUrl,
-      type: "article",
-      publishedTime: blog.createdAt.toISOString(),
-      modifiedTime: blog.updatedAt.toISOString(),
-      images: [
-        {
-          url: ogImage,
-          width: 1200,
-          height: 630,
-          alt: blog.title,
-        },
-      ],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: `${blog.title} | GAZAARABIA`,
-      description: excerpt,
-      images: [ogImage],
-    },
-  };
+    path: `/blogs/journal/${slug}`,
+    type: "article",
+    publishedTime: blog.createdAt.toISOString(),
+    modifiedTime: blog.updatedAt.toISOString(),
+    imageUrl: blog.image || "/images/og-banner.jpg",
+    imageAlt: blog.title,
+  });
 }
 
 export default async function BlogDetailPage({ params }: Props) {

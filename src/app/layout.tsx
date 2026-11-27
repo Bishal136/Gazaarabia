@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Poppins, Playfair_Display } from "next/font/google";
 import "./globals.css";
+import { DEFAULT_OG_IMAGE, SITE_LOCALE, SITE_NAME, SITE_URL } from "@/lib/seo/metadata";
 import SessionProviderWrapper from "./SessionProviderWrapper";
 import PayPalProviderWrapper from "@/components/PayPalProviderWrapper";
 import { CartProvider } from "./context/CartContext";
@@ -57,27 +58,20 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
   openGraph: {
     type: "website",
-    locale: "en_GB",
-    url: "https://gazaarabia.com",
-    siteName: "GAZAARABIA",
+    locale: SITE_LOCALE,
+    url: SITE_URL,
+    siteName: SITE_NAME,
     title: "GAZAARABIA | Modest Fashion With Purpose",
     description:
       "The UK's Muslim Fashion Movement. Shop abayas, kaftans & hijabs from Muslim-owned brands — every order helps people in Palestine, Gaza, Sudan, Yemen & Beyond.",
-    images: [
-      {
-        url: "/images/og-banner.jpg",
-        width: 1200,
-        height: 630,
-        alt: "GAZAARABIA - UK Muslim Fashion Marketplace",
-      },
-    ],
+    images: [{ ...DEFAULT_OG_IMAGE }],
   },
   twitter: {
     card: "summary_large_image",
     title: "GAZAARABIA | UK's Muslim Fashion Marketplace",
     description:
       "Modest fashion. Muslim brands. Real purpose. Every purchase funds The Ummah Fund — Gaza, Sudan, Yemen & beyond.",
-    images: ["/images/og-banner.jpg"],
+    images: [DEFAULT_OG_IMAGE.url],
     creator: "@gazaarabia",
   },
   robots: {

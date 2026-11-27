@@ -6,6 +6,7 @@ import { BreadcrumbSchema } from "@/components/BreadcrumbSchema";
 import { CollectionPageSchema } from "@/components/CollectionPageSchema";
 
 import { fetchShopData } from "@/lib/server/shopData";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
 export const revalidate = 60; // ISR cache revalidation every 60s
 
@@ -73,18 +74,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     category.description ||
     `Shop our ${category.name} collection featuring ethically crafted modest fashion in the UK at Gazaarabia.`;
 
-  return {
+  return buildPageMetadata({
     title,
     description,
-    robots: { index: true, follow: true },
-    alternates: { canonical: `https://gazaarabia.com/shop/${slug}` },
-    openGraph: {
-      title: `${title} | GAZAARABIA`,
-      description,
-      url: `https://gazaarabia.com/shop/${slug}`,
-      type: "website",
-    },
-  };
+    path: `/shop/${slug}`,
+    imageUrl: "/images/og-banner.jpg",
+    imageAlt: `${title} — GAZAARABIA`,
+  });
 }
 
 export default async function Page({ params }: Props) {

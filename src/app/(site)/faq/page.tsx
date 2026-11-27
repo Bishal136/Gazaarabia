@@ -2,24 +2,18 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import FaqContent from "./FaqContent";
 import { BreadcrumbSchema } from "@/components/BreadcrumbSchema";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
 export const revalidate = 120;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Frequently Asked Questions — UK Delivery, Returns & Sizing",
   description:
     "Find answers to common questions about Gazaarabia UK shipping, 14-day returns, abaya and kaftan sizing, modestwear care, and our humanitarian charity model.",
-  alternates: {
-    canonical: "https://gazaarabia.com/faq",
-  },
-  openGraph: {
-    title: "Frequently Asked Questions — UK Delivery, Returns & Sizing | GAZAARABIA",
-    description:
-      "Answers about Gazaarabia shipping, returns, sizing, ethical sourcing, and humanitarian impact.",
-    url: "https://gazaarabia.com/faq",
-    type: "website",
-  },
-};
+  path: "/faq",
+  ogDescription:
+    "Answers about Gazaarabia shipping, returns, sizing, ethical sourcing, and humanitarian impact.",
+});
 
 function stripHtml(html: string): string {
   return (html || "")

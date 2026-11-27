@@ -1,9 +1,10 @@
-import type { Metadata, ResolvingMetadata } from "next";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import ProductDetails from "./ProductDetails";
 import { BreadcrumbSchema } from "@/components/BreadcrumbSchema";
 import { fetchProductBySlug } from "@/lib/server/productDetails";
+import { DEFAULT_OG_IMAGE, SITE_LOCALE, SITE_NAME, SITE_URL, toAbsoluteUrl } from "@/lib/seo/metadata";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -12,16 +13,7 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
-function toAbsoluteUrl(url?: string | null): string {
-  if (!url) return "https://gazaarabia.com/images/og-banner.jpg";
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  return `https://gazaarabia.com${url.startsWith("/") ? "" : "/"}${url}`;
-}
-
-export async function generateMetadata(
-  { params }: Props,
-  parent: ResolvingMetadata
-): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
 
   const product = await prisma.products.findUnique({
@@ -42,7 +34,6 @@ export async function generateMetadata(
     };
   }
 
-  const previousImages = (await parent).openGraph?.images || [];
   const productImage = toAbsoluteUrl(product.productimage?.[0]?.url);
   const rawDescription =
     product.shortDescription ||
@@ -54,6 +45,18 @@ export async function generateMetadata(
     .trim()
     .slice(0, 160);
 
+  const ogImages =
+    productImage !== DEFAULT_OG_IMAGE.url
+      ? [
+          {
+            url: productImage,
+            secureUrl: productImage,
+            alt: product.title,
+          },
+          { ...DEFAULT_OG_IMAGE },
+        ]
+      : [{ ...DEFAULT_OG_IMAGE }];
+
   return {
     title: product.title,
     description: cleanDescription,
@@ -62,20 +65,23 @@ export async function generateMetadata(
       follow: true,
     },
     alternates: {
-      canonical: `https://gazaarabia.com/products/${slug}`,
+      canonical: `${SITE_URL}/products/${slug}`,
     },
     openGraph: {
-      title: `${product.title} | GAZAARABIA`,
+      title: `${product.title} | ${SITE_NAME}`,
       description: cleanDescription,
-      url: `https://gazaarabia.com/products/${slug}`,
-      images: [productImage, ...previousImages],
+      url: `${SITE_URL}/products/${slug}`,
+      siteName: SITE_NAME,
+      locale: SITE_LOCALE,
+      images: ogImages,
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
-      title: `${product.title} | GAZAARABIA`,
+      title: `${product.title} | ${SITE_NAME}`,
       description: cleanDescription,
       images: [productImage],
+      creator: "@gazaarabia",
     },
   };
 }
