@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Search, CheckCircle, XCircle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Search, CheckCircle, XCircle, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Pagination from "@/components/admin/Pagination";
 import PopupAlert from "@/components/PopupAlert";
@@ -18,14 +18,10 @@ export default function AmbassadorOrderItemsPage() {
     const affiliateType = session?.user?.affiliateType;
 
     const [items, setItems] = useState<any[]>([]);
-    const [displayedItems, setDisplayedItems] = useState<any[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [loading, setLoading] = useState(true);
-
-
-
 
     const [popUpAlertData, setPopUpAlertData] = useState<PopUpInterface>({
         isOpen: false,
@@ -44,59 +40,59 @@ export default function AmbassadorOrderItemsPage() {
 
         if (session?.user?.role !== "affiliate" || affiliateType !== "ambassador") {
             router.replace(ROUTES.HOME);
-            return;
         }
-    }, [status, session, router]);
+    }, [status, session?.user?.role, affiliateType, router]);
 
-
-    // Load once
-    useEffect(() => {
-        if (token) fetchItems();
-    }, [token]);
-
-    // Frontend search only — DO NOT call API
-    useEffect(() => {
-        setCurrentPage(1);
-
-        if (!searchTerm.trim()) {
-            // reset to full data
-            setDisplayedItems(items);
-            return;
-        }
-
-        const s = searchTerm.toLowerCase();
-
-        const filtered = items.filter((item: any) =>
-            item.product?.title?.toLowerCase().includes(s) ||
-            item.variant?.sku?.toLowerCase().includes(s) ||
-            item.order?.id?.toString().includes(s)
-        );
-
-        setDisplayedItems(filtered);
-    }, [searchTerm, items]);
-
-    const fetchItems = async () => {
+    const fetchItems = useCallback(async () => {
+        if (!token) return;
         try {
             setLoading(true);
-            const response: any = await ambassadorOrderService.getAll(token!);
-
-            const data = response?.data || [];
-
-            setItems(data);
-            setDisplayedItems(data); // initial load
-        } catch (error) {
+            const response: any = await ambassadorOrderService.getAll(token);
+            setItems(response?.data || []);
+        } catch (error: any) {
             console.error("Failed to fetch:", error);
+            setPopUpAlertData({
+                isOpen: true,
+                type: "error",
+                message: error?.message || "Failed to load ambassador order items.",
+                onConfirm: () => setPopUpAlertData((p) => ({ ...p, isOpen: false })),
+            });
         } finally {
             setLoading(false);
         }
-    };
+    }, [token]);
 
+    // Load once per authenticated ambassador token
+    useEffect(() => {
+        if (
+            status !== "authenticated" ||
+            session?.user?.role !== "affiliate" ||
+            affiliateType !== "ambassador"
+        ) {
+            return;
+        }
+        if (!token) {
+            setLoading(false);
+            return;
+        }
+        fetchItems();
+    }, [status, session?.user?.role, affiliateType, token, fetchItems]);
 
+    // Frontend search only via useMemo — DO NOT call API
+    const displayedItems = useMemo(() => {
+        const s = searchTerm.trim().toLowerCase();
+        if (!s) return items;
+        return items.filter(
+            (item: any) =>
+                item.product?.title?.toLowerCase().includes(s) ||
+                item.variant?.sku?.toLowerCase().includes(s) ||
+                item.order?.id?.toString().includes(s)
+        );
+    }, [searchTerm, items]);
 
     const startIndex = (currentPage - 1) * pageSize;
     const totalPages = Math.ceil(displayedItems.length / pageSize);
     const paginatedData = displayedItems.slice(startIndex, startIndex + pageSize);
-
 
     return (
         <div className="p-6 max-w-7xl mx-auto">
@@ -140,14 +136,13 @@ export default function AmbassadorOrderItemsPage() {
                                 <th className="py-3 px-3 text-center">Paid</th>
                                 <th className="py-3 px-3 text-center">Order</th>
                                 <th className="py-3 px-3 text-center w-[80px]">Action</th>
-
                             </tr>
                         </thead>
 
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={8} className="py-12 text-center text-gray-500 text-sm">
+                                    <td colSpan={9} className="py-12 text-center text-gray-500 text-sm">
                                         Loading...
                                     </td>
                                 </tr>
@@ -186,43 +181,26 @@ export default function AmbassadorOrderItemsPage() {
                                         </td>
 
                                         <td className="py-3 px-3 text-center text-gray-800 font-medium">
-                                            #{item.order.id}
+                                            #{item.order?.id ?? "N/A"}
                                         </td>
 
                                         {/* Action Column */}
                                         <td className="py-3 px-3 text-center">
                                             <button
+                                                type="button"
                                                 onClick={() => router.push(`/affiliate/ambassador/orders/${item.id}`)}
                                                 className="p-2 rounded-full text-[var(--brand-secondary)] hover:bg-gray-100 transition"
                                                 title="View Details"
+                                                aria-label={`View details for item ${item.id}`}
                                             >
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    strokeWidth={1.5}
-                                                    stroke="currentColor"
-                                                    className="w-5 h-5"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        d="M2.25 12s3.75-7.5 9.75-7.5 9.75 7.5 9.75 7.5-3.75 7.5-9.75 7.5S2.25 12 2.25 12z"
-                                                    />
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        d="M12 15.75a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z"
-                                                    />
-                                                </svg>
+                                                <Eye size={18} />
                                             </button>
                                         </td>
                                     </tr>
-
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={8} className="py-12 text-center text-gray-500">
+                                    <td colSpan={9} className="py-12 text-center text-gray-500">
                                         No ambassador order items found
                                     </td>
                                 </tr>
@@ -231,11 +209,11 @@ export default function AmbassadorOrderItemsPage() {
                     </table>
                 </div>
 
-                {items.length > 0 && (
+                {displayedItems.length > 0 && (
                     <Pagination
                         currentPage={currentPage}
                         totalPages={totalPages}
-                        totalItems={items.length}
+                        totalItems={displayedItems.length}
                         pageSize={pageSize}
                         onPageChange={setCurrentPage}
                         onPageSizeChange={setPageSize}

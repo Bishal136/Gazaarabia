@@ -2,14 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import {
-  Box,
-  Button,
-  TextField,
-  MenuItem,
-  FormControlLabel,
-  Checkbox,
-} from "@mui/material";
+import { Loader2 } from "lucide-react";
 import PopupAlert from "@/components/PopupAlert";
 import AlertMessage from "@/components/AlertMessage";
 import { couponService } from "@/lib/services/couponService";
@@ -19,10 +12,12 @@ import { ROUTES } from "@/constants/routes";
 export default function AddOrEditCouponPage() {
   const router = useRouter();
   const params = useParams();
-  const couponId = params?.id;
+  const rawId = params?.id;
+  const couponId = Array.isArray(rawId) ? rawId[0] : rawId;
   const { data: session, status } = useSession();
 
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(Boolean(couponId));
   const [alert, setAlert] = useState({
     isOpen: false,
     type: "" as "success" | "error" | "",
@@ -46,17 +41,13 @@ export default function AddOrEditCouponPage() {
     isActive: true,
   });
 
-  const fieldStyle = {
-    "& .MuiOutlinedInput-root.Mui-focused fieldset": {
-      borderColor: "var(--brand-secondary)",
-    },
-    "& .MuiInputLabel-root.Mui-focused": { color: "var(--brand-secondary)" },
-  };
+  const inputClass =
+    "no-focus-ring w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-gray-400 focus:outline-none focus:border-[var(--brand-secondary)] focus:ring-2 focus:ring-[var(--brand-secondary)]/20 transition";
 
   // Auth check
   useEffect(() => {
     if (status === "loading") return;
-    if (status === "unauthenticated") router.replace(ROUTES.ADMIN.LOGIN);
+    if (status === "unauthenticated") router.replace(ROUTES.AFFILIATE.LOGIN);
     else if (
       status === "authenticated" &&
       session?.user?.role !== "affiliate"
@@ -66,9 +57,14 @@ export default function AddOrEditCouponPage() {
 
   // Load existing coupon if editing
   useEffect(() => {
-    if (!couponId || !session?.user?.token) return;
+    if (!couponId) {
+      setFetching(false);
+      return;
+    }
+    if (!session?.user?.token) return;
     (async () => {
       try {
+        setFetching(true);
         const res: any = await couponService.getById(
           session?.user?.token as string,
           Number(couponId)
@@ -93,6 +89,8 @@ export default function AddOrEditCouponPage() {
           type: "error",
           message: err.message || "Failed to load coupon.",
         });
+      } finally {
+        setFetching(false);
       }
     })();
   }, [couponId, session?.user?.token]);
@@ -204,7 +202,7 @@ export default function AddOrEditCouponPage() {
   };
 
   return (
-    <Box className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-4xl mx-auto">
       {alert.isOpen && (
         <AlertMessage
           type={alert.type as "success" | "error"}
@@ -214,136 +212,175 @@ export default function AddOrEditCouponPage() {
       )}
 
       <form onSubmit={handleSubmit}>
-        <Box className="bg-white p-6 rounded-xl shadow border border-[var(--soft-gray)]">
-          <div className="mb-6 border-b pb-4">
+        <div className="bg-white p-6 rounded-xl shadow border border-[var(--soft-gray)]">
+          <div className="mb-6 border-b pb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-[var(--text-primary)]">
               {couponId ? "Edit Coupon" : "Add New Coupon"}
             </h2>
+            {fetching && (
+              <span className="inline-flex items-center gap-2 text-xs text-gray-500">
+                <Loader2 size={14} className="animate-spin" />
+                Loading coupon...
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <TextField
-              label="Coupon Code"
-              name="code"
-              value={form.code}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, code: e.target.value.toUpperCase() }))
-              }
-              required
-              fullWidth
-              sx={fieldStyle}
-              inputProps={{ maxLength: 20 }}
-            />
+            <div className="space-y-1.5">
+              <label
+                htmlFor="coupon-code"
+                className="block text-sm font-medium text-[var(--text-secondary)]"
+              >
+                Coupon Code <span className="text-[var(--brand-primary)]">*</span>
+              </label>
+              <input
+                id="coupon-code"
+                name="code"
+                type="text"
+                value={form.code}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, code: e.target.value.toUpperCase() }))
+                }
+                required
+                maxLength={20}
+                placeholder="e.g. SAVE10"
+                className={inputClass}
+              />
+            </div>
 
-            {/* <TextField
-              label="Discount Type"
-              name="discountType"
-              select
-              value={form.discountType}
-              onChange={handleChange}
-              fullWidth
-              sx={fieldStyle}
-            >
-              <MenuItem value="percentage">Percentage</MenuItem>
-              <MenuItem value="fixed">Fixed Amount</MenuItem>
-            </TextField> */}
-
-            <TextField
-              label={
-                form.discountType === "percentage"
+            <div className="space-y-1.5">
+              <label
+                htmlFor="discount-value"
+                className="block text-sm font-medium text-[var(--text-secondary)]"
+              >
+                {form.discountType === "percentage"
                   ? "Discount Percentage (%)"
-                  : "Discount Value"
-              }
-              name="discountValue"
-              type="number"
-              value={form.discountValue}
-              onChange={handleChange}
-              required
-              fullWidth
-              sx={fieldStyle}
-              inputProps={{
-                min: 0,
-                max: form.discountType === "percentage" ? 100 : undefined,
-              }}
-            />
+                  : "Discount Value"}{" "}
+                <span className="text-[var(--brand-primary)]">*</span>
+              </label>
+              <input
+                id="discount-value"
+                name="discountValue"
+                type="number"
+                value={form.discountValue}
+                onChange={handleChange}
+                required
+                min={0}
+                max={form.discountType === "percentage" ? 100 : undefined}
+                placeholder="e.g. 10"
+                className={inputClass}
+              />
+            </div>
 
-            <TextField
-              label="Max Usage Limit"
-              name="maxUsage"
-              type="number"
-              value={form.maxUsage}
-              onChange={handleChange}
-              fullWidth
-              sx={fieldStyle}
-            />
+            <div className="space-y-1.5">
+              <label
+                htmlFor="max-usage"
+                className="block text-sm font-medium text-[var(--text-secondary)]"
+              >
+                Max Usage Limit
+              </label>
+              <input
+                id="max-usage"
+                name="maxUsage"
+                type="number"
+                value={form.maxUsage}
+                onChange={handleChange}
+                min={0}
+                placeholder="Unlimited if empty"
+                className={inputClass}
+              />
+            </div>
 
-            <TextField
-              label="Per User Usage Limit"
-              name="perUserLimit"
-              type="number"
-              value={form.perUserLimit}
-              onChange={handleChange}
-              fullWidth
-              sx={fieldStyle}
-            />
+            <div className="space-y-1.5">
+              <label
+                htmlFor="per-user-limit"
+                className="block text-sm font-medium text-[var(--text-secondary)]"
+              >
+                Per User Usage Limit
+              </label>
+              <input
+                id="per-user-limit"
+                name="perUserLimit"
+                type="number"
+                value={form.perUserLimit}
+                onChange={handleChange}
+                min={0}
+                placeholder="1"
+                className={inputClass}
+              />
+            </div>
 
-            <TextField
-              label="Start Date"
-              name="startDate"
-              type="date"
-              InputLabelProps={{ shrink: true }}
-              value={form.startDate}
-              onChange={handleChange}
-              fullWidth
-              sx={fieldStyle}
-            />
+            <div className="space-y-1.5">
+              <label
+                htmlFor="start-date"
+                className="block text-sm font-medium text-[var(--text-secondary)]"
+              >
+                Start Date
+              </label>
+              <input
+                id="start-date"
+                name="startDate"
+                type="date"
+                value={form.startDate}
+                onChange={handleChange}
+                className={inputClass}
+              />
+            </div>
 
-            <TextField
-              label="End Date"
-              name="endDate"
-              type="date"
-              InputLabelProps={{ shrink: true }}
-              value={form.endDate}
-              onChange={handleChange}
-              fullWidth
-              sx={fieldStyle}
-            />
+            <div className="space-y-1.5">
+              <label
+                htmlFor="end-date"
+                className="block text-sm font-medium text-[var(--text-secondary)]"
+              >
+                End Date
+              </label>
+              <input
+                id="end-date"
+                name="endDate"
+                type="date"
+                value={form.endDate}
+                onChange={handleChange}
+                className={inputClass}
+              />
+            </div>
           </div>
 
-          <Box className="mt-6 flex items-center justify-between border-t pt-4">
-            <FormControlLabel
-              control={
-                <Checkbox checked={form.isActive} onChange={handleCheckboxChange} />
-              }
-              label="Active"
-            />
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t pt-4">
+            <label
+              htmlFor="coupon-active"
+              className="inline-flex items-center gap-2.5 cursor-pointer select-none"
+            >
+              <input
+                id="coupon-active"
+                type="checkbox"
+                checked={form.isActive}
+                onChange={handleCheckboxChange}
+                className="no-focus-ring h-4 w-4 rounded border-gray-300 accent-[var(--brand-secondary)] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)]/30"
+              />
+              <span className="text-sm font-medium text-[var(--text-primary)]">
+                Active
+              </span>
+            </label>
 
             <div className="flex gap-3">
-              <Button
-                variant="outlined"
+              <button
+                type="button"
                 onClick={() => router.push("/affiliate/coupons")}
-                sx={{
-                  color: "var(--text-primary)",
-                  borderColor: "var(--mid-gray)",
-                  "&:hover": { borderColor: "var(--text-primary)" },
-                }}
+                className="px-4 py-2 rounded-lg border border-[var(--mid-gray)] text-sm font-medium text-[var(--text-primary)] hover:border-[var(--text-primary)] hover:bg-gray-50 transition"
               >
                 Cancel
-              </Button>
-              <Button
-                variant="contained"
-                sx={{
-                  background: "var(--brand-primary)",
-                  "&:hover": { background: "#c32230" },
-                }}
+              </button>
+              <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || fetching}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-[var(--brand-primary)] text-white text-sm font-medium hover:bg-[#c32230] disabled:opacity-60 disabled:cursor-not-allowed transition shadow-sm"
               >
+                {loading && <Loader2 size={16} className="animate-spin" />}
                 {couponId ? "Update Coupon" : "Create Coupon"}
-              </Button>
+              </button>
             </div>
-          </Box>
-        </Box>
+          </div>
+        </div>
       </form>
 
       {popup.isOpen && (
@@ -355,6 +392,6 @@ export default function AddOrEditCouponPage() {
           show={popup.isOpen}
         />
       )}
-    </Box>
+    </div>
   );
 }

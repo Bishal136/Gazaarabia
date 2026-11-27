@@ -3,10 +3,21 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { ROUTES } from "@/constants/routes";
 import AffiliateSidebar from "./AffiliateSidebar";
 import AffiliateHeader from "./AffiliateHeader";
 
-export default function AffiliateLayout({ children }: { children: React.ReactNode }) {
+interface AffiliateLayoutProps {
+    children: React.ReactNode;
+    initialAuthorized?: boolean;
+    initialAffiliateType?: string | null;
+}
+
+export default function AffiliateLayout({
+    children,
+    initialAuthorized = false,
+    initialAffiliateType = null,
+}: AffiliateLayoutProps) {
     const { data: session, status } = useSession();
     const router = useRouter();
 
@@ -14,13 +25,25 @@ export default function AffiliateLayout({ children }: { children: React.ReactNod
     const [collapsed, setCollapsed] = useState(false);
 
     // Route guard: only affiliates/ambassadors (role === "affiliate") may view the
-    // dashboard. Defence-in-depth for the UI — the APIs still authorize each request.
+    // dashboard. Server layout passes initialAuthorized={true} so children render immediately
+    // without blocking behind a client session waterfall.
     const isAllowed = (session?.user as any)?.role === "affiliate";
+    const isAuthorized =
+        status === "loading"
+            ? initialAuthorized
+            : status === "authenticated" && isAllowed;
+
+    const effectiveAffiliateType =
+        session?.user?.affiliateType ?? initialAffiliateType ?? null;
 
     useEffect(() => {
         if (status === "loading") return;
-        if (!session || !isAllowed) {
-            router.replace("/affiliate/login");
+        if (status === "unauthenticated" || !session) {
+            router.replace(ROUTES.AFFILIATE.LOGIN);
+            return;
+        }
+        if (!isAllowed) {
+            router.replace(ROUTES.HOME);
         }
     }, [status, session, isAllowed, router]);
 
@@ -47,13 +70,11 @@ export default function AffiliateLayout({ children }: { children: React.ReactNod
 
     useEffect(() => {
         if (isMobile) {
-            setCollapsed(true)
+            setCollapsed(true);
         }
-    }, [isMobile])
+    }, [isMobile]);
 
-    // While the session resolves, or if the user isn't authorized, don't render
-    // the dashboard chrome (the effect above handles the redirect).
-    if (status === "loading" || !session || !isAllowed) {
+    if (!isAuthorized) {
         return (
             <div className="min-h-screen flex items-center justify-center text-[var(--text-muted)]">
                 Checking access…
@@ -68,19 +89,17 @@ export default function AffiliateLayout({ children }: { children: React.ReactNod
                 isOpen={sidebarOpen}
                 collapsed={collapsed}
                 setCollapsed={setCollapsed}
+                initialAffiliateType={effectiveAffiliateType}
             />
 
             {/* Main Content Area */}
             <div
                 className={`flex flex-col flex-1 min-h-screen relative z-10 transition-all duration-300 ease-in-out`}
                 style={{
-                    //  Shifts content when sidebar expands/collapses
-                    // marginLeft: collapsed ? "80px" : "256px",
                     marginLeft: sidebarOpen && collapsed ? "80px" : (!sidebarOpen && !collapsed ? "256px" : (!isMobile && !sidebarOpen && collapsed ? "80px" : !isMobile ? "256px" : "")),
-
                 }}
             >
-                {/*  Header (reuse admin or create affiliate-specific one) */}
+                {/*  Header */}
                 <AffiliateHeader onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
 
                 {/*  Main Page Content */}
