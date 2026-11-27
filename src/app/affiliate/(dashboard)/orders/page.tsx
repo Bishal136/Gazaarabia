@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Search, Eye, X, Phone } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Search, Eye, X, Phone, RefreshCw } from "lucide-react";
 import Pagination from "@/components/admin/Pagination";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { ROUTES } from "@/constants/routes";
 import Loader from "@/components/Loader";
+import AlertMessage from "@/components/AlertMessage";
 import { orderAdminService } from "@/lib/services/orderAdminService";
 import React from "react";
 
@@ -76,10 +77,23 @@ export default function OrdersPage() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [initialLoading, setInitialLoading] = useState(true);
     const [searchLoading, setSearchLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [selectedReview, setSelectedReview] = useState<any | null>(null);
+    const hasLoadedRef = useRef(false);
+
+    useEffect(() => {
+        if (status === "loading") return;
+        if (status === "unauthenticated") {
+            router.replace(ROUTES.AFFILIATE.LOGIN);
+            return;
+        }
+        if (session?.user?.role !== "affiliate") {
+            router.replace(ROUTES.HOME);
+        }
+    }, [status, session?.user?.role, router]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -89,31 +103,41 @@ export default function OrdersPage() {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    useEffect(() => {
+    const fetchOrders = useCallback(async () => {
         if (!token) return;
-        const isInitial = debouncedSearch === "";
-        (async () => {
-            try {
-                if (isInitial) setInitialLoading(true);
-                else setSearchLoading(true);
-                const res = await orderAdminService.getAll(token, debouncedSearch);
-                setOrders(res.data || []);
-            } catch (error) {
-                console.error("Failed to fetch orders:", error);
-            } finally {
-                if (isInitial) setInitialLoading(false);
-                else setSearchLoading(false);
-            }
-        })();
+        const isFirstLoad = !hasLoadedRef.current;
+        try {
+            if (isFirstLoad) setInitialLoading(true);
+            else setSearchLoading(true);
+            setError(null);
+            const res = await orderAdminService.getAll(token, debouncedSearch);
+            setOrders(res.data || []);
+            hasLoadedRef.current = true;
+        } catch (err: any) {
+            console.error("Failed to fetch orders:", err);
+            setError(err?.message || "Failed to fetch orders.");
+        } finally {
+            if (isFirstLoad) setInitialLoading(false);
+            else setSearchLoading(false);
+        }
     }, [token, debouncedSearch]);
+
+    useEffect(() => {
+        if (status !== "authenticated" || session?.user?.role !== "affiliate") return;
+        if (!token) {
+            setInitialLoading(false);
+            return;
+        }
+        fetchOrders();
+    }, [status, session?.user?.role, token, fetchOrders]);
 
     const filteredOrders = useMemo(() => orders, [orders]);
     const totalPages = Math.ceil(filteredOrders.length / pageSize);
     const startIndex = (currentPage - 1) * pageSize;
     const paginatedOrders = filteredOrders.slice(startIndex, startIndex + pageSize);
 
-    const getStatusClass = (status: string) => {
-        switch (status.toLowerCase()) {
+    const getStatusClass = (orderStatus: string) => {
+        switch ((orderStatus || "").toLowerCase()) {
             case "completed":
                 return "bg-green-100 text-green-700";
             case "pending":
@@ -127,17 +151,23 @@ export default function OrdersPage() {
         new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(amount);
 
     if (status === "loading" || initialLoading) return <Loader />;
-    if (status === "unauthenticated") {
-        router.replace(ROUTES.AFFILIATE.LOGIN);
-        return null;
-    }
-    if (status === "authenticated" && session?.user?.role !== "affiliate") {
-        router.replace(ROUTES.HOME);
-        return null;
-    }
 
     return (
         <div className="p-6 max-w-7xl mx-auto">
+            {error && (
+                <div className="mb-4 space-y-3">
+                    <AlertMessage type="error" message={error} onClose={() => setError(null)} />
+                    <button
+                        type="button"
+                        onClick={fetchOrders}
+                        className="inline-flex items-center gap-2 rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[#c32230] transition"
+                    >
+                        <RefreshCw size={16} />
+                        Retry
+                    </button>
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
                 <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Orders Management</h1>
@@ -178,10 +208,10 @@ export default function OrdersPage() {
                         <tbody>
                             {paginatedOrders.length > 0 ? (
                                 paginatedOrders.map((order, idx) => (
-                                    <tr key={idx} className="border-b last:border-0 hover:bg-gray-50 transition">
+                                    <tr key={order.id ?? idx} className="border-b last:border-0 hover:bg-gray-50 transition">
                                         <td className="py-3 px-5 font-medium">{order.id}</td>
                                         <td className="py-3 px-5">{order.transactionId ?? "N/A"}</td>
-                                        <td className="py-3 px-5 text-gray-600">{order.user.name ?? "N/A"}</td>
+                                        <td className="py-3 px-5 text-gray-600">{order.user?.name ?? "N/A"}</td>
                                         <td className="py-3 px-5 font-medium text-gray-900">{formatGBP(order.totalAmount)}</td>
                                         <td className="py-3 px-5 text-gray-600">{order.paymentMethod ?? "N/A"}</td>
                                         <td className="py-3 px-5">
@@ -198,7 +228,9 @@ export default function OrdersPage() {
                                         </td>
                                         <td className="py-3 px-3 text-right">
                                             <button
+                                                type="button"
                                                 onClick={() => setSelectedOrder(order)}
+                                                aria-label={`View order ${order.id}`}
                                                 className="text-[var(--brand-primary)] hover:bg-[var(--soft-gray)] p-2 rounded-full transition hover:scale-110"
                                             >
                                                 <Eye size={20} />
@@ -269,7 +301,7 @@ function OrderModal({ order, onClose, onViewReview, formatGBP, getStatusClass }:
                         >
                             {order.status}
                         </span>
-                        <button onClick={onClose} className="text-gray-500 hover:text-[var(--brand-primary)]">
+                        <button type="button" onClick={onClose} className="text-gray-500 hover:text-[var(--brand-primary)]">
                             <X size={22} />
                         </button>
                     </div>
@@ -281,46 +313,11 @@ function OrderModal({ order, onClose, onViewReview, formatGBP, getStatusClass }:
                     <section>
                         <h3 className="text-sm font-semibold text-gray-700 mb-3">Payment Details</h3>
                         <div className="border p-3 rounded-lg bg-white/60 text-sm text-gray-700 space-y-2">
-                            <p>Method: {order.paymentMethod.toUpperCase()}</p>
+                            <p>Method: {order.paymentMethod?.toUpperCase() ?? "N/A"}</p>
                             <p>Transaction ID: {order.transactionId ?? "N/A"}</p>
-                            <p>Email: {order.user.email}</p>
+                            <p>Email: {order.user?.email ?? "N/A"}</p>
                         </div>
                     </section>
-
-                    {/* Discount / Affiliate Info */}
-                    {/* {(order.coupon || order.affiliate) && (
-            <section>
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Discount & Affiliate Details</h3>
-              <div className="border p-3 rounded-lg bg-white/60 text-sm text-gray-700 leading-snug space-y-2">
-
-                {order.coupon && (
-                  <p>
-                    <span className="font-medium text-gray-800">Coupon Used:</span>{" "}
-                    <span className="text-[var(--brand-primary)] font-semibold">{order.coupon.code}</span>{" "}
-                    ({order.coupon.discountType === "percentage"
-                      ? `${order.coupon.discountValue}% off`
-                      : `£${order.coupon.discountValue} off`}
-                    )
-                  </p>
-                )}
-
-                {order.couponDiscount > 0 && (
-                  <p>
-                    <span className="font-medium text-gray-800">Discount Applied:</span>{" "}
-                    {formatGBP(order.couponDiscount)}
-                  </p>
-                )}
-
-                {order.affiliate && (
-                  <p>
-                    <span className="font-medium text-gray-800">Referred By:</span>{" "}
-                    {order.affiliate.user.name}{" "}
-                    <span className="text-gray-500 text-xs">({order.affiliate.user.email})</span>
-                  </p>
-                )}
-              </div>
-            </section>
-          )} */}
 
                     {/* Discount / Affiliate Info */}
                     {(order.coupon || order.couponDiscount > 0 || order.affiliate) && (
@@ -361,8 +358,8 @@ function OrderModal({ order, onClose, onViewReview, formatGBP, getStatusClass }:
                                 {order.coupon?.affiliateId && order.affiliate && (
                                     <p>
                                         <span className="font-medium text-gray-800">Referred By:</span>{" "}
-                                        {order.affiliate.user.name}{" "}
-                                        <span className="text-gray-500 text-xs">({order.affiliate.user.email})</span>
+                                        {order.affiliate.user?.name}{" "}
+                                        <span className="text-gray-500 text-xs">({order.affiliate.user?.email})</span>
                                         <span className="ml-2 text-[11px] text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
                                             Affiliate Coupon
                                         </span>
@@ -447,6 +444,7 @@ function OrderModal({ order, onClose, onViewReview, formatGBP, getStatusClass }:
                                                 <td className="py-3 px-4 text-center">
                                                     {item.reviewed && item.review ? (
                                                         <button
+                                                            type="button"
                                                             onClick={() => onViewReview(item.review)}
                                                             className="text-[var(--brand-primary)] text-xs font-medium hover:underline"
                                                         >
@@ -474,6 +472,7 @@ function OrderModal({ order, onClose, onViewReview, formatGBP, getStatusClass }:
                 {/* Footer */}
                 <div className="px-6 py-4 flex justify-end gap-3 bg-white border-t">
                     <button
+                        type="button"
                         onClick={onClose}
                         className="px-5 py-2 bg-[var(--brand-primary)] text-white rounded-lg hover:bg-red-700 transition font-medium"
                     >
@@ -495,7 +494,7 @@ function ReviewModal({ review, onClose }: any) {
                 {/* Header */}
                 <div className="flex justify-between items-center px-6 py-4 border-b bg-white">
                     <h2 className="text-lg font-semibold text-gray-800">Customer Review</h2>
-                    <button onClick={onClose} className="text-gray-500 hover:text-[var(--brand-primary)] transition">
+                    <button type="button" onClick={onClose} className="text-gray-500 hover:text-[var(--brand-primary)] transition">
                         <X size={20} />
                     </button>
                 </div>

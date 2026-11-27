@@ -137,8 +137,12 @@ export const affiliateService = {
   async getBankAccount(token: string) {
     const res = await fetch("/api/affiliates/bank-account", {
       headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
     });
-    const r = await res.json();
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(r.message || r.error || "Failed to fetch bank details");
+    }
     return r.data;
   },
 
@@ -149,9 +153,14 @@ export const affiliateService = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
+      cache: "no-store",
       body: JSON.stringify(data),
     });
-    return await res.json();
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(r.message || r.error || "Failed to save payout details");
+    }
+    return r;
   },
 
 

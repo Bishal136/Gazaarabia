@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { RefreshCw } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import Loader from "@/components/Loader";
 import { affiliateService } from "@/lib/services/affiliateService";
@@ -15,6 +16,9 @@ export default function AffiliateProfilePage() {
     const router = useRouter();
 
     const [profile, setProfile] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
     const [shareCommission, setShareCommission] = useState("");
 
     const [alert, setAlert] = useState({
@@ -31,35 +35,61 @@ export default function AffiliateProfilePage() {
 
     const [copied, setCopied] = useState(false);
 
-
     useEffect(() => {
         if (status === "loading") return;
         if (status === "unauthenticated") {
             router.replace(ROUTES.AFFILIATE.LOGIN);
             return;
         }
-
         if (session?.user?.role !== "affiliate") {
             router.replace(ROUTES.HOME);
+        }
+    }, [status, session?.user?.role, router]);
+
+    const fetchProfile = useCallback(async () => {
+        if (!token) return;
+        try {
+            setLoading(true);
+            setError(null);
+            const res = await affiliateService.getProfile(token);
+            setProfile(res);
+            setShareCommission(
+                res?.shareCommission !== undefined && res?.shareCommission !== null
+                    ? String(res.shareCommission)
+                    : ""
+            );
+        } catch (err: any) {
+            const message = err?.message || "Failed to load profile.";
+            setError(message);
+            setAlert({
+                isOpen: true,
+                type: "error",
+                message,
+            });
+        } finally {
+            setLoading(false);
+        }
+    }, [token]);
+
+    useEffect(() => {
+        if (status !== "authenticated" || session?.user?.role !== "affiliate") return;
+        if (!token) {
+            setLoading(false);
+            setError("Session token is missing. Please sign in again.");
             return;
         }
-
-        (async () => {
-            try {
-                const res = await affiliateService.getProfile(token as string);
-                setProfile(res);
-                setShareCommission(res?.shareCommission || "");
-            } catch (err: any) {
-                setAlert({
-                    isOpen: true,
-                    type: "error",
-                    message: err.message || "Failed to load profile.",
-                });
-            }
-        })();
-    }, [status, token]);
+        fetchProfile();
+    }, [status, session?.user?.role, token, fetchProfile]);
 
     const updateCommission = async () => {
+        if (shareCommission.trim() === "" || Number.isNaN(Number(shareCommission))) {
+            return setPopup({
+                isOpen: true,
+                type: "warning",
+                message: "Please enter a valid commission percentage.",
+            });
+        }
+
         const value = Number(shareCommission);
 
         if (value < 0) {
@@ -79,8 +109,9 @@ export default function AffiliateProfilePage() {
         }
 
         try {
+            setSaving(true);
             await affiliateService.updateShareCommission(token!, value);
-
+            setProfile((prev: any) => (prev ? { ...prev, shareCommission: value } : prev));
             setAlert({
                 isOpen: true,
                 type: "success",
@@ -92,10 +123,32 @@ export default function AffiliateProfilePage() {
                 type: "error",
                 message: err.message || "Failed to update commission.",
             });
+        } finally {
+            setSaving(false);
         }
     };
 
-    if (!profile) return <Loader />;
+    if (status === "loading" || loading) return <Loader />;
+
+    if (error || !profile) {
+        return (
+            <div className="max-w-3xl mx-auto p-6 space-y-4">
+                <AlertMessage
+                    type="error"
+                    message={error || "Unable to load affiliate profile."}
+                    onClose={() => setAlert((p) => ({ ...p, isOpen: false }))}
+                />
+                <button
+                    type="button"
+                    onClick={fetchProfile}
+                    className="inline-flex items-center gap-2 rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[#c32230] transition"
+                >
+                    <RefreshCw size={16} />
+                    Retry
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-3xl mx-auto p-6 space-y-8">
@@ -151,15 +204,16 @@ export default function AffiliateProfilePage() {
                 />
 
                 <button
+                    type="button"
                     onClick={updateCommission}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg"
+                    disabled={saving}
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg disabled:opacity-60 transition"
                 >
-                    Save
+                    {saving ? "Saving..." : "Save"}
                 </button>
             </div>
 
-
-            {/* UPDATE SHARE COMMISSION */}
+            {/* REFERRAL LINK */}
             <div className="bg-white rounded-xl shadow border p-6 space-y-4 mt-6">
                 <h2 className="text-lg font-semibold text-gray-800">Your Referral Link</h2>
 
@@ -167,7 +221,7 @@ export default function AffiliateProfilePage() {
                     {(() => {
                         const origin = typeof window !== "undefined"
                             ? window.location.origin
-                            : (process.env.DOMAIN || "https://gazaarabia.com");
+                            : "https://gazaarabia.com";
                         const referralUrl = `${origin}/?ref=${profile.referralCode}`;
                         return (
                             <>
@@ -179,6 +233,7 @@ export default function AffiliateProfilePage() {
                                 />
 
                                 <button
+                                    type="button"
                                     onClick={() => {
                                         navigator.clipboard.writeText(referralUrl);
                                         setCopied(true);
@@ -199,7 +254,6 @@ export default function AffiliateProfilePage() {
                     </p>
                 )}
             </div>
-
 
             {(popup.isOpen && popup.type) && (
                 <PopupAlert
