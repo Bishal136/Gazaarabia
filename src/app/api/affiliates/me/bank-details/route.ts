@@ -1,58 +1,69 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma as rawPrisma } from "@/lib/prisma";
 import { getTokenFromHeader, getUserIdFromToken } from "@/lib/authToken";
 
-const prisma = new PrismaClient();
+const prisma: any = rawPrisma;
+
+async function resolveAffiliateContext(req: NextRequest) {
+  const token = getTokenFromHeader(req);
+  if (!token) {
+    return { error: NextResponse.json({ message: "Unauthorized" }, { status: 401 }) };
+  }
+
+  const userId = getUserIdFromToken(token);
+  if (!userId) {
+    return { error: NextResponse.json({ message: "Unauthorized" }, { status: 401 }) };
+  }
+
+  const numericUserId = Number(userId);
+  const [user, affiliate] = await Promise.all([
+    prisma.users.findUnique({
+      where: { id: numericUserId },
+      include: { role: true },
+    }),
+    prisma.affiliate.findUnique({
+      where: { userId: numericUserId },
+      select: { id: true },
+    }),
+  ]);
+
+  if (!user || user.role?.name?.toLowerCase() !== "affiliate") {
+    return { error: NextResponse.json({ message: "Forbidden" }, { status: 403 }) };
+  }
+
+  if (!affiliate) {
+    return {
+      error: NextResponse.json(
+        { message: "Affiliate profile not found" },
+        { status: 404 }
+      ),
+    };
+  }
+
+  return { affiliate };
+}
 
 export async function GET(req: NextRequest) {
   try {
-    const token = getTokenFromHeader(req);
-    if (!token) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
-    const userId = getUserIdFromToken(token);
+    const { affiliate, error } = await resolveAffiliateContext(req);
+    if (error) return error;
 
-    if (!userId) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
-
-    // Fetch current user and check if they're an affiliate
-    const user = await prisma.users.findUnique({
-      where: { id: userId },
-      include: {
-        role: true,
-        affiliate: {
-          include: {
-            bankAccount: {
-              select: {
-                accountName: true,
-                accountNumber: true,
-                sortCode: true,
-                iban: true,
-                paypalEmail: true,
-              },
-            },
-          },
-        },
+    const bankAccount = await prisma.affiliateBankAccount.findFirst({
+      where: { affiliateId: affiliate!.id },
+      select: {
+        accountName: true,
+        accountNumber: true,
+        sortCode: true,
+        iban: true,
+        paypalEmail: true,
       },
     });
-
-    if (!user || user.role?.name.toLowerCase() !== "affiliate") {
-      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-    }
-
-    if (!user.affiliate) {
-      return NextResponse.json(
-        { message: "Affiliate profile not found" },
-        { status: 404 }
-      );
-    }
 
     return NextResponse.json({
       success: true,
       data: {
-        id: user.affiliate.id,
-        bankAccount: user.affiliate.bankAccount || null,
+        id: affiliate!.id,
+        bankAccount: bankAccount || null,
       },
     });
   } catch (error) {
@@ -66,39 +77,14 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const token = getTokenFromHeader(req);
-    if (!token) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
-    const userId = getUserIdFromToken(token);
-
-    if (!userId) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
-
-    // Verify user is affiliate
-    const user = await prisma.users.findUnique({
-      where: { id: userId },
-      include: { role: true, affiliate: true },
-    });
-
-    if (!user || user.role?.name.toLowerCase() !== "affiliate") {
-      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-    }
-
-    if (!user.affiliate) {
-      return NextResponse.json(
-        { message: "Affiliate profile not found" },
-        { status: 404 }
-      );
-    }
+    const { affiliate, error } = await resolveAffiliateContext(req);
+    if (error) return error;
 
     const { accountName, accountNumber, sortCode, iban, paypalEmail } =
       await req.json();
 
-    // Update or create bank account
     const bankAccount = await prisma.affiliateBankAccount.upsert({
-      where: { affiliateId: user.affiliate.id },
+      where: { affiliateId: affiliate!.id },
       update: {
         accountName,
         accountNumber,
@@ -107,7 +93,7 @@ export async function PATCH(req: NextRequest) {
         paypalEmail,
       },
       create: {
-        affiliateId: user.affiliate.id,
+        affiliateId: affiliate!.id,
         accountName,
         accountNumber,
         sortCode: sortCode || undefined,

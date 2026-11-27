@@ -1,25 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma as rawPrisma } from "@/lib/prisma";
 import { getTokenFromHeader, getUserIdFromToken } from "@/lib/authToken";
 import { MAX_COMMISSION } from "@/lib/validation/commission";
 
-const prisma: any = new PrismaClient();
+const prisma: any = rawPrisma;
+
+function getAuthenticatedUserId(req: NextRequest): number | null {
+  const token = getTokenFromHeader(req);
+  return token ? getUserIdFromToken(token) : null;
+}
 
 export async function GET(req: NextRequest) {
   try {
-    const token: any = getTokenFromHeader(req);
-    const userId = getUserIdFromToken(token);
+    const userId = getAuthenticatedUserId(req);
 
     if (!userId) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const affiliate = await prisma.affiliate.findUnique({
-      where: { userId },
-      include: {
-        user: { select: { name: true, email: true } },
-      },
-    });
+    const numericUserId = Number(userId);
+    const [user, affiliate] = await Promise.all([
+      prisma.users.findUnique({
+        where: { id: numericUserId },
+        select: { name: true, email: true },
+      }),
+      prisma.affiliate.findUnique({
+        where: { userId: numericUserId },
+      }),
+    ]);
 
     if (!affiliate) {
       return NextResponse.json({ message: "Affiliate account not found" }, { status: 404 });
@@ -31,15 +39,22 @@ export async function GET(req: NextRequest) {
       select: { totalAmount: true, isPaid: true },
     });
 
-    const totalEarned = invoices.reduce((sum: any, i: any) => sum + i.totalAmount, 0);
-    const pending = invoices.filter((i: any) => !i.isPaid).reduce((sum: any, i: any) => sum + i.totalAmount, 0);
-    const paid = totalEarned - pending; // Paid = total - pending
+    let totalEarned = 0;
+    let pending = 0;
+    for (const inv of invoices) {
+      const amount = Number(inv.totalAmount) || 0;
+      totalEarned += amount;
+      if (!inv.isPaid) {
+        pending += amount;
+      }
+    }
+    const paid = totalEarned - pending;
 
     return NextResponse.json({
       success: true,
       data: {
-        name: affiliate.user.name,
-        email: affiliate.user.email,
+        name: user?.name ?? "",
+        email: user?.email ?? "",
         baseCommission: affiliate.baseCommission,
         shareCommission: affiliate.shareCommission,
         referralCode: affiliate.referralCode,
@@ -55,19 +70,16 @@ export async function GET(req: NextRequest) {
   }
 }
 
-
 export async function PUT(req: NextRequest) {
   try {
-    const token: any = getTokenFromHeader(req);
-    const userId = getUserIdFromToken(token);
+    const userId = getAuthenticatedUserId(req);
 
     if (!userId) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    // Validate affiliate exists for this user
     const affiliate = await prisma.affiliate.findUnique({
-      where: { userId },
+      where: { userId: Number(userId) },
     });
 
     if (!affiliate) {
@@ -103,7 +115,7 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // NEW: cannot exceed baseCommission
+    // Cannot exceed baseCommission
     const baseCommission = Number(affiliate.baseCommission ?? 0);
     if (shareCommission > baseCommission) {
       return NextResponse.json(
@@ -112,7 +124,6 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Update
     const updated = await prisma.affiliate.update({
       where: { id: affiliate.id },
       data: { shareCommission: Number(shareCommission) },
@@ -129,7 +140,6 @@ export async function PUT(req: NextRequest) {
       message: "Share commission updated successfully",
       data: updated,
     });
-
   } catch (err: any) {
     console.error("Affiliate Update Error:", err);
     return NextResponse.json(
@@ -137,6 +147,4 @@ export async function PUT(req: NextRequest) {
       { status: 500 }
     );
   }
-
-
 }
